@@ -36,7 +36,7 @@ const BUS_CLASSIFICATIONS = {
   ownershipType: ['OWNED', 'LEASED', 'ATTACHED'],
   acType: ['AC', 'NON_AC'],
   seatingType: ['SEATER', 'SLEEPER', 'SEMI_SLEEPER', 'SEATER_SLEEPER'],
-  seatLayout: ['2X2', '2X1', '1X1', '2X3'],
+  seatLayout: ['2X2', '2X1', '2X1_SEATER', '2X1_SLEEPER', '1X1', '2X3'],
   busCategory: ['STANDARD', 'DELUXE', 'LUXURY', 'PREMIUM'],
   axleType: ['SINGLE_AXLE', 'MULTI_AXLE'],
   transmissionType: ['MANUAL', 'AUTOMATIC', 'AMT'],
@@ -657,9 +657,9 @@ const validateSeats =
               ? String(seat.berthLevel).toUpperCase()
               : null,
 
-            side: ['LEFT', 'RIGHT', 'CENTER'].includes(String(seat.side).toUpperCase())
+            side: ['LEFT', 'RIGHT', 'SIDE'].includes(String(seat.side).toUpperCase())
               ? String(seat.side).toUpperCase()
-              : 'CENTER',
+              : 'SIDE',
 
             isActive:
               true,

@@ -642,6 +642,29 @@
   grid-template-columns: 1fr 48px 1fr;
 }
 
+.seat-mixed-config {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid var(--seat-border);
+  border-radius: 12px;
+  background: var(--seat-primary-soft);
+}
+
+.seat-mixed-config > p,
+.seat-mixed-config > .seat-edit-field:only-child {
+  grid-column: 1 / -1;
+}
+
+.seat-edit-field small {
+  display: block;
+  margin-top: 6px;
+  color: var(--seat-text-secondary);
+  font-size: 12px;
+}
+
 .seat-row-2x3 {
   grid-template-columns: 1fr 1fr 48px 1fr 1fr 1fr;
 }

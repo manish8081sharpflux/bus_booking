@@ -39,10 +39,10 @@ type DeckType =
 
 type LayoutTemplate =
   | '2X2'
-  | '2X1'
+  | '2X1_SEATER'
   | '1X1'
   | '2X3'
-  | 'SLEEPER_2X1';
+  | '2X1_SLEEPER';
 
 interface BusDraft {
   busName: string;
@@ -64,7 +64,7 @@ interface BusDraft {
 
   totalSeats: number;
 
-  seatLayout: '2X2' | '2X1' | '1X1' | '2X3';
+  seatLayout: '2X2' | '2X1' | '2X1_SEATER' | '2X1_SLEEPER' | '1X1' | '2X3';
 
   seatingType: 'SEATER' | 'SLEEPER' | 'SEMI_SLEEPER' | 'SEATER_SLEEPER';
 
@@ -92,7 +92,7 @@ interface SeatItem {
 
   berthLevel: 'LOWER' | 'UPPER' | null;
 
-  side: 'LEFT' | 'RIGHT' | 'CENTER';
+  side: 'LEFT' | 'RIGHT' | 'SIDE';
 
   isEnabled: boolean;
 }
@@ -242,6 +242,10 @@ React.FC = () => {
   ] =
     useState('');
 
+  const [lowerDeckSeatType, setLowerDeckSeatType] = useState<SeatType | ''>('');
+  const [upperDeckSeatType, setUpperDeckSeatType] = useState<SeatType | ''>('');
+  const [singleDeckSeaterCount, setSingleDeckSeaterCount] = useState<number | ''>('');
+
   /*
    * =====================================================
    * GENERATE LAYOUT
@@ -252,6 +256,11 @@ React.FC = () => {
     draft: BusDraft,
     selectedTemplate:
       LayoutTemplate,
+    options?: {
+      lowerType?: SeatType;
+      upperType?: SeatType;
+      singleSeaterCount?: number;
+    },
   ) => {
     const total =
       Number(
@@ -273,8 +282,8 @@ React.FC = () => {
 
     const columnsByTemplate: Record<LayoutTemplate, number> = {
       '1X1': 2,
-      '2X1': 3,
-      'SLEEPER_2X1': 3,
+      '2X1_SEATER': 3,
+      '2X1_SLEEPER': 3,
       '2X2': 4,
       '2X3': 5,
     };
@@ -362,12 +371,12 @@ React.FC = () => {
             const seatNumber =
               `${prefix}${deckCounter}`;
 
-            const mixedSleeper = mixedBus && (draft.deckType === 'DOUBLE'
-              ? deck === 'UPPER'
-              : deckCounter > Math.ceil(deckSeatCount * 0.6));
-            const seatType: SeatType = sleeperOnly || selectedTemplate === 'SLEEPER_2X1' || mixedSleeper
-              ? 'SLEEPER'
-              : 'SEATER';
+            const configuredSingleSeaters = Math.max(0, Math.min(total, options?.singleSeaterCount ?? Number(singleDeckSeaterCount)));
+            const seatType: SeatType = mixedBus
+              ? (draft.deckType === 'DOUBLE'
+                  ? (deck === 'LOWER' ? (options?.lowerType || lowerDeckSeatType || 'SEATER') : (options?.upperType || upperDeckSeatType || 'SEATER'))
+                  : (deckCounter <= configuredSingleSeaters ? 'SEATER' : 'SLEEPER'))
+              : (sleeperOnly || selectedTemplate === '2X1_SLEEPER' ? 'SLEEPER' : 'SEATER');
 
             generated.push({
               id:
@@ -392,7 +401,7 @@ React.FC = () => {
 
               isAccessible: false,
 
-              berthLevel: seatType === 'SLEEPER' ? (deck === 'UPPER' ? 'UPPER' : 'LOWER') : null,
+              berthLevel: seatType === 'SLEEPER' ? 'LOWER' : null,
 
               side: column <= Math.ceil(columns / 2) ? 'LEFT' : 'RIGHT',
 
@@ -492,9 +501,12 @@ React.FC = () => {
             saved.seats.length >
               0
           ) {
-            setTemplate(
-              saved.template,
-            );
+            const restoredTemplate = String(saved.template) === 'SLEEPER_2X1'
+              ? '2X1_SLEEPER'
+              : String(saved.template) === '2X1'
+                ? '2X1_SEATER'
+                : saved.template;
+            setTemplate(restoredTemplate as LayoutTemplate);
 
             setSeats(
               saved.seats,
@@ -514,11 +526,17 @@ React.FC = () => {
        */
 
       const selected = parsed.seatLayout || '2X2';
+      const mixed = parsed.seatingType === 'SEATER_SLEEPER' || parsed.busType.includes('SEATER_SLEEPER');
+      if (mixed) {
+        setTemplate(selected === '2X1' ? '2X1_SEATER' : selected);
+        setSeats([]);
+        return;
+      }
       generateLayout(
         parsed,
         parsed.seatingType === 'SLEEPER' && selected === '2X1'
-          ? 'SLEEPER_2X1'
-          : selected,
+          ? '2X1_SLEEPER'
+          : selected === '2X1' ? '2X1_SEATER' : selected,
       );
     } catch {
       history.replace(
@@ -763,7 +781,7 @@ React.FC = () => {
     const updatedDraft = {
       ...busDraft,
       totalSeats: normalizedSeats.length,
-      seatLayout: template === 'SLEEPER_2X1' ? '2X1' : template,
+      seatLayout: template,
     };
     localStorage.setItem('add_bus_draft', JSON.stringify(updatedDraft));
     setBusDraft(updatedDraft);
@@ -918,7 +936,7 @@ React.FC = () => {
                     key={
                       `${deck}-${row}`
                     }
-                    className={`seat-row seat-row-${template === 'SLEEPER_2X1' ? '2x1' : template.toLowerCase()}`}
+                    className={`seat-row seat-row-${template === '2X1_SLEEPER' || template === '2X1_SEATER' ? '2x1' : template.toLowerCase()}`}
                   >
 
                     {rowSeats.map(
@@ -964,7 +982,7 @@ React.FC = () => {
                               ? 'seat-after-aisle'
                               : '',
 
-                            (template === '2X1' || template === 'SLEEPER_2X1' || template === '1X1') && index === 1
+                            (template === '2X1_SEATER' || template === '2X1_SLEEPER' || template === '1X1') && index === 1
                               ? 'seat-after-aisle'
                               : '',
                           ]
@@ -1112,6 +1130,11 @@ React.FC = () => {
       'SLEEPER',
     );
 
+  const mixedBus = busDraft.seatingType === 'SEATER_SLEEPER' || busDraft.busType.includes('SEATER_SLEEPER');
+  const mixedConfigurationReady = !mixedBus || (busDraft.deckType === 'DOUBLE'
+    ? Boolean(lowerDeckSeatType && upperDeckSeatType)
+    : singleDeckSeaterCount !== '' && singleDeckSeaterCount >= 0 && singleDeckSeaterCount <= busDraft.totalSeats);
+
   /*
    * =====================================================
    * UI
@@ -1221,9 +1244,23 @@ React.FC = () => {
 
                   </div>
 
+                  {mixedBus && (
+                    <div className="seat-mixed-config">
+                      {busDraft.deckType === 'DOUBLE' ? (
+                        <>
+                          <div className="seat-edit-field"><label>Lower deck seat type</label><select value={lowerDeckSeatType} onChange={(event) => setLowerDeckSeatType(event.target.value as SeatType)}><option value="">Choose type</option><option value="SEATER">Seater</option><option value="SLEEPER">Sleeper</option></select></div>
+                          <div className="seat-edit-field"><label>Upper deck seat type</label><select value={upperDeckSeatType} onChange={(event) => setUpperDeckSeatType(event.target.value as SeatType)}><option value="">Choose type</option><option value="SEATER">Seater</option><option value="SLEEPER">Sleeper</option></select></div>
+                        </>
+                      ) : (
+                        <div className="seat-edit-field"><label>Number of seater seats</label><input type="number" min="0" max={busDraft.totalSeats} value={singleDeckSeaterCount} placeholder="Enter exact seater count" onChange={(event) => setSingleDeckSeaterCount(event.target.value === '' ? '' : Number(event.target.value))} /><small>Remaining capacity will be generated as sleeper berths.</small></div>
+                      )}
+                      {!mixedConfigurationReady && <p className="seat-template-subtitle">Complete the mixed-layout configuration before choosing a template.</p>}
+                    </div>
+                  )}
+
                   <div className="seat-template-options">
 
-                    <button type="button" onClick={() => generateLayout(busDraft, '1X1')} className={template === '1X1' ? 'seat-template-option active' : 'seat-template-option'}>
+                    <button type="button" disabled={!mixedConfigurationReady} onClick={() => generateLayout(busDraft, '1X1')} className={template === '1X1' ? 'seat-template-option active' : 'seat-template-option'}>
                       <strong>1 + 1</strong>
                       <span>Wide premium layout</span>
                     </button>
@@ -1232,6 +1269,7 @@ React.FC = () => {
 
                     <button
                       type="button"
+                      disabled={!mixedConfigurationReady}
                       onClick={() =>
                         generateLayout(
                           busDraft,
@@ -1258,15 +1296,16 @@ React.FC = () => {
 
                     <button
                       type="button"
+                      disabled={!mixedConfigurationReady}
                       onClick={() =>
                         generateLayout(
                           busDraft,
-                          '2X1',
+                          '2X1_SEATER',
                         )
                       }
                       className={
                         template ===
-                        '2X1'
+                        '2X1_SEATER'
                           ? 'seat-template-option active'
                           : 'seat-template-option'
                       }
@@ -1282,7 +1321,7 @@ React.FC = () => {
 
                     {/* SLEEPER */}
 
-                    <button type="button" onClick={() => generateLayout(busDraft, '2X3')} className={template === '2X3' ? 'seat-template-option active' : 'seat-template-option'}>
+                    <button type="button" disabled={!mixedConfigurationReady} onClick={() => generateLayout(busDraft, '2X3')} className={template === '2X3' ? 'seat-template-option active' : 'seat-template-option'}>
                       <strong>2 + 3</strong>
                       <span>High-capacity layout</span>
                     </button>
@@ -1290,17 +1329,17 @@ React.FC = () => {
                     <button
                       type="button"
                       disabled={
-                        !sleeperAllowed
+                        !sleeperAllowed || !mixedConfigurationReady
                       }
                       onClick={() =>
                         generateLayout(
                           busDraft,
-                          'SLEEPER_2X1',
+                          '2X1_SLEEPER',
                         )
                       }
                       className={
                         template ===
-                        'SLEEPER_2X1'
+                        '2X1_SLEEPER'
                           ? 'seat-template-option active'
                           : 'seat-template-option'
                       }
@@ -1526,10 +1565,10 @@ React.FC = () => {
 
                       <div className="seat-edit-field">
                         <label htmlFor="seat-side">Seat Side</label>
-                        <select id="seat-side" value={selectedSeat.side || 'CENTER'} onChange={(event) => updateSeat('side', event.target.value)}>
+                        <select id="seat-side" value={selectedSeat.side || 'SIDE'} onChange={(event) => updateSeat('side', event.target.value)}>
                           <option value="LEFT">Left</option>
                           <option value="RIGHT">Right</option>
-                          <option value="CENTER">Centre / side berth</option>
+                          <option value="SIDE">Side berth</option>
                         </select>
                       </div>
 

@@ -326,7 +326,7 @@ const createBusWithSeats =
 
               seat.berthLevel || null,
 
-              seat.side || 'CENTER',
+              seat.side || 'SIDE',
 
               Boolean(
                 seat.isActive,

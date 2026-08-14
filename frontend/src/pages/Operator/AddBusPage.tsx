@@ -154,7 +154,13 @@ const FUEL_TYPES = ['DIESEL', 'CNG', 'ELECTRIC', 'HYBRID'].map((value) => ({ val
 const OWNERSHIP_TYPES = [{ value: 'OWNED', label: 'Owned' }, { value: 'LEASED', label: 'Leased' }, { value: 'ATTACHED', label: 'Attached / Contract' }];
 const AC_TYPES = [{ value: 'AC', label: 'AC' }, { value: 'NON_AC', label: 'Non-AC' }];
 const SEATING_TYPES = [{ value: 'SEATER', label: 'Seater' }, { value: 'SLEEPER', label: 'Sleeper' }, { value: 'SEMI_SLEEPER', label: 'Semi Sleeper' }, { value: 'SEATER_SLEEPER', label: 'Seater + Sleeper' }];
-const SEAT_LAYOUTS = ['2X2', '2X1', '1X1', '2X3'].map((value) => ({ value, label: value.replace('X', ' + ') }));
+const SEAT_LAYOUTS = [
+  { value: '1X1', label: '1 + 1' },
+  { value: '2X1_SEATER', label: '2 + 1 Seater' },
+  { value: '2X1_SLEEPER', label: '2 + 1 Sleeper' },
+  { value: '2X2', label: '2 + 2' },
+  { value: '2X3', label: '2 + 3' },
+];
 const BUS_CATEGORIES = ['STANDARD', 'DELUXE', 'LUXURY', 'PREMIUM'].map((value) => ({ value, label: value.charAt(0) + value.slice(1).toLowerCase() }));
 const AXLE_TYPES = [{ value: 'SINGLE_AXLE', label: 'Single Axle' }, { value: 'MULTI_AXLE', label: 'Multi Axle' }];
 const TRANSMISSION_TYPES = [{ value: 'MANUAL', label: 'Manual' }, { value: 'AUTOMATIC', label: 'Automatic' }, { value: 'AMT', label: 'AMT' }];
@@ -953,12 +959,7 @@ React.FC = () => {
      * SEATS
      */
 
-    if (
-      !form.totalSeats
-    ) {
-      newErrors.totalSeats =
-        'Total seats is required.';
-    } else {
+    if (form.totalSeats) {
       const seats =
         Number(
           form.totalSeats,
@@ -1071,10 +1072,9 @@ React.FC = () => {
       deckType:
         form.deckType,
 
-      totalSeats:
-        Number(
-          form.totalSeats,
-        ),
+      totalSeats: form.totalSeats
+        ? Number(form.totalSeats)
+        : ({ '1X1': 2, '2X1': 3, '2X1_SEATER': 3, '2X1_SLEEPER': 3, '2X2': 4, '2X3': 5 }[form.seatLayout] || 4) * 10 * (form.deckType === 'DOUBLE' ? 2 : 1),
 
       fuelType: form.fuelType,
       ownershipType: form.ownershipType,
@@ -1309,8 +1309,7 @@ React.FC = () => {
                 />
 
                 <FloatingTextField
-                  label="Planned Seat Capacity"
-                  required
+                  label="Expected Capacity (Optional)"
                   type="text"
                   inputMode="numeric"
                   value={
