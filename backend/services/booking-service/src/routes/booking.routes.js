@@ -1,6 +1,6 @@
 const express=require('express');
 const controller=require('../controllers/booking.controller');
-const { requireAuth }=require('../middlewares/auth.middleware');
+const { requireAuth,optionalAuth }=require('../middlewares/auth.middleware');
 const router=express.Router();
 const requireInternal=require('../middlewares/internal.middleware');
 router.get('/trips/search',controller.searchTrips);
@@ -24,7 +24,7 @@ router.post('/:id/review',requireAuth,controller.submitReview);
 router.get('/:id/reschedule/options',requireAuth,controller.rescheduleOptions);
 router.post('/:id/reschedule/quote',requireAuth,controller.rescheduleQuote);
 router.post('/:id/reschedule/confirm',requireAuth,controller.confirmReschedule);
-router.post('/',controller.createBooking);
+router.post('/',optionalAuth,controller.createBooking);
 router.get('/customer',requireAuth,controller.customerBookings);
 router.post('/:id/payment/order',requireAuth,controller.createPaymentOrder);
 router.post('/:id/payment/verify',requireAuth,controller.verifyPayment);

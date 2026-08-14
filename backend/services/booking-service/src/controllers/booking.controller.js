@@ -1,5 +1,5 @@
 const bookingService = require('../services/booking.service');
-exports.createBooking = async (req,res,next)=>{try{res.status(201).json({success:true,data:await bookingService.createBooking({...req.body,customerId:req.body.customerId||null})})}catch(e){next(e)}};
+exports.createBooking = async (req,res,next)=>{try{const customerId=req.auth?await bookingService.customerIdForAuth(req.auth.userId):null;res.status(201).json({success:true,data:await bookingService.createBooking({...req.body,customerId})})}catch(e){next(e)}};
 exports.searchTrips=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.searchTrips(req.query)})}catch(e){next(e)}};
 exports.seatMap=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.seatMap(req.params.tripId)})}catch(e){next(e)}};
 exports.createPaymentOrder=async(req,res,next)=>{try{res.status(201).json({success:true,data:await bookingService.createPaymentOrder({bookingId:req.params.id,authUserId:req.auth.userId})})}catch(e){next(e)}};

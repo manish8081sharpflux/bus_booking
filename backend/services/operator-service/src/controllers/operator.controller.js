@@ -1098,5 +1098,5 @@ module.exports = {
   rejectOperator,
 }
 const operatorPolicyService = require('../services/operator.service');
-module.exports.getCancellationPolicy = async (req,res,next)=>{try{res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(req.params.id)})}catch(e){next(e)}};
-module.exports.upsertCancellationPolicy = async (req,res,next)=>{try{res.json({success:true,data:await operatorPolicyService.upsertCancellationPolicy({operatorId:req.params.id,...req.body})})}catch(e){next(e)}};
+module.exports.getCancellationPolicy = async (req,res,next)=>{try{const operatorId=req.auth.roles.includes('SUPER_ADMIN')?req.params.id:req.auth.organizationId;res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(operatorId)})}catch(e){next(e)}};
+module.exports.upsertCancellationPolicy = async (req,res,next)=>{try{res.json({success:true,data:await operatorPolicyService.upsertCancellationPolicy({...req.body,operatorId:req.auth.organizationId})})}catch(e){next(e)}};

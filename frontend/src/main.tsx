@@ -70,6 +70,7 @@ import OperatorManagementPage from './pages/Operator/OperatorManagementPage';
 import ManageBusPage from './pages/Operator/ManageBusPage';
 import OperatorStaffPage from './pages/Operator/OperatorStaffPage';
 import OperatorPoliciesPage from './pages/Operator/OperatorPoliciesPage';
+import CrewOperationsPage from './pages/Operator/CrewOperationsPage';
 
 import {
   OperatorApplicationStatusPage,
@@ -103,6 +104,9 @@ import './theme/responsive.css'
 import './theme/web-polish.css'
 
 setupIonicReact()
+
+const operatorSession=()=>{try{const token=localStorage.getItem('operator_access_token');if(!token)return null;const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');const payload=JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'=')));if(payload.exp&&payload.exp*1000<=Date.now())return null;return {token,roles:(payload.roleCodes||[payload.role]).filter(Boolean)}}catch{return null}}
+const OperatorRoute=({component:Component,roles,...props}:{component:React.ComponentType<any>;roles?:string[];[key:string]:any})=><Route {...props} render={(routeProps)=>{const session=operatorSession();if(!session)return <Redirect to="/operator/login"/>;if(roles&&!session.roles.some((role:string)=>role==='SUPER_ADMIN'||role==='OPERATOR_ADMIN'||roles.includes(role)))return <Redirect to="/operator/dashboard"/>;return <Component {...routeProps}/>}}/>;
 
 /* =====================================================
    PLACEHOLDER
@@ -532,7 +536,7 @@ const App: React.FC = () => {
             }
           />
 
-          <Route
+          <OperatorRoute
             exact
             path="/operator/dashboard"
             component={
@@ -540,29 +544,31 @@ const App: React.FC = () => {
             }
           />
 
-          <Route
+          <OperatorRoute
             exact
             path="/operator/buses"
-            render={() => <OperatorManagementPage section="buses" />}
+            component={() => <OperatorManagementPage section="buses" />}
+            roles={['MANAGER','OPERATOR_STAFF']}
           />
 
-          <Route exact path="/operator/buses/:busId" component={ManageBusPage} />
+          <OperatorRoute exact path="/operator/buses/:busId" component={ManageBusPage} roles={['MANAGER','OPERATOR_STAFF']} />
 
-          <Route exact path="/operator/routes" render={() => <OperatorManagementPage section="routes" />} />
-          <Route exact path="/operator/trips" render={() => <OperatorManagementPage section="trips" />} />
-          <Route exact path="/operator/settings" render={() => <OperatorManagementPage section="settings" />} />
+          <OperatorRoute exact path="/operator/routes" component={() => <OperatorManagementPage section="routes" />} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips" component={() => <OperatorManagementPage section="trips" />} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/settings" component={() => <OperatorManagementPage section="settings" />} roles={['MANAGER']} />
 
-          <Route exact path="/operator/trips/create" component={CreateTripPage} />
-          <Route exact path="/operator/trips/create/route" component={CreateTripPage} />
-          <Route exact path="/operator/trips/create/trip" component={CreateTripPage} />
-          <Route exact path="/operator/trips/inventory" component={TripInventoryPage} />
-          <Route exact path="/operator/trips/publish" component={TripInventoryPage} />
-          <Route exact path="/operator/trips/:tripId/fares" component={TripFaresPage} />
-          <Route exact path="/operator/trips/:tripId/operations" component={TripOperationsPage} />
-          <Route exact path="/operator/bookings" component={OperatorBookingsPage} />
-          <Route exact path="/operator/earnings" component={OperatorEarningsPage} />
-          <Route exact path="/operator/staff" component={OperatorStaffPage} />
-          <Route exact path="/operator/policies" component={OperatorPoliciesPage} />
+          <OperatorRoute exact path="/operator/trips/create" component={CreateTripPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/create/route" component={CreateTripPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/create/trip" component={CreateTripPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/inventory" component={TripInventoryPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/publish" component={TripInventoryPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/:tripId/fares" component={TripFaresPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/trips/:tripId/operations" component={TripOperationsPage} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/bookings" component={OperatorBookingsPage} roles={['MANAGER','BOOKING_STAFF','CONDUCTOR','OPERATOR_STAFF']} />
+          <OperatorRoute exact path="/operator/earnings" component={OperatorEarningsPage} roles={['MANAGER','ACCOUNTANT']} />
+          <OperatorRoute exact path="/operator/staff" component={OperatorStaffPage} roles={['MANAGER']} />
+          <OperatorRoute exact path="/operator/policies" component={OperatorPoliciesPage} roles={['MANAGER']} />
+          <OperatorRoute exact path="/operator/operations" component={CrewOperationsPage} roles={['MANAGER','DRIVER','CONDUCTOR','ROUTE_MANAGER','OPERATOR_STAFF']} />
           <Route exact path="/whatsapp-checkout/:token" component={WhatsAppCheckoutPage} />
           <Route exact path="/trip/:tripId/seats" component={BookingFlowPage} />
           <Route exact path="/bookings/:bookingId/review" component={CustomerReviewPage} />

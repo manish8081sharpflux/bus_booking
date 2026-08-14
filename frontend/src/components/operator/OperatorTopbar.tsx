@@ -56,6 +56,11 @@ const MENU_ITEMS: MenuItem[] = [
     icon: calendarOutline,
   },
   {
+    label: 'Crew operations',
+    path: '/operator/operations',
+    icon: busOutline,
+  },
+  {
     label: 'Bookings',
     path: '/operator/bookings',
     icon: ticketOutline,

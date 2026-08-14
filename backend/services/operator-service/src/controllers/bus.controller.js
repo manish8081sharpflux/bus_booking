@@ -1050,7 +1050,7 @@ const addBus =
 
       const operatorId =
         String(
-          requestBody.operatorId ||
+          req.operatorId ||
             '',
         ).trim()
 
@@ -1481,7 +1481,7 @@ const listBuses =
     try {
       const operatorId =
         String(
-          req.query.operatorId ||
+          req.operatorId ||
             '',
         ).trim()
 
@@ -1551,6 +1551,10 @@ const getBus =
         await findBusById(
           req.params.id,
         )
+
+      if (bus && String(bus.operator_id) !== String(req.operatorId)) {
+        return res.status(404).json({success:false,message:'Bus not found.'})
+      }
 
       if (!bus) {
         return res
@@ -1623,6 +1627,6 @@ module.exports = {
     } catch (error) { next(error) }
   },
   resubmit: async (req, res, next) => {
-    try { res.json({ success: true, bus: await resubmitBus({ busId: req.params.id, operatorId: req.body.operatorId }) }) } catch (error) { next(error) }
+    try { res.json({ success: true, bus: await resubmitBus({ busId: req.params.id, operatorId: req.operatorId }) }) } catch (error) { next(error) }
   },
 }

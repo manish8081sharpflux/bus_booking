@@ -334,6 +334,31 @@ async function verifyBoarding({operatorId,bookingId,passengerIds=[],credential,s
     RETURNING v.*`,[bookingId,selected,nextStatus,verificationMethod])
   return {bookingId,status:nextStatus,updated:rows.length,passengers:rows}
 }
+
+async function operationalTrips(operatorId,auth={}){
+  const crewOnly=(auth.roles||[]).some(role=>['DRIVER','CONDUCTOR'].includes(role));
+  const {rows}=await pool.query(`SELECT t.id,t.service_number,t.departure_at,t.arrival_at,t.status,b.name bus_name,
+    r.source_city,r.destination_city,COUNT(DISTINCT bp.id)::int passenger_count,
+    COUNT(DISTINCT pbv.passenger_id) FILTER(WHERE pbv.status='BOARDED')::int boarded_count,
+    COUNT(DISTINCT pbv.passenger_id) FILTER(WHERE pbv.status='NO_SHOW')::int no_show_count
+    FROM trips t JOIN buses b ON b.id=t.bus_id JOIN routes r ON r.id=t.route_id
+    LEFT JOIN bookings bk ON bk.trip_id=t.id AND bk.status='CONFIRMED'
+    LEFT JOIN booking_passengers bp ON bp.booking_id=bk.id
+    LEFT JOIN passenger_boarding_verifications pbv ON pbv.passenger_id=bp.id
+    WHERE t.operator_id=$1::uuid AND t.status IN('SCHEDULED','BOARDING','DEPARTED')
+    AND (NOT $2::boolean OR EXISTS(SELECT 1 FROM trip_staff_assignments tsa JOIN operator_staff os ON os.id=tsa.staff_id
+      WHERE tsa.trip_id=t.id AND os.identity_user_id=$3::uuid AND os.status='ACTIVE'))
+    GROUP BY t.id,b.id,r.id ORDER BY t.departure_at`,[operatorId,crewOnly,auth.userId||null]);return rows
+}
+
+async function transitionTrip({operatorId,tripId,status,auth={}}){
+  const next=String(status||'').toUpperCase();const previous={BOARDING:['SCHEDULED'],DEPARTED:['BOARDING'],COMPLETED:['DEPARTED']}
+  if(!previous[next]) throw Object.assign(new Error('Allowed actions are start boarding, depart, and complete.'),{status:422})
+  const crewOnly=(auth.roles||[]).some(role=>['DRIVER','CONDUCTOR'].includes(role));
+  const {rows}=await pool.query(`UPDATE trips t SET status=$3::trip_status,updated_at=NOW() WHERE id=$1::uuid AND operator_id=$2::uuid AND status=ANY($4::trip_status[])
+    AND (NOT $5::boolean OR EXISTS(SELECT 1 FROM trip_staff_assignments tsa JOIN operator_staff os ON os.id=tsa.staff_id WHERE tsa.trip_id=t.id AND os.identity_user_id=$6::uuid AND os.status='ACTIVE')) RETURNING t.*`,[tripId,operatorId,next,previous[next],crewOnly,auth.userId||null])
+  if(!rows[0]) throw Object.assign(new Error('Trip cannot move to this status from its current state.'),{status:409});return rows[0]
+}
 module.exports.getTripOperations=getTripOperations
 module.exports.updateTripStops=updateTripStops
 module.exports.setSeatBlocks=setSeatBlocks
@@ -341,3 +366,5 @@ module.exports.upsertFareRules=upsertFareRules
 module.exports.cancelTrip=cancelTrip
 module.exports.updateRouteStops=updateRouteStops
 module.exports.verifyBoarding=verifyBoarding
+module.exports.operationalTrips=operationalTrips
+module.exports.transitionTrip=transitionTrip

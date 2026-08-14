@@ -22,10 +22,11 @@ const router =
   express.Router()
 
 const { requireAuth, requireRoles } = require('../middlewares/auth.middleware')
+const { resolveOperator } = require('../middlewares/operator-context.middleware')
 
 router.get('/verification/pending', requireAuth, requireRoles('SUPER_ADMIN'), listPending)
 router.patch('/:id/review', requireAuth, requireRoles('SUPER_ADMIN'), review)
-router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN','SUPER_ADMIN'), resubmit)
+router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN'), resolveOperator, resubmit)
 
 /*
  * =====================================================
@@ -44,7 +45,8 @@ router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN','SUPER_
 router.post(
   '/',
   requireAuth,
-  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','SUPER_ADMIN'),
+  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','MANAGER','SUPER_ADMIN'),
+  resolveOperator,
   busDocumentUpload,
   addBus,
 )
@@ -60,7 +62,8 @@ router.post(
 router.get(
   '/',
   requireAuth,
-  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','SUPER_ADMIN'),
+  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','MANAGER','SUPER_ADMIN'),
+  resolveOperator,
   listBuses,
 )
 
@@ -75,7 +78,8 @@ router.get(
 router.get(
   '/:id',
   requireAuth,
-  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','SUPER_ADMIN'),
+  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','MANAGER','SUPER_ADMIN'),
+  resolveOperator,
   getBus,
 )
 

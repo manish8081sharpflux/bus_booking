@@ -80,7 +80,7 @@ function validateStaff(form: StaffForm): FieldErrors {
   const email = validateEmail(form.email, false);
   if (!email.valid) errors.email = email.message;
 
-  if (!['DRIVER', 'CONDUCTOR', 'MANAGER', 'SUPPORT'].includes(form.role)) {
+  if (!['DRIVER', 'CONDUCTOR', 'MANAGER', 'BOOKING_STAFF', 'ACCOUNTANT', 'ROUTE_MANAGER', 'SUPPORT'].includes(form.role)) {
     errors.role = 'Select a valid staff role.';
   }
 
@@ -110,6 +110,7 @@ function validateStaff(form: StaffForm): FieldErrors {
 export default function OperatorStaffPage() {
   const op = operator();
   const operatorId = op.id || op.operatorId;
+  const token=localStorage.getItem('operator_access_token');
   const [items, setItems] = useState<Staff[]>([]);
   const [q, setQ] = useState('');
   const [show, setShow] = useState(false);
@@ -125,7 +126,7 @@ export default function OperatorStaffPage() {
     }
     try {
       setBusy(true);
-      const r = await fetch(`${API}/staff?operatorId=${encodeURIComponent(operatorId)}`);
+      const r = await fetch(`${API}/staff`,{headers:{Authorization:`Bearer ${token}`}});
       const b = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(b.message || 'Unable to load staff');
       setItems(Array.isArray(b.staff) ? b.staff : []);
@@ -180,9 +181,8 @@ export default function OperatorStaffPage() {
       setMessage('');
       const r = await fetch(`${API}/staff`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',Authorization:`Bearer ${token}` },
         body: JSON.stringify({
-          operatorId,
           fullName: normalizeWhitespace(form.fullName),
           mobile: form.mobile,
           email: normalizeEmail(form.email) || null,
@@ -253,7 +253,7 @@ export default function OperatorStaffPage() {
                   <label>Full name<input aria-invalid={!!errors.fullName} required value={form.fullName} onChange={(e) => update('fullName', e.target.value)} />{errors.fullName && <small className="field-error">{errors.fullName}</small>}</label>
                   <label>Mobile<input aria-invalid={!!errors.mobile} required inputMode="numeric" autoComplete="tel" maxLength={10} value={form.mobile} onChange={(e) => update('mobile', e.target.value)} />{errors.mobile && <small className="field-error">{errors.mobile}</small>}</label>
                   <label>Email<input aria-invalid={!!errors.email} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update('email', e.target.value)} />{errors.email && <small className="field-error">{errors.email}</small>}</label>
-                  <label>Role<select aria-invalid={!!errors.role} value={form.role} onChange={(e) => update('role', e.target.value)}><option value="DRIVER">Driver</option><option value="CONDUCTOR">Conductor</option><option value="MANAGER">Manager</option><option value="SUPPORT">Support</option></select>{errors.role && <small className="field-error">{errors.role}</small>}</label>
+                  <label>Role<select aria-invalid={!!errors.role} value={form.role} onChange={(e) => update('role', e.target.value)}><option value="DRIVER">Driver</option><option value="CONDUCTOR">Conductor</option><option value="MANAGER">Manager</option><option value="BOOKING_STAFF">Booking staff</option><option value="ACCOUNTANT">Accountant</option><option value="ROUTE_MANAGER">Route manager</option><option value="SUPPORT">Support</option></select>{errors.role && <small className="field-error">{errors.role}</small>}</label>
                   <label>Licence number{form.role === 'DRIVER' && ' *'}<input aria-invalid={!!errors.licenseNumber} required={form.role === 'DRIVER'} value={form.licenseNumber} onChange={(e) => update('licenseNumber', e.target.value)} />{errors.licenseNumber && <small className="field-error">{errors.licenseNumber}</small>}</label>
                   <label>Licence expiry{form.role === 'DRIVER' && ' *'}<input aria-invalid={!!errors.licenseExpiry} required={form.role === 'DRIVER'} type="date" min={new Date().toISOString().slice(0, 10)} value={form.licenseExpiry} onChange={(e) => update('licenseExpiry', e.target.value)} />{errors.licenseExpiry && <small className="field-error">{errors.licenseExpiry}</small>}</label>
                   <label>Emergency contact<input aria-invalid={!!errors.emergencyContact} inputMode="numeric" maxLength={10} value={form.emergencyContact} onChange={(e) => update('emergencyContact', e.target.value)} />{errors.emergencyContact && <small className="field-error">{errors.emergencyContact}</small>}</label>
