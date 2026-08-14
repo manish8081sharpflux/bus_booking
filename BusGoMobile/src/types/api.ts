@@ -29,6 +29,7 @@ export type Stop = {
   location_name: string;
   landmark?: string;
   scheduled_at?: string;
+  stop_order?: number;
 };
 
 export type Booking = {
@@ -45,5 +46,5 @@ export type Booking = {
   payment_status?: string;
   review_rating?: number;
   review_text?: string;
-  passengers?: Array<{name:string;seat:string;fare:number;age?:number;gender?:string}>;
+  passengers?: Array<{ name: string; seat: string; fare: number; age?: number; gender?: string }>;
 };
