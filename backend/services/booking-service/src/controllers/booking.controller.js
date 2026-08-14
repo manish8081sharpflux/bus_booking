@@ -6,6 +6,7 @@ exports.createPaymentOrder=async(req,res,next)=>{try{res.status(201).json({succe
 exports.verifyPayment=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.verifyAndCompletePayment({bookingId:req.params.id,authUserId:req.auth.userId,...req.body})})}catch(e){next(e)}};
 exports.completePayment=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.completePayment({...req.body,bookingId:req.params.id,idempotencyKey:req.get('Idempotency-Key')})})}catch(e){next(e)}};
 exports.ticket=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.ticketForAuth(req.params.id,req.auth.userId)})}catch(e){next(e)}};
+exports.boardingPass=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.boardingPassForAuth(req.params.id,req.auth.userId)})}catch(e){next(e)}};
 exports.customerBookings=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.customerBookingsForAuth(req.auth.userId)})}catch(e){next(e)}};
 exports.cancelBooking=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.cancelBookingForAuth(req.params.id,req.auth.userId,req.body?.reason)})}catch(e){next(e)}};
 

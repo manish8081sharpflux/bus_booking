@@ -110,10 +110,11 @@ async function operatorBookings(operatorId) {
     t.service_number,t.departure_at,r.source_city,r.destination_city,bu.name bus_name,
     u.full_name customer_name,u.mobile customer_mobile,u.email customer_email,
     COALESCE(p.status::text,'NOT_PAID') payment_status,p.method payment_method,p.provider,p.provider_payment_id,p.created_at paid_at,
-    COALESCE(JSON_AGG(JSON_BUILD_OBJECT('name',bp.full_name,'age',bp.age,'gender',bp.gender,'seat',bs.seat_number,'fare',bp.fare_amount)
+    COALESCE(JSON_AGG(JSON_BUILD_OBJECT('id',bp.id,'name',bp.full_name,'age',bp.age,'gender',bp.gender,'seat',bs.seat_number,'fare',bp.fare_amount,'boardingStatus',COALESCE(pbv.status,'PENDING'))
       ORDER BY bs.seat_number) FILTER (WHERE bp.id IS NOT NULL),'[]') passengers
     FROM bookings b JOIN trips t ON t.id=b.trip_id JOIN routes r ON r.id=t.route_id JOIN buses bu ON bu.id=t.bus_id
     JOIN platform_users u ON u.id=b.customer_id LEFT JOIN booking_passengers bp ON bp.booking_id=b.id
+    LEFT JOIN passenger_boarding_verifications pbv ON pbv.passenger_id=bp.id
     LEFT JOIN bus_seats bs ON bs.id=bp.bus_seat_id LEFT JOIN LATERAL (SELECT * FROM payments px WHERE px.booking_id=b.id ORDER BY px.created_at DESC LIMIT 1) p ON TRUE
     WHERE b.operator_id=$1::uuid GROUP BY b.id,t.id,r.id,bu.id,u.id,p.id,p.status,p.method,p.provider,p.provider_payment_id,p.created_at ORDER BY b.created_at DESC`, [operatorId])
   const confirmed = rows.filter(row => row.status === 'CONFIRMED')
@@ -304,9 +305,39 @@ async function cancelTrip({tripId,operatorId,reason,actorUserId=null}) {
   if(!String(reason||'').trim()) throw Object.assign(new Error('Cancellation reason is required.'),{status:422}); const client=await pool.connect(); try{await client.query('BEGIN'); const {rows}=await client.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE id=$1::uuid AND ($2::uuid IS NULL OR operator_id=$2::uuid) AND status IN('DRAFT','SCHEDULED') RETURNING *`,[tripId,operatorId||null]); if(!rows[0]) throw Object.assign(new Error('Cancellable trip not found.'),{status:409}); await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'CANCELLED',$2,$3::uuid)`,[tripId,String(reason).trim(),actorUserId||null]); const affected=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT') RETURNING id,booking_reference,customer_id`,[tripId,`Trip cancelled: ${String(reason).trim()}`]); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE trip_id=$1::uuid`,[tripId]); for(const b of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','TRIP_CANCELLED',$3::jsonb),($1::uuid,$2::uuid,'SMS','TRIP_CANCELLED',$3::jsonb)`,[b.customer_id,b.id,JSON.stringify({bookingId:b.id,bookingReference:b.booking_reference,reason:String(reason).trim()})]); await client.query('COMMIT'); return {trip:rows[0],affectedBookings:affected.rowCount}
   }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
+
+async function verifyBoarding({operatorId,bookingId,passengerIds=[],credential,status='BOARDED',method}) {
+  if(!operatorId||!bookingId) throw Object.assign(new Error('Operator and booking are required.'),{status:422})
+  const booking=(await pool.query(`SELECT id,booking_reference,status FROM bookings WHERE id=$1::uuid AND operator_id=$2::uuid`,[bookingId,operatorId])).rows[0]
+  if(!booking) throw Object.assign(new Error('Booking not found for this operator.'),{status:404})
+  if(booking.status!=='CONFIRMED') throw Object.assign(new Error('Only confirmed bookings can be boarded.'),{status:409})
+  const nextStatus=String(status).toUpperCase()
+  if(!['BOARDED','NO_SHOW','PENDING'].includes(nextStatus)) throw Object.assign(new Error('Invalid boarding status.'),{status:422})
+  let verificationMethod=String(method||'MANUAL').toUpperCase()
+  if(nextStatus==='BOARDED'&&verificationMethod!=='MANUAL'){
+    const secret=process.env.JWT_SECRET||'development-only-secret'
+    const signature=require('crypto').createHmac('sha256',secret).update(`boarding:${booking.id}:${booking.booking_reference}`).digest('hex').slice(0,24)
+    const validQr=`BUSGO:${booking.id}:${signature}`
+    const validOtp=String(parseInt(signature.slice(0,12),16)%1000000).padStart(6,'0')
+    verificationMethod=String(credential).startsWith('BUSGO:')?'QR':'OTP'
+    const provided=String(credential||'').trim()
+    const expected=verificationMethod==='QR'?validQr:validOtp
+    const a=Buffer.from(provided),b=Buffer.from(expected)
+    if(a.length!==b.length||!require('crypto').timingSafeEqual(a,b)) throw Object.assign(new Error('Invalid QR ticket or boarding OTP.'),{status:401})
+  }
+  const selected=Array.isArray(passengerIds)?passengerIds.filter(Boolean):[]
+  await pool.query(`INSERT INTO passenger_boarding_verifications(booking_id,passenger_id)
+    SELECT $1::uuid,bp.id FROM booking_passengers bp WHERE bp.booking_id=$1::uuid ON CONFLICT DO NOTHING`,[bookingId])
+  const {rows}=await pool.query(`UPDATE passenger_boarding_verifications v SET status=$3,verification_method=$4,
+    verified_at=CASE WHEN $3='PENDING' THEN NULL ELSE NOW() END,updated_at=NOW()
+    WHERE v.booking_id=$1::uuid AND (COALESCE(array_length($2::uuid[],1),0)=0 OR v.passenger_id=ANY($2::uuid[]))
+    RETURNING v.*`,[bookingId,selected,nextStatus,verificationMethod])
+  return {bookingId,status:nextStatus,updated:rows.length,passengers:rows}
+}
 module.exports.getTripOperations=getTripOperations
 module.exports.updateTripStops=updateTripStops
 module.exports.setSeatBlocks=setSeatBlocks
 module.exports.upsertFareRules=upsertFareRules
 module.exports.cancelTrip=cancelTrip
 module.exports.updateRouteStops=updateRouteStops
+module.exports.verifyBoarding=verifyBoarding

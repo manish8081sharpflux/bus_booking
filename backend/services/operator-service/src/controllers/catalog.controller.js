@@ -15,3 +15,4 @@ exports.updateTripStops=async(req,res,next)=>{try{res.json({success:true,data:aw
 exports.setSeatBlocks=async(req,res,next)=>{try{res.json({success:true,data:await service.setSeatBlocks({tripId:req.params.id,operatorId:req.body.operatorId,seatIds:req.body.seatIds,blocked:req.body.blocked,reason:req.body.reason})})}catch(e){next(e)}}
 exports.upsertFareRules=async(req,res,next)=>{try{res.json({success:true,data:await service.upsertFareRules({tripId:req.params.id,operatorId:req.body.operatorId,rules:req.body.rules})})}catch(e){next(e)}}
 exports.cancelTrip=async(req,res,next)=>{try{res.json({success:true,data:await service.cancelTrip({tripId:req.params.id,operatorId:req.body.operatorId,reason:req.body.reason,actorUserId:req.user?.sub||null})})}catch(e){next(e)}}
+exports.verifyBoarding=async(req,res,next)=>{try{res.json({success:true,data:await service.verifyBoarding({bookingId:req.params.id,...req.body})})}catch(e){next(e)}}

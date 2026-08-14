@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -16,7 +17,9 @@ import {
   busOutline,
   calendarOutline,
   checkmarkOutline,
+  chevronBackOutline,
   chevronDownOutline,
+  chevronForwardOutline,
   flashOutline,
   locationOutline,
   navigateOutline,
@@ -169,6 +172,51 @@ function ModifyLocationField({ label, value, icon, onChange }: {
       </div>}
     </div>
   );
+}
+
+const inputDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+
+function ModifyDateField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const today = useMemo(() => { const date=new Date(); date.setHours(0,0,0,0); return date; }, []);
+  const selected = useMemo(() => {
+    const parsed = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? today : parsed;
+  }, [value, today]);
+  const [open,setOpen]=useState(false);
+  const [month,setMonth]=useState(() => new Date(selected.getFullYear(),selected.getMonth(),1));
+  const ref=useRef<HTMLDivElement|null>(null);
+  useEffect(()=>{
+    if(!open)return;
+    const close=(event:MouseEvent)=>{if(ref.current&&!ref.current.contains(event.target as Node))setOpen(false)};
+    document.addEventListener('mousedown',close); return()=>document.removeEventListener('mousedown',close);
+  },[open]);
+  const days=useMemo(()=>{
+    const first=new Date(month.getFullYear(),month.getMonth(),1);
+    const last=new Date(month.getFullYear(),month.getMonth()+1,0);
+    const result:Array<Date|null>=Array.from({length:(first.getDay()+6)%7},()=>null);
+    for(let day=1;day<=last.getDate();day++)result.push(new Date(month.getFullYear(),month.getMonth(),day));
+    while(result.length%7)result.push(null); return result;
+  },[month]);
+  const same=(a:Date,b:Date)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  const choose=(day:Date)=>{if(day<today)return;onChange(inputDate(day));setOpen(false)};
+  const previousDisabled=month<=new Date(today.getFullYear(),today.getMonth(),1);
+  return <div className={`modify-search-field date modify-date-field${open?' is-open':''}`} ref={ref}>
+    <IonIcon icon={calendarOutline}/><div><label>Date of journey</label>
+      <button type="button" className="modify-date-trigger" onClick={()=>{setMonth(new Date(selected.getFullYear(),selected.getMonth(),1));setOpen(v=>!v)}}>
+        <strong>{formatDate(value)}</strong><IonIcon icon={chevronDownOutline}/>
+      </button>
+    </div>
+    {open&&<div className="modify-calendar" role="dialog" aria-label="Choose journey date">
+      <header><button type="button" disabled={previousDisabled} onClick={()=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))}><IonIcon icon={chevronBackOutline}/></button>
+        <strong>{month.toLocaleDateString('en-IN',{month:'long',year:'numeric'})}</strong>
+        <button type="button" onClick={()=>setMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))}><IonIcon icon={chevronForwardOutline}/></button></header>
+      <div className="modify-calendar-weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=><span key={day}>{day}</span>)}</div>
+      <div className="modify-calendar-grid">{days.map((day,index)=>day?<button type="button" key={inputDate(day)} disabled={day<today}
+        className={`${same(day,selected)?'active ':''}${same(day,today)?'today':''}`} onClick={()=>choose(day)}>{day.getDate()}</button>:<span key={`empty-${index}`}/>)}</div>
+      <footer><button type="button" onClick={()=>choose(today)}>Today</button></footer>
+    </div>}
+  </div>;
 }
 
 /* =========================================================
@@ -1419,39 +1467,7 @@ export default function SearchResultsPage() {
 
               {/* DATE */}
 
-              <div className="modify-search-field date">
-
-                <IonIcon
-                  icon={
-                    calendarOutline
-                  }
-                />
-
-                <div>
-
-                  <label>
-                    Date of journey
-                  </label>
-
-                  <input
-                    type="date"
-                    value={
-                      date
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setDate(
-                        event
-                          .target
-                          .value,
-                      )
-                    }
-                  />
-
-                </div>
-
-              </div>
+              <ModifyDateField value={date} onChange={setDate} />
 
               <div className="quick-date-buttons">
 

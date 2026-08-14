@@ -44,11 +44,13 @@ const API =
 ========================================================= */
 
 type Passenger = {
+  id: string;
   name: string;
   age: number;
   gender: string;
   seat: string;
   fare: string;
+  boardingStatus?: string;
 };
 
 type Booking = {
@@ -276,6 +278,21 @@ export default function OperatorBookingsPage() {
     useState<
       Record<string, boolean>
     >({});
+
+  const verifyPassenger = async (booking: Booking, passenger: Passenger, status: 'BOARDED' | 'NO_SHOW') => {
+    const credential = status === 'BOARDED' ? window.prompt('Scan QR ticket or enter the 6-digit boarding OTP') : '';
+    if (status === 'BOARDED' && !credential?.trim()) return;
+    try {
+      setError('');
+      const response=await fetch(`${API}/operator-bookings/${booking.id}/boarding`,{
+        method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},
+        body:JSON.stringify({operatorId:operator.id,passengerIds:[passenger.id],credential,status,method:status==='NO_SHOW'?'MANUAL':undefined}),
+      });
+      const body=await response.json();
+      if(!response.ok||body.success===false) throw new Error(body.message||'Unable to update boarding status.');
+      setReport((current) => current ? {...current,bookings:current.bookings.map((item) => item.id===booking.id ? {...item,passengers:item.passengers.map((person) => person.id===passenger.id ? {...person,boardingStatus:status} : person)} : item)} : current);
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Unable to verify passenger.'); }
+  };
 
   /* =======================================================
      LOAD
@@ -1203,6 +1220,15 @@ export default function OperatorBookingsPage() {
                                         )
                                       }
                                     </strong>
+
+                                    <span className={`boarding-manifest-status ${(passenger.boardingStatus || 'PENDING').toLowerCase()}`}>
+                                      {passenger.boardingStatus || 'PENDING'}
+                                    </span>
+
+                                    <div className="boarding-manifest-actions">
+                                      <button type="button" onClick={() => void verifyPassenger(booking, passenger, 'BOARDED')}>Verify</button>
+                                      <button type="button" onClick={() => void verifyPassenger(booking, passenger, 'NO_SHOW')}>No-show</button>
+                                    </div>
 
                                   </div>
 

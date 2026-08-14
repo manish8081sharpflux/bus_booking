@@ -17,5 +17,6 @@ router.put('/trips/:id/stops', controller.updateTripStops)
 router.patch('/trips/:id/seats/block', controller.setSeatBlocks)
 router.put('/trips/:id/fare-rules', controller.upsertFareRules)
 router.patch('/trips/:id/cancel', controller.cancelTrip)
+router.post('/operator-bookings/:id/boarding', controller.verifyBoarding)
 
 module.exports = router

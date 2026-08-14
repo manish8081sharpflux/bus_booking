@@ -1694,36 +1694,53 @@
 
   border-radius: 14px;
 
-  background:
-    linear-gradient(
-      145deg,
-      #eef2f6,
-      #f9fafb
-    );
+  background: #edf3ee;
 }
 
-.tracking-road {
+.tracking-map-grid {
   position: absolute;
-
-  left: 0;
-  right: 0;
-  top: 84px;
-
-  height: 5px;
-
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #c7ced9 0 30px,
-      transparent 30px 45px
-    );
+  inset: 0;
+  opacity: .65;
+  background: linear-gradient(28deg, transparent 46%, #fff 47% 51%, transparent 52%), linear-gradient(145deg, transparent 44%, #dce8dd 45% 49%, transparent 50%);
+  background-size: 95px 70px, 130px 100px;
 }
+
+.tracking-route-line {
+  position: absolute;
+  left: 9%; right: 9%; top: 84px;
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--trip-primary), #ff8aa0);
+  box-shadow: 0 0 0 4px rgba(255,255,255,.8);
+}
+
+.tracking-map-stop { position: absolute; top: 76px; width: 20px; height: 20px; border: 5px solid #fff; border-radius: 50%; background: var(--trip-primary); box-shadow: 0 2px 8px rgba(20,30,45,.2); }
+.tracking-map-start { left: 7%; }
+.tracking-map-end { right: 7%; }
+.tracking-map-label { position: absolute; top: 105px; max-width: 42%; color: #334155; font-size: 9px; font-weight: 800; }
+.tracking-map-label-start { left: 5%; }
+.tracking-map-label-end { right: 5%; text-align: right; }
+
+.tracking-live-pill {
+  position: absolute; top: 12px; left: 12px; padding: 5px 8px; border-radius: 99px;
+  color: #475569; background: rgba(255,255,255,.92); font-size: 8px; font-weight: 900; letter-spacing: .8px;
+}
+.tracking-live-pill.live { color: #087f5b; }
+.tracking-live-pill.live::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #16a36a; box-shadow: 0 0 0 4px rgba(22,163,106,.15); }
+.tracking-live-pill.delayed, .tracking-live-pill.offline { color: #b26a00; }
+.tracking-real-map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; border: 0; }
+.tracking-real-map ~ .tracking-live-pill, .tracking-visual:has(.tracking-real-map) .tracking-live-pill { z-index: 3; }
+.tracking-visual:has(.tracking-real-map) .tracking-map-grid,
+.tracking-visual:has(.tracking-real-map) .tracking-route-line,
+.tracking-visual:has(.tracking-real-map) .tracking-map-stop,
+.tracking-visual:has(.tracking-real-map) .tracking-map-label,
+.tracking-visual:has(.tracking-real-map) .tracking-bus { display: none; }
 
 .tracking-bus {
   position: absolute;
 
   top: 56px;
-  left: 50%;
+  left: 9%;
 
   width: 55px;
   height: 55px;
@@ -1744,6 +1761,7 @@
 
   box-shadow:
     0 10px 25px rgba(232, 48, 79, 0.25);
+  transition: left .5s ease;
 }
 
 .booking-tracking-dialog h3 {
@@ -2369,3 +2387,47 @@
     padding: 14px;
   }
 }
+
+.tracking-eta-card { display: flex; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 15px; border: 1px solid var(--trip-border); border-radius: 12px; background: #fafbfc; }
+.tracking-eta-card > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tracking-eta-card small, .tracking-stats small { color: var(--trip-muted); font-size: 7px; font-weight: 800; letter-spacing: .7px; }
+.tracking-eta-card strong { overflow: hidden; color: var(--trip-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.tracking-eta-card span { color: var(--trip-muted); font-size: 8px; }
+.tracking-eta-time { flex: 0 0 auto; text-align: right; }
+.tracking-eta-time .late { color: #c92a2a; }
+.tracking-eta-time .ontime { color: #087f5b; }
+.tracking-stats { display: grid; grid-template-columns: repeat(3,1fr); margin: 10px 0 18px; border: 1px solid var(--trip-border); border-radius: 11px; }
+.tracking-stats > div { display: flex; flex-direction: column; gap: 4px; padding: 11px; border-right: 1px solid var(--trip-border); }
+.tracking-stats > div:last-child { border: 0; }
+.tracking-stats strong { color: var(--trip-text); font-size: 10px; }
+.tracking-timeline { margin-top: 17px; }
+.tracking-timeline h4 { margin: 0 0 10px; color: var(--trip-text); font-size: 12px; }
+.tracking-stop-row { position: relative; display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 8px; min-height: 48px; }
+.tracking-stop-row::before { content: ''; position: absolute; left: 5px; top: 12px; bottom: -3px; width: 2px; background: #dbe1e9; }
+.tracking-stop-row:last-child::before { display: none; }
+.tracking-stop-dot { z-index: 1; width: 12px; height: 12px; margin-top: 2px; border: 3px solid #fff; border-radius: 50%; background: #b5bfcd; box-shadow: 0 0 0 1px #b5bfcd; }
+.tracking-stop-row.reached .tracking-stop-dot { background: var(--trip-primary); box-shadow: 0 0 0 1px var(--trip-primary); }
+.tracking-stop-row.current .tracking-stop-dot { box-shadow: 0 0 0 4px #ffe2e7; }
+.tracking-stop-row div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tracking-stop-row strong { color: var(--trip-text); font-size: 10px; }
+.tracking-stop-row small, .tracking-stop-row time { color: var(--trip-muted); font-size: 8px; }
+.tracking-stop-row time { padding-top: 2px; font-weight: 700; }
+
+.boarding-pass-card { margin: 16px 0; padding: 15px; border: 1px solid #ffd2da; border-radius: 13px; background: linear-gradient(145deg,#fff7f8,#fff); }
+.boarding-pass-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.boarding-pass-head > div { display: flex; flex-direction: column; gap: 3px; }
+.boarding-pass-head small, .boarding-code-grid small { color: var(--trip-muted); font-size: 7px; font-weight: 850; letter-spacing: .7px; }
+.boarding-pass-head strong { font-size: 12px; }
+.boarding-pass-head > span { padding: 5px 8px; border-radius: 99px; color: #087f5b; background: #eafaf3; font-size: 8px; font-weight: 800; }
+.boarding-code-grid { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 18px; margin: 14px 0; }
+.boarding-code-grid > div:last-child { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.boarding-qr { display: grid; grid-template-columns: repeat(7,1fr); width: 88px; height: 88px; padding: 7px; border: 4px solid #fff; background: #fff; box-shadow: 0 2px 12px rgba(20,30,45,.1); }
+.boarding-qr i.dark { background: #101828; }
+.boarding-otp { color: var(--trip-text); font-size: 25px; letter-spacing: 5px; }
+.boarding-code-grid button { padding: 4px 7px; border: 0; border-radius: 5px; color: var(--trip-primary); background: var(--trip-primary-soft); font-size: 8px; font-weight: 800; cursor: pointer; }
+.copy-boarding-token { width: 100%; padding: 7px; border: 1px dashed #f3a7b5; border-radius: 7px; color: var(--trip-primary); background: #fff; font-size: 8px; font-weight: 800; cursor: pointer; }
+.boarding-pass-card > p { font-size: 8px; }
+.boarding-passengers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.boarding-passengers span { padding: 5px 7px; border-radius: 6px; color: #6b7280; background: #f1f3f5; font-size: 7px; font-weight: 800; }
+.boarding-passengers .boarded { color: #087f5b; background: #eafaf3; }
+.boarding-passengers .no_show { color: #c92a2a; background: #fff2f2; }

@@ -1298,3 +1298,9 @@
       #e8ecf1;
   }
 }
+.boarding-manifest-status { display: inline-flex; margin-top: 6px; padding: 4px 7px; border-radius: 99px; color: #806000; background: #fff8dc; font-size: 9px; font-weight: 800; }
+.boarding-manifest-status.boarded { color: #087f5b; background: #eafaf3; }
+.boarding-manifest-status.no_show { color: #c92a2a; background: #fff2f2; }
+.boarding-manifest-actions { display: flex; gap: 5px; margin-top: 7px; }
+.boarding-manifest-actions button { padding: 5px 8px; border: 1px solid #e3e7ed; border-radius: 6px; color: #334155; background: #fff; font-size: 9px; font-weight: 750; cursor: pointer; }
+.boarding-manifest-actions button:first-child { border-color: #e8304f; color: #e8304f; }

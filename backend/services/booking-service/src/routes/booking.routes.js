@@ -30,5 +30,6 @@ router.post('/:id/payment/order',requireAuth,controller.createPaymentOrder);
 router.post('/:id/payment/verify',requireAuth,controller.verifyPayment);
 router.post('/:id/payment/complete',controller.completePayment); // backwards-compatible DEMO endpoint
 router.get('/:id/ticket',requireAuth,controller.ticket);
+router.get('/:id/boarding-pass',requireAuth,controller.boardingPass);
 router.patch('/:id/cancel',requireAuth,controller.cancelBooking);
 module.exports=router;

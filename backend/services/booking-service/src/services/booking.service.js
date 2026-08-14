@@ -709,5 +709,31 @@ class BookingService {
     return (await pool.query(`INSERT INTO support_tickets(ticket_number,customer_id,booking_id,operator_id,category,subject,description,priority) VALUES($1,$2::uuid,$3::uuid,$4::uuid,'BOOKING','WhatsApp support request',$5,'MEDIUM') RETURNING *`,[ticketNumber,customerId,id,b.operator_id,String(reason).slice(0,1000)])).rows[0]
   }
 
+  boardingCredential(bookingId, reference) {
+    const secret=process.env.JWT_SECRET||'development-only-secret'
+    const signature=crypto.createHmac('sha256',secret).update(`boarding:${bookingId}:${reference}`).digest('hex').slice(0,24)
+    const otp=String(parseInt(signature.slice(0,12),16)%1000000).padStart(6,'0')
+    return {qrPayload:`BUSGO:${bookingId}:${signature}`,otp}
+  }
+
+  async boardingPassForAuth(id, authUserId) {
+    const customerId=await this.customerIdForAuth(authUserId)
+    const booking=(await pool.query(`SELECT b.id,b.booking_reference,b.status,t.service_number,t.departure_at,
+      origin.location_name boarding_point,bu.name bus_name
+      FROM bookings b JOIN trips t ON t.id=b.trip_id JOIN buses bu ON bu.id=t.bus_id
+      JOIN trip_stops origin ON origin.id=b.origin_stop_id
+      WHERE b.id=$1::uuid AND b.customer_id=$2::uuid`,[id,customerId])).rows[0]
+    if(!booking) throw fail('Booking not found.',404)
+    if(booking.status!=='CONFIRMED') throw fail('Boarding pass is available only for confirmed bookings.',409)
+    await pool.query(`INSERT INTO passenger_boarding_verifications(booking_id,passenger_id)
+      SELECT booking_id,id FROM booking_passengers WHERE booking_id=$1::uuid ON CONFLICT DO NOTHING`,[id])
+    const passengers=(await pool.query(`SELECT bp.id,bp.full_name name,bs.seat_number seat,
+      COALESCE(v.status,'PENDING') boarding_status,v.verification_method,v.verified_at
+      FROM booking_passengers bp JOIN bus_seats bs ON bs.id=bp.bus_seat_id
+      LEFT JOIN passenger_boarding_verifications v ON v.passenger_id=bp.id
+      WHERE bp.booking_id=$1::uuid ORDER BY bs.seat_number`,[id])).rows
+    return {...booking,...this.boardingCredential(booking.id,booking.booking_reference),passengers}
+  }
+
 }
 module.exports = new BookingService()

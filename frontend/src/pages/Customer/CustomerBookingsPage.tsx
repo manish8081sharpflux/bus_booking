@@ -114,6 +114,16 @@ type DialogType =
   | 'tracking'
   | null;
 
+type TrackingStop = { id: string; order: number; city: string; name: string; address?: string; lat?: number | null; lng?: number | null; scheduledAt?: string };
+type TrackingExperience = {
+  trip: { serviceNumber: string; source: string; destination: string; departureAt: string; arrivalAt: string; bus: string; operator: string };
+  location: { lat: number; lng: number; speed?: number | null; heading?: number | null; timestamp: string } | null;
+  history: Array<{ lat: number; lng: number; timestamp: string }>;
+  stops: TrackingStop[];
+  status: { freshness: 'LIVE' | 'DELAYED' | 'OFFLINE' | 'WAITING'; ageSeconds: number | null; progress: number; nextStop: TrackingStop | null; distanceKm: number | null; etaMinutes: number | null; estimatedArrival: string | null; delayMinutes: number };
+};
+type BoardingPass = { booking_reference: string; otp: string; qrPayload: string; boarding_point: string; departure_at: string; passengers: Array<{ id: string; name: string; seat: string; boarding_status: string; verified_at?: string }> };
+
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -415,6 +425,10 @@ export default function CustomerBookingsPage() {
   ] =
     useState('');
 
+  const [tracking, setTracking] = useState<TrackingExperience | null>(null);
+  const [trackingBusy, setTrackingBusy] = useState(false);
+  const [boardingPass, setBoardingPass] = useState<BoardingPass | null>(null);
+
   /* =======================================================
      FILTER BOOKINGS
   ======================================================= */
@@ -651,10 +665,18 @@ export default function CustomerBookingsPage() {
 
     setError('');
 
+    if (nextDialog === 'ticket') {
+      setBoardingPass(null);
+      void fetch(`${API}/${booking.id}/boarding-pass`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(async (response) => { const body=await response.json(); if(!response.ok||body.success===false) throw new Error(body.message); setBoardingPass(body.data); })
+        .catch(() => setBoardingPass(null));
+    }
+
     if (
       nextDialog ===
       'tracking'
     ) {
+      setTracking(null);
       void loadTracking(
         booking,
       );
@@ -745,13 +767,15 @@ ${money(booking.total_amount)}
       booking: Booking,
     ) => {
       try {
+        setTrackingBusy(true);
         setTrackingMessage(
           'Checking the latest bus location...',
         );
 
         const response =
           await fetch(
-            `${TRACKING_API}/location/${booking.trip_id}`,
+            `${TRACKING_API}/experience/${booking.trip_id}`,
+            { headers: { Authorization: `Bearer ${token}` } },
           );
 
         const body =
@@ -768,20 +792,11 @@ ${money(booking.total_amount)}
           );
         }
 
-        const location =
-          body.data;
-
+        setTracking(body.data);
         setTrackingMessage(
-          location?.latitude &&
-            location?.longitude
-            ? `Latest location: ${location.latitude}, ${location.longitude}${
-                location.recorded_at
-                  ? ` • Updated ${formatTime(
-                      location.recorded_at,
-                    )}`
-                  : ''
-              }`
-            : 'Live tracking has not started yet.',
+          body.data?.status?.freshness === 'WAITING'
+            ? 'Waiting for the first GPS update. Times below use the published schedule.'
+            : 'Vehicle position and ETA update automatically every 15 seconds.',
         );
       } catch (
         requestError
@@ -792,8 +807,16 @@ ${money(booking.total_amount)}
             ? requestError.message
             : 'Live tracking has not started yet.',
         );
+      } finally {
+        setTrackingBusy(false);
       }
     };
+
+  useEffect(() => {
+    if (dialog !== 'tracking' || !selectedBooking) return undefined;
+    const timer = window.setInterval(() => void loadTracking(selectedBooking), 15000);
+    return () => window.clearInterval(timer);
+  }, [dialog, selectedBooking?.trip_id]);
 
   const cancelBooking =
     async (
@@ -2154,6 +2177,26 @@ ${money(booking.total_amount)}
 
                       </div>
 
+                      {boardingPass && (
+                        <section className="boarding-pass-card">
+                          <div className="boarding-pass-head">
+                            <div><small>BOARDING VERIFICATION</small><strong>Show this to bus staff</strong></div>
+                            <span>{boardingPass.passengers.every((p) => p.boarding_status === 'BOARDED') ? 'Boarded' : 'Ready to board'}</span>
+                          </div>
+                          <div className="boarding-code-grid">
+                            <div className="boarding-qr" aria-label={`QR ticket ${boardingPass.qrPayload}`} title={boardingPass.qrPayload}>
+                              {Array.from({length: 49}, (_, index) => <i key={index} className={(boardingPass.qrPayload.charCodeAt(index % boardingPass.qrPayload.length) + index) % 3 ? 'dark' : ''} />)}
+                            </div>
+                            <div><small>BOARDING OTP</small><strong className="boarding-otp">{boardingPass.otp}</strong><button type="button" onClick={() => void navigator.clipboard?.writeText(boardingPass.otp)}>Copy OTP</button></div>
+                          </div>
+                          <button className="copy-boarding-token" type="button" onClick={() => void navigator.clipboard?.writeText(boardingPass.qrPayload)}>Copy signed QR code</button>
+                          <p>Board at <strong>{boardingPass.boarding_point}</strong> by {formatTime(boardingPass.departure_at)}. Staff may verify the signed ticket code or enter this OTP.</p>
+                          <div className="boarding-passengers">
+                            {boardingPass.passengers.map((passenger) => <span className={passenger.boarding_status.toLowerCase()} key={passenger.id}>Seat {passenger.seat} · {passenger.boarding_status.replace('_',' ')}</span>)}
+                          </div>
+                        </section>
+                      )}
+
                       <div className="dialog-payment">
 
                         <div>
@@ -2210,17 +2253,30 @@ ${money(booking.total_amount)}
                     <div className="booking-tracking-dialog">
 
                       <div className="tracking-visual">
-
-                        <div className="tracking-road" />
-
-                        <div className="tracking-bus">
+                        <div className="tracking-map-grid" />
+                        <div className="tracking-route-line" />
+                        <span className="tracking-map-stop tracking-map-start" />
+                        <span className="tracking-map-stop tracking-map-end" />
+                        <small className="tracking-map-label tracking-map-label-start">{selectedBooking.source_city}</small>
+                        <small className="tracking-map-label tracking-map-label-end">{selectedBooking.destination_city}</small>
+                        <div className="tracking-bus" style={{ left: `${9 + ((tracking?.status.progress ?? 0) * 0.82)}%` }}>
                           <IonIcon
                             icon={
                               busOutline
                             }
                           />
                         </div>
-
+                        <span className={`tracking-live-pill ${tracking?.status.freshness?.toLowerCase() || 'waiting'}`}>
+                          {tracking?.status.freshness || (trackingBusy ? 'CONNECTING' : 'WAITING')}
+                        </span>
+                        {tracking?.location && (
+                          <iframe
+                            className="tracking-real-map"
+                            title="Current bus location"
+                            loading="lazy"
+                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${tracking.location.lng - .035}%2C${tracking.location.lat - .025}%2C${tracking.location.lng + .035}%2C${tracking.location.lat + .025}&layer=mapnik&marker=${tracking.location.lat}%2C${tracking.location.lng}`}
+                          />
+                        )}
                       </div>
 
                       <span className="booking-section-label">
@@ -2228,7 +2284,7 @@ ${money(booking.total_amount)}
                       </span>
 
                       <h3>
-                        Track your bus
+                        {tracking?.status.freshness === 'WAITING' ? 'Trip has not started' : 'Trip started'}
                       </h3>
 
                       <p>
@@ -2236,6 +2292,46 @@ ${money(booking.total_amount)}
                           trackingMessage
                         }
                       </p>
+
+                      {tracking && (
+                        <>
+                          <div className="tracking-eta-card">
+                            <div>
+                              <small>NEXT STOP</small>
+                              <strong>{tracking.status.nextStop?.name || selectedBooking.dropping_point}</strong>
+                              <span>{tracking.status.etaMinutes != null ? `Bus is ${tracking.status.etaMinutes} min away` : tracking.status.distanceKm != null ? `${tracking.status.distanceKm} km away` : 'Scheduled route'}</span>
+                            </div>
+                            <div className="tracking-eta-time">
+                              <small>{tracking.status.etaMinutes != null ? 'ETA' : 'SCHEDULED'}</small>
+                              <strong>{formatTime(tracking.status.estimatedArrival || undefined)}</strong>
+                              <span className={tracking.status.delayMinutes > 5 ? 'late' : 'ontime'}>
+                                {tracking.status.delayMinutes > 5 ? `${tracking.status.delayMinutes} min late` : 'On time'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="tracking-stats">
+                            <div><small>SPEED</small><strong>{tracking.location?.speed != null ? `${Math.round(tracking.location.speed)} km/h` : '—'}</strong></div>
+                            <div><small>LAST UPDATE</small><strong>{tracking.location?.timestamp ? formatTime(tracking.location.timestamp) : 'Not started'}</strong></div>
+                            <div><small>PROGRESS</small><strong>{tracking.status.progress}%</strong></div>
+                          </div>
+
+                          <div className="tracking-timeline">
+                            <h4>Route stops</h4>
+                            {tracking.stops.map((stop, index) => {
+                              const reached = tracking.status.progress >= (index / Math.max(1, tracking.stops.length - 1)) * 100;
+                              const current = tracking.status.nextStop?.id === stop.id;
+                              return (
+                                <div className={`tracking-stop-row ${reached ? 'reached' : ''} ${current ? 'current' : ''}`} key={stop.id}>
+                                  <span className="tracking-stop-dot" />
+                                  <div><strong>{stop.name}</strong><small>{stop.address || stop.city}</small></div>
+                                  <time>{formatTime(stop.scheduledAt)}</time>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
 
                       <button
                         type="button"
@@ -2252,7 +2348,7 @@ ${money(booking.total_amount)}
                           }
                         />
 
-                        Refresh location
+                        {trackingBusy ? 'Updating location…' : 'Refresh location'}
                       </button>
 
                     </div>
