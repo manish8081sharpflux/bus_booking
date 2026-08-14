@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-const { WHATSAPP_SERVICE_URL } = require('./config/env');
+const { WHATSAPP_SERVICE_URL, BOOKING_SERVICE_URL } = require('./config/env');
 
 const correlationId = require('../../shared/middleware/correlationId');
 const bodyParser = require('../../shared/middleware/bodyParser');
@@ -44,6 +44,16 @@ app.use('/api/whatsapp', createProxyMiddleware({
   changeOrigin: true,
   xfwd: true,
   logLevel: 'warn',
+}));
+
+// Razorpay also signs the exact raw request bytes. Proxy this endpoint before
+// the gateway JSON parser so booking-service can verify x-razorpay-signature.
+app.use('/api/bookings/payments/webhook', createProxyMiddleware({
+  target: BOOKING_SERVICE_URL,
+  changeOrigin: true,
+  xfwd: true,
+  logLevel: 'warn',
+  pathRewrite: () => '/bookings/payments/webhook',
 }));
 
 app.use(correlationId());
