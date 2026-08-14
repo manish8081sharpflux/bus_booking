@@ -1,0 +1,1 @@
+const r=require('express').Router(),c=require('../controllers/tracking.controller'),{requireTrackingWriter,requireViewer}=require('../middlewares');r.post('/location',requireTrackingWriter,c.updateLocation);r.get('/location/:tripId',requireViewer,c.getLiveLocation);r.get('/history/:tripId',requireViewer,c.history);module.exports=r;

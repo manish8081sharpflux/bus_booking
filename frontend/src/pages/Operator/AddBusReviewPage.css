@@ -1,0 +1,1653 @@
+/* =========================================================
+   ADD BUS REVIEW PAGE
+   NORMAL CSS ONLY
+   ========================================================= */
+
+:root {
+  --review-bg: #f6f8fc;
+  --review-card: #ffffff;
+
+  --review-text: #0f172a;
+  --review-secondary: #64748b;
+  --review-muted: #94a3b8;
+
+  --review-border: #dce4ee;
+  --review-border-soft: #edf1f5;
+
+  --review-primary: #e52f4f;
+  --review-primary-dark: #cf2745;
+  --review-primary-soft: #fff1f3;
+
+  --review-success: #059669;
+  --review-success-dark: #047857;
+  --review-success-soft: #ecfdf5;
+
+  --review-danger: #dc2626;
+}
+
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+.review-page,
+.review-page *,
+.review-page *::before,
+.review-page *::after {
+  box-sizing: border-box;
+}
+
+.review-page {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 28px 34px 48px;
+
+  background: var(--review-bg);
+
+  color: var(--review-text);
+}
+
+.review-page button {
+  font-family: inherit;
+}
+
+.review-container {
+  width: 100%;
+  max-width: 1320px;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.review-loading {
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 14px;
+
+  background: var(--review-bg);
+
+  color: var(--review-secondary);
+
+  font-size: 14px;
+}
+
+.review-loading-spinner {
+  width: 34px;
+  height: 34px;
+
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--review-primary);
+  border-radius: 50%;
+
+  animation:
+    review-spin
+    0.75s
+    linear
+    infinite;
+}
+
+@keyframes review-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.review-header {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 18px;
+
+  margin-bottom: 30px;
+}
+
+.review-back-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid var(--review-border);
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font-size: 22px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 5px
+    rgba(15, 23, 42, 0.05);
+
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.review-back-icon:hover:not(:disabled) {
+  border-color: #cbd5e1;
+
+  background: #f8fafc;
+}
+
+.review-back-icon:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.review-back-icon:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+}
+
+.review-eyebrow {
+  margin: 0;
+
+  color: var(--review-secondary);
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.review-page-title {
+  margin: 8px 0 0;
+
+  color: var(--review-text);
+
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 750;
+
+  letter-spacing: -0.7px;
+}
+
+.review-page-subtitle {
+  margin: 10px 0 0;
+
+  color: var(--review-secondary);
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   STEPS
+   ========================================================= */
+
+.review-steps {
+  display: grid;
+
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+
+  gap: 12px;
+
+  margin-bottom: 30px;
+}
+
+.review-step {
+  min-width: 0;
+  min-height: 78px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 14px 15px;
+
+  border: 1px solid var(--review-border);
+  border-radius: 12px;
+
+  background: #ffffff;
+}
+
+.review-step-number {
+  margin: 0;
+
+  color: var(--review-muted);
+
+  font-size: 11px;
+  font-weight: 750;
+
+  letter-spacing: 0.3px;
+}
+
+.review-step-title {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  margin: 8px 0 0;
+
+  color: #475569;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.review-step-title ion-icon {
+  font-size: 15px;
+}
+
+.review-step.completed {
+  border-color: #a7f3d0;
+
+  background: var(--review-success-soft);
+}
+
+.review-step.completed
+.review-step-number {
+  color: var(--review-success);
+}
+
+.review-step.completed
+.review-step-title {
+  color: var(--review-success-dark);
+}
+
+.review-step.active {
+  border-color: #fecdd3;
+
+  background: var(--review-primary-soft);
+}
+
+.review-step.active
+.review-step-number {
+  color: var(--review-primary);
+}
+
+.review-step.active
+.review-step-title {
+  color: var(--review-text);
+}
+
+
+/* =========================================================
+   GENERAL REVIEW SECTION
+   ========================================================= */
+
+.review-section {
+  margin-bottom: 22px;
+
+  padding: 26px 28px;
+
+  border: 1px solid var(--review-border);
+  border-radius: 18px;
+
+  background: var(--review-card);
+
+  box-shadow:
+    0 3px 10px
+    rgba(15, 23, 42, 0.04);
+}
+
+.review-section-heading {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  margin-bottom: 22px;
+}
+
+.review-section-icon {
+  width: 46px;
+  height: 46px;
+
+  flex: 0 0 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  font-size: 21px;
+}
+
+.review-section-icon.rose {
+  background: #fff1f3;
+
+  color: #e52f4f;
+}
+
+.review-section-icon.amber {
+  background: #fffbeb;
+
+  color: #d97706;
+}
+
+.review-section-icon.blue {
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+.review-section-heading h2 {
+  margin: 0;
+
+  color: var(--review-text);
+
+  font-size: 22px;
+  font-weight: 720;
+}
+
+.review-section-heading p {
+  margin: 5px 0 0;
+
+  color: var(--review-secondary);
+
+  font-size: 12px;
+}
+
+.review-section-heading p strong {
+  color: #334155;
+}
+
+
+/* =========================================================
+   INFORMATION GRID
+   ========================================================= */
+
+.review-info-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 14px;
+}
+
+.review-info-item {
+  min-width: 0;
+
+  padding: 16px 17px;
+
+  border: 1px solid #e1e7ef;
+  border-radius: 12px;
+
+  background: #f8fafc;
+}
+
+.review-info-label {
+  margin: 0;
+
+  color: var(--review-secondary);
+
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.review-info-value {
+  margin-top: 6px;
+
+  overflow-wrap: anywhere;
+
+  color: var(--review-text);
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   SEAT LAYOUT WRAPPER
+   ========================================================= */
+
+.review-seat-layout-wrapper {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(360px, 1fr)
+    );
+
+  gap: 24px;
+
+  align-items: start;
+}
+
+
+/* =========================================================
+   DECK CARD
+   ========================================================= */
+
+.review-deck-card {
+  padding: 20px;
+
+  border: 1px solid #e1e7ef;
+  border-radius: 17px;
+
+  background: #f8fafc;
+}
+
+.review-deck-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 14px;
+
+  margin-bottom: 18px;
+}
+
+.review-deck-small-title {
+  display: block;
+
+  color: var(--review-muted);
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing: 0.7px;
+
+  text-transform: uppercase;
+}
+
+.review-deck-header h4 {
+  margin: 5px 0 0;
+
+  color: var(--review-text);
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.review-deck-seat-count {
+  padding: 7px 10px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-size: 10px;
+  font-weight: 650;
+}
+
+
+/* =========================================================
+   ACTUAL BUS BODY
+   ========================================================= */
+
+.review-bus-body {
+  position: relative;
+
+  width: 100%;
+  max-width: 540px;
+
+  margin: 0 auto;
+
+  overflow: hidden;
+
+  border: 2px solid #cbd5e1;
+  border-radius: 30px 30px 20px 20px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fbfcfe 100%
+    );
+
+  box-shadow:
+    0 10px 26px
+    rgba(15, 23, 42, 0.08);
+}
+
+
+/* =========================================================
+   BUS FRONT
+   ========================================================= */
+
+.review-bus-front {
+  position: relative;
+
+  min-height: 104px;
+
+  padding:
+    13px
+    18px
+    16px;
+
+  border-bottom: 1px solid #e2e8f0;
+
+  background:
+    linear-gradient(
+      180deg,
+      #eef4fa 0%,
+      #ffffff 100%
+    );
+}
+
+.review-bus-windshield {
+  width: 68%;
+  height: 25px;
+
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #cbd5e1;
+  border-radius:
+    16px
+    16px
+    8px
+    8px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #dbeafe,
+      #eff6ff
+    );
+}
+
+.review-windshield-line {
+  width: 2px;
+  height: 100%;
+
+  background: #bfdbfe;
+}
+
+
+/* =========================================================
+   DRIVER SECTION
+   ========================================================= */
+
+.review-driver-section {
+  position: relative;
+
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+
+  gap: 8px;
+
+  margin-top: 9px;
+}
+
+.review-driver-wheel {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 5px;
+
+  border: 2px solid #94a3b8;
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-size: 18px;
+}
+
+.review-driver-chair {
+  position: relative;
+
+  width: 48px;
+  height: 54px;
+}
+
+.review-driver-headrest {
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+
+  width: 25px;
+  height: 12px;
+
+  transform: translateX(-50%);
+
+  border: 2px solid #64748b;
+  border-radius: 7px;
+
+  background: #e2e8f0;
+}
+
+.review-driver-backrest {
+  position: absolute;
+
+  top: 11px;
+  left: 50%;
+
+  width: 35px;
+  height: 32px;
+
+  transform: translateX(-50%);
+
+  border: 2px solid #64748b;
+  border-radius: 9px 9px 6px 6px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f8fafc,
+      #e2e8f0
+    );
+}
+
+.review-driver-cushion {
+  position: absolute;
+
+  left: 50%;
+  bottom: 0;
+
+  width: 40px;
+  height: 13px;
+
+  transform: translateX(-50%);
+
+  border: 2px solid #64748b;
+  border-radius: 5px;
+
+  background: #cbd5e1;
+}
+
+.review-driver-text {
+  position: absolute;
+
+  right: 5px;
+  bottom: -14px;
+
+  color: #64748b;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   PASSENGER AREA
+   ========================================================= */
+
+.review-passenger-area {
+  display: flex;
+  flex-direction: column;
+
+  gap: 14px;
+
+  padding:
+    28px
+    25px
+    24px;
+}
+
+.review-seat-row {
+  display: grid;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+
+/* 2 + 2 */
+
+.review-row-2x2 {
+  grid-template-columns:
+    1fr
+    1fr
+    42px
+    1fr
+    1fr;
+}
+
+.review-row-2x2
+.review-vehicle-seat.after-aisle {
+  grid-column-start: 4;
+}
+
+
+/* 2 + 1 */
+
+.review-row-2x1 {
+  grid-template-columns:
+    1fr
+    42px
+    1fr
+    1fr;
+}
+
+.review-row-2x1
+.review-vehicle-seat.after-aisle {
+  grid-column-start: 3;
+}
+
+
+/* =========================================================
+   BEAUTIFUL PASSENGER SEAT
+   ========================================================= */
+
+.review-vehicle-seat {
+  position: relative;
+
+  width: 100%;
+  min-width: 48px;
+  height: 62px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #334155;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+
+/* headrest */
+
+.review-seat-headrest {
+  position: absolute;
+
+  top: 1px;
+  left: 50%;
+
+  width: 55%;
+  height: 13px;
+
+  transform: translateX(-50%);
+
+  border: 1.5px solid #94a3b8;
+  border-radius:
+    7px
+    7px
+    4px
+    4px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff,
+      #e9eef5
+    );
+
+  z-index: 3;
+}
+
+
+/* seat back */
+
+.review-seat-back {
+  position: absolute;
+
+  top: 10px;
+  left: 50%;
+
+  width: 76%;
+  height: 39px;
+
+  transform: translateX(-50%);
+
+  border: 1.5px solid #94a3b8;
+  border-radius:
+    10px
+    10px
+    7px
+    7px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #eef2f7 100%
+    );
+
+  box-shadow:
+    0 3px 5px
+    rgba(15, 23, 42, 0.05);
+}
+
+
+/* seat cushion */
+
+.review-seat-cushion {
+  position: absolute;
+
+  left: 50%;
+  bottom: 0;
+
+  width: 82%;
+  height: 17px;
+
+  transform: translateX(-50%);
+
+  border: 1.5px solid #94a3b8;
+  border-radius:
+    5px
+    5px
+    7px
+    7px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #e9eef5,
+      #dce4ee
+    );
+}
+
+
+/* arm rests */
+
+.review-seat-arm {
+  position: absolute;
+
+  top: 34px;
+
+  width: 7px;
+  height: 18px;
+
+  border: 1.5px solid #94a3b8;
+  border-radius: 4px;
+
+  background: #edf2f7;
+
+  z-index: 4;
+}
+
+.review-seat-arm.left {
+  left: 4%;
+}
+
+.review-seat-arm.right {
+  right: 4%;
+}
+
+
+/* seat number */
+
+.review-seat-number {
+  position: relative;
+
+  z-index: 5;
+
+  margin-top: 4px;
+
+  min-width: 26px;
+
+  padding:
+    3px
+    5px;
+
+  border-radius: 6px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.85
+    );
+
+  color: #334155;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   WINDOW MARKER
+   ========================================================= */
+
+.review-window-indicator {
+  position: absolute;
+
+  right: 2px;
+  top: 22px;
+
+  width: 7px;
+  height: 18px;
+
+  border-radius: 6px;
+
+  background: #3b82f6;
+
+  box-shadow:
+    0 0 0 2px
+    #dbeafe;
+
+  z-index: 6;
+}
+
+
+/* =========================================================
+   FEMALE RESERVED
+   ========================================================= */
+
+.review-vehicle-seat.female
+.review-seat-back {
+  border-color: #ec4899;
+
+  background:
+    linear-gradient(
+      180deg,
+      #fdf2f8,
+      #fce7f3
+    );
+}
+
+
+/* =========================================================
+   DISABLED SEAT
+   ========================================================= */
+
+.review-vehicle-seat.disabled {
+  opacity: 0.35;
+
+  filter: grayscale(1);
+}
+
+.review-vehicle-seat.disabled
+.review-seat-number {
+  text-decoration: line-through;
+}
+
+
+/* =========================================================
+   SLEEPER BERTH
+   ========================================================= */
+
+.review-vehicle-seat.sleeper {
+  height: 78px;
+
+  border: 1.5px solid #94a3b8;
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff,
+      #f1f5f9
+    );
+
+  box-shadow:
+    0 3px 6px
+    rgba(15, 23, 42, 0.05);
+}
+
+.review-sleeper-pillow {
+  position: absolute;
+
+  top: 7px;
+  left: 8px;
+
+  width: 31px;
+  height: 16px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+
+  background: #e2e8f0;
+}
+
+.review-sleeper-bed {
+  position: absolute;
+
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+
+  height: 13px;
+
+  border-radius: 5px;
+
+  background: #dce4ee;
+}
+
+.review-vehicle-seat.sleeper
+.review-seat-number {
+  margin-top: 0;
+}
+
+
+/* =========================================================
+   BUS REAR
+   ========================================================= */
+
+.review-bus-rear {
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding:
+    0
+    22px;
+
+  border-top: 1px solid #e2e8f0;
+
+  background: #f1f5f9;
+}
+
+.review-bus-rear span {
+  width: 24px;
+  height: 6px;
+
+  border-radius: 4px;
+
+  background: #f87171;
+}
+
+
+/* =========================================================
+   SEAT LEGEND
+   ========================================================= */
+
+.review-seat-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap:
+    10px
+    18px;
+
+  margin-top: 18px;
+}
+
+.review-seat-legend > div {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #64748b;
+
+  font-size: 10px;
+}
+
+.review-legend-seat,
+.review-legend-window,
+.review-legend-sleeper,
+.review-legend-disabled {
+  width: 17px;
+  height: 17px;
+
+  display: inline-block;
+
+  border-radius: 5px;
+}
+
+.review-legend-seat {
+  border: 1px solid #94a3b8;
+
+  background: #f8fafc;
+}
+
+.review-legend-window {
+  border: 1px solid #93c5fd;
+
+  background: #3b82f6;
+}
+
+.review-legend-sleeper {
+  width: 23px;
+
+  border: 1px solid #94a3b8;
+
+  background: #e2e8f0;
+}
+
+.review-legend-disabled {
+  border: 1px solid #cbd5e1;
+
+  background: #e2e8f0;
+
+  opacity: 0.4;
+}
+
+
+/* =========================================================
+   AMENITIES
+   ========================================================= */
+
+.review-amenities {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 9px;
+}
+
+.review-amenities span {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding:
+    8px
+    12px;
+
+  border: 1px solid #fecdd3;
+  border-radius: 999px;
+
+  background: #fff1f3;
+
+  color: #d92343;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.review-amenities ion-icon {
+  font-size: 13px;
+}
+
+.review-empty-text {
+  margin: 0;
+
+  color: var(--review-secondary);
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   FILES
+   ========================================================= */
+
+.review-files-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.review-file-item {
+  min-width: 0;
+
+  padding: 14px 15px;
+
+  border: 1px solid #e1e7ef;
+  border-radius: 12px;
+
+  background: #f8fafc;
+}
+
+.review-file-heading {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.review-file-icon {
+  width: 27px;
+  height: 27px;
+
+  flex: 0 0 27px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 7px;
+
+  background: #ecfdf5;
+
+  color: #059669;
+
+  font-size: 14px;
+}
+
+.review-file-heading p {
+  margin: 0;
+
+  color: var(--review-secondary);
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.review-file-details {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin-top: 9px;
+}
+
+.review-file-details strong {
+  overflow: hidden;
+
+  color: var(--review-text);
+
+  font-size: 12px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-file-details span {
+  color: var(--review-secondary);
+
+  font-size: 10px;
+}
+
+.review-file-missing {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+}
+
+.review-files-unavailable {
+  padding: 13px 15px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   SUBMISSION INFO
+   ========================================================= */
+
+.review-submit-info {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 11px;
+
+  margin-bottom: 20px;
+
+  padding: 14px 16px;
+
+  border: 1px solid #a7f3d0;
+  border-radius: 11px;
+
+  background: #ecfdf5;
+
+  color: #047857;
+}
+
+.review-submit-info > ion-icon {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+
+  font-size: 20px;
+}
+
+.review-submit-info strong {
+  font-size: 13px;
+}
+
+.review-submit-info p {
+  margin: 4px 0 0;
+
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.review-error {
+  margin-bottom: 20px;
+
+  padding: 13px 15px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: var(--review-danger);
+
+  font-size: 13px;
+  font-weight: 550;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 14px;
+
+  padding-top: 22px;
+
+  border-top: 1px solid var(--review-border);
+}
+
+.review-footer-button {
+  min-height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding:
+    0
+    19px;
+
+  border-radius: 9px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.review-footer-button ion-icon {
+  font-size: 17px;
+}
+
+.review-footer-button.secondary {
+  border: 1px solid var(--review-primary);
+
+  background: #ffffff;
+
+  color: var(--review-primary);
+}
+
+.review-footer-button.secondary:hover:not(:disabled) {
+  background: var(--review-primary-soft);
+}
+
+.review-footer-button.primary {
+  border: 1px solid var(--review-primary);
+
+  background: var(--review-primary);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 12px
+    rgba(229, 47, 79, 0.16);
+}
+
+.review-footer-button.primary:hover:not(:disabled) {
+  border-color: var(--review-primary-dark);
+
+  background: var(--review-primary-dark);
+}
+
+.review-footer-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (
+  max-width: 1100px
+) {
+  .review-page {
+    padding:
+      26px
+      24px
+      42px;
+  }
+
+  .review-steps {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+
+/* =========================================================
+   SMALL TABLET
+   ========================================================= */
+
+@media (
+  max-width: 760px
+) {
+  .review-page {
+    padding:
+      20px
+      16px
+      34px;
+  }
+
+  .review-page-title {
+    font-size: 28px;
+  }
+
+  .review-info-grid,
+  .review-files-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-seat-layout-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .review-section {
+    padding:
+      22px
+      20px;
+  }
+
+  .review-bus-body {
+    max-width: 500px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (
+  max-width: 560px
+) {
+  .review-page {
+    padding:
+      16px
+      12px
+      28px;
+  }
+
+  .review-header {
+    gap: 12px;
+  }
+
+  .review-back-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
+
+  .review-page-title {
+    font-size: 25px;
+  }
+
+  .review-steps {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+
+    gap: 9px;
+  }
+
+  .review-step {
+    min-height: 68px;
+
+    padding: 12px;
+  }
+
+  .review-step-title {
+    font-size: 12px;
+  }
+
+  .review-section {
+    padding: 18px;
+
+    border-radius: 14px;
+  }
+
+  .review-section-heading {
+    align-items: flex-start;
+  }
+
+  .review-section-heading h2 {
+    font-size: 19px;
+  }
+
+  .review-deck-card {
+    padding: 13px;
+  }
+
+  .review-passenger-area {
+    gap: 10px;
+
+    padding:
+      24px
+      11px
+      18px;
+  }
+
+  .review-seat-row {
+    gap: 6px;
+  }
+
+  .review-row-2x2 {
+    grid-template-columns:
+      1fr
+      1fr
+      22px
+      1fr
+      1fr;
+  }
+
+  .review-row-2x1 {
+    grid-template-columns:
+      1fr
+      22px
+      1fr
+      1fr;
+  }
+
+  .review-vehicle-seat {
+    min-width: 36px;
+    height: 52px;
+
+    font-size: 9px;
+  }
+
+  .review-seat-back {
+    height: 32px;
+  }
+
+  .review-seat-cushion {
+    height: 14px;
+  }
+
+  .review-seat-arm {
+    top: 29px;
+
+    height: 15px;
+  }
+
+  .review-vehicle-seat.sleeper {
+    height: 65px;
+  }
+
+  .review-driver-section {
+    transform:
+      scale(0.9);
+
+    transform-origin:
+      right center;
+  }
+
+  .review-seat-legend {
+    gap:
+      8px
+      12px;
+  }
+
+  .review-footer {
+    flex-direction:
+      column-reverse;
+  }
+
+  .review-footer-button {
+    width: 100%;
+  }
+}

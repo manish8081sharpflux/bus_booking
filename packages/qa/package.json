@@ -1,0 +1,15 @@
+{
+  "name": "@busgo/qa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:unit": "node --test test/unit.test.js",
+    "test:integration": "node --test test/integration.test.js",
+    "test:e2e": "node scripts/staging-smoke.js",
+    "test:security": "node --test test/security.test.js",
+    "test:concurrency": "node --test test/concurrency.test.js",
+    "test:migrations": "node --test test/migrations.test.js"
+  }
+}

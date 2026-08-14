@@ -1,0 +1,92 @@
+<!doctype html>
+
+<html class="h-full" lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <title>BusGo Admin</title>
+
+    <meta
+      name="description"
+      content="BusGo bus booking and operator management system"
+    />
+
+    <meta
+      name="theme-color"
+      content="#ffffff"
+    />
+
+    <link
+      rel="icon"
+      type="image/png"
+      href="public/media/app/logo-bus.png"
+    />
+
+    <link
+      rel="apple-touch-icon"
+      href="public/media/app/logo-bus.png"
+    />
+
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    />
+
+    <script>
+      (function () {
+        try {
+          const savedTheme =
+            localStorage.getItem('vite-theme');
+
+          const theme = savedTheme || 'light';
+
+          if (!savedTheme) {
+            localStorage.setItem(
+              'vite-theme',
+              'light'
+            );
+          }
+
+          document.documentElement.classList.toggle(
+            'dark',
+            theme === 'dark'
+          );
+        } catch (error) {
+          document.documentElement.classList.remove(
+            'dark'
+          );
+        }
+      })();
+    </script>
+  </head>
+
+  <body
+    class="text-foreground bg-background flex min-h-full text-base antialiased"
+  >
+    <div
+      class="flex min-h-screen grow"
+      id="root"
+    ></div>
+
+    <script
+      type="module"
+      src="/src/main.tsx"
+    ></script>
+  </body>
+</html>

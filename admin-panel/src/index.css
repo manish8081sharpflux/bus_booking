@@ -1,0 +1,357 @@
+@import "tailwindcss";
+
+/* =========================================================
+   BUSGO ADMIN - GLOBAL THEME
+========================================================= */
+
+:root {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  /* BusGo red */
+  --busgo-primary: #e11d48;
+  --busgo-primary-hover: #be123c;
+  --busgo-primary-soft: #fff1f2;
+
+  /* Light mode */
+  --background: #f7f8fb;
+  --foreground: #111827;
+
+  --card: #ffffff;
+  --card-foreground: #111827;
+
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  --primary: #e11d48;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #fff1f2;
+  --accent-foreground: #be123c;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e7eb;
+  --input: #d1d5db;
+  --ring: #e11d48;
+
+  --radius: 0.75rem;
+
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  min-height: 100%;
+  background: #ffffff;
+}
+
+body {
+  min-height: 100vh;
+
+  margin: 0;
+
+  background: var(--background);
+  color: var(--foreground);
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  font-size: 14px;
+  line-height: 1.5;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* =========================================================
+   SELECTION
+========================================================= */
+
+::selection {
+  background: #fecdd3;
+  color: #881337;
+}
+
+/* =========================================================
+   BUSGO HELPERS
+========================================================= */
+
+.busgo-page {
+  min-height: 100vh;
+  background: #f7f8fb;
+}
+
+.busgo-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+.busgo-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 40px;
+  padding: 0 16px;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: #e11d48;
+  color: #ffffff;
+
+  font-weight: 600;
+
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.busgo-primary-button:hover {
+  background: #be123c;
+
+  box-shadow:
+    0 5px 14px rgba(225, 29, 72, 0.2);
+}
+
+.busgo-primary-button:active {
+  transform: translateY(1px);
+}
+
+/* =========================================================
+   DARK MODE
+   Light remains the default.
+========================================================= */
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+
+  --card: #111114;
+  --card-foreground: #fafafa;
+
+  --popover: #111114;
+  --popover-foreground: #fafafa;
+
+  --secondary: #18181b;
+  --secondary-foreground: #f4f4f5;
+
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #301018;
+  --accent-foreground: #fda4af;
+
+  --border: #27272a;
+  --input: #3f3f46;
+}
+
+.dark body,
+.dark #root {
+  background: var(--background);
+  color: var(--foreground);
+}
+/* =========================================================
+   BUSGO ADMIN — FINAL RESPONSIVE POLISH
+========================================================= */
+:root {
+  --busgo-page-max: 1600px;
+  --busgo-shadow-sm: 0 5px 16px rgba(15, 23, 42, .055);
+  --busgo-shadow-md: 0 18px 42px rgba(15, 23, 42, .09);
+}
+
+html, body { overflow-x: hidden; }
+body { background: #f6f7fb; }
+
+/* Main surfaces */
+.wrapper, main, [role='main'] { min-width: 0; }
+.container-fixed, .container-fluid { min-width: 0; }
+
+/* Cards */
+[data-slot='card'], .card {
+  border-color: #e7ebf1 !important;
+  border-radius: 16px !important;
+  box-shadow: var(--busgo-shadow-sm);
+}
+
+/* Inputs */
+input, textarea, select, [data-slot='input'], [data-slot='textarea'], [data-slot='select-trigger'] {
+  border-radius: 10px !important;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(225,29,72,.10) !important;
+  border-color: rgba(225,29,72,.65) !important;
+}
+
+/* Buttons */
+button, [data-slot='button'] {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
+/* Sidebar/header glass */
+.sidebar { box-shadow: 8px 0 28px rgba(15,23,42,.035); }
+.header {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Tables */
+[data-slot='table-container'], .table-responsive, .overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+table { min-width: 0; }
+thead tr { background: #fafbfc; }
+thead th {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .02em;
+}
+tbody tr { transition: background-color .15s ease; }
+tbody tr:hover { background: #fff8fa; }
+
+/* Operations pages */
+.admin-ops-page, .admin-dashboard-page, .bus-verification-page {
+  width: 100%;
+  max-width: var(--busgo-page-max);
+  margin-inline: auto;
+}
+
+/* Dialogs and sheets */
+[role='dialog'] {
+  max-width: min(calc(100vw - 32px), 720px);
+  max-height: min(88dvh, 900px);
+}
+
+/* Better compact desktop rhythm */
+@media (min-width: 1280px) {
+  .content { padding-top: 22px; padding-bottom: 34px; }
+}
+
+@media (max-width: 1024px) {
+  .content { padding-inline: 18px !important; }
+  .grid.grid-cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  .grid.grid-cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+}
+
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+  .content { padding-inline: 12px !important; }
+  .grid.grid-cols-4, .grid.grid-cols-3, .grid.grid-cols-2 { grid-template-columns: minmax(0,1fr) !important; }
+  [role='dialog'] {
+    width: calc(100vw - 16px) !important;
+    max-width: none !important;
+    max-height: 90dvh;
+    overflow-y: auto;
+    border-radius: 18px !important;
+  }
+  .page-header, .admin-page-header, .toolbar-actions {
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .content { padding-inline: 10px !important; }
+  [data-slot='card'], .card { border-radius: 14px !important; }
+  .btn, button, [data-slot='button'] { min-height: 42px; }
+}

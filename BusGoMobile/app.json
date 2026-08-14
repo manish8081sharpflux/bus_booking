@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "BusGo",
+    "slug": "busgo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "busgo",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.busgo.customer"
+    },
+    "android": {
+      "package": "com.busgo.customer",
+      "adaptiveIcon": {
+        "backgroundColor": "#E11D48"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

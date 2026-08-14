@@ -1,0 +1,372 @@
+/* BusGo web polish — customer + operator surfaces */
+:root {
+  --busgo-red: #d9304f;
+  --busgo-red-dark: #b91f3d;
+  --busgo-red-soft: #fff1f4;
+  --busgo-ink: #182230;
+  --busgo-muted: #667085;
+  --busgo-line: #e7ebf1;
+  --busgo-surface: #ffffff;
+  --busgo-bg: #f6f7fb;
+  --busgo-shadow-sm: 0 4px 14px rgba(16, 24, 40, .06);
+  --busgo-shadow-md: 0 16px 36px rgba(16, 24, 40, .09);
+  --busgo-radius: 18px;
+  --busgo-radius-lg: 26px;
+  --busgo-page-max: 1200px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  color: var(--busgo-ink);
+  background:
+    radial-gradient(circle at 12% -10%, rgba(217,48,79,.06), transparent 28rem),
+    var(--busgo-bg);
+}
+
+ion-content::part(scroll) { min-height: 100%; }
+ion-toolbar {
+  --min-height: 64px;
+  --border-width: 0 0 1px;
+  --border-color: rgba(231,235,241,.9);
+}
+
+/* Better focus states */
+:where(a, button, input, select, textarea, ion-button, ion-item, [role='button']):focus-visible {
+  outline: 3px solid rgba(217, 48, 79, .20);
+  outline-offset: 2px;
+}
+
+/* Consistent cards */
+:is(
+  .customer-search-card,.customer-route-card,.customer-bus-card,.customer-benefit-card,
+  .booking-section-card,.booking-review-card,.booking-passenger-card,.booking-points-card,
+  .booking-coupon-card,.booking-fare-summary,.my-trips-empty,.manage-bus-card,.add-bus-card,
+  .amenities-card,.compliance-card,.fare-config-card,.fare-trip-card,.inventory-trip-main,
+  .earnings-stat-card,.earnings-transactions-card,.staff-card,.operator-card
+) {
+  border: 1px solid var(--busgo-line);
+  background: rgba(255,255,255,.98);
+  box-shadow: var(--busgo-shadow-sm);
+}
+
+:is(
+  .customer-search-card,.customer-route-card,.customer-bus-card,.customer-benefit-card,
+  .booking-section-card,.booking-review-card,.booking-passenger-card,.booking-points-card,
+  .booking-coupon-card,.booking-fare-summary,.manage-bus-card,.add-bus-card,.amenities-card,
+  .compliance-card,.fare-config-card,.fare-trip-card,.earnings-stat-card,.earnings-transactions-card
+) {
+  border-radius: var(--busgo-radius);
+}
+
+/* Buttons */
+:is(
+  .customer-search-submit,.booking-primary-button,.customer-auth-submit,.customer-signup-submit,
+  .add-bus-button,.amenities-next-button,.compliance-footer-button,.documents-footer-button,
+  .fare-primary-button,.inventory-primary-button,.trip-primary-button,.staff-primary
+) {
+  min-height: 46px;
+  border-radius: 12px !important;
+  font-weight: 750;
+  letter-spacing: -.01em;
+  box-shadow: 0 8px 18px rgba(217,48,79,.16);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+:is(
+  .customer-search-submit,.booking-primary-button,.customer-auth-submit,.customer-signup-submit,
+  .add-bus-button,.amenities-next-button,.compliance-footer-button,.documents-footer-button,
+  .fare-primary-button,.inventory-primary-button,.trip-primary-button,.staff-primary
+):hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(217,48,79,.22);
+  filter: saturate(1.06);
+}
+
+:is(.booking-secondary-button,.fare-secondary-button,.inventory-secondary-button,.inventory-outline-button,.customer-profile-refresh) {
+  min-height: 44px;
+  border-radius: 12px !important;
+  border: 1px solid var(--busgo-line) !important;
+  background: #fff !important;
+  color: var(--busgo-ink) !important;
+  font-weight: 700;
+}
+
+/* Inputs */
+:is(
+  .customer-auth-input,.customer-signup-input,.booking-input,.add-bus-field input,.add-bus-field select,
+  .compliance-field input,.compliance-field select,.fare-input-wrapper input,.staff-form-grid input,
+  .staff-form-grid select,.modify-search-field input,.customer-search-field input
+) {
+  min-height: 46px;
+  border-radius: 12px !important;
+  border: 1px solid #dce2ea !important;
+  background: #fff !important;
+  color: var(--busgo-ink) !important;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+:is(
+  .customer-auth-input,.customer-signup-input,.booking-input,.add-bus-field input,.add-bus-field select,
+  .compliance-field input,.compliance-field select,.fare-input-wrapper input,.staff-form-grid input,
+  .staff-form-grid select,.modify-search-field input,.customer-search-field input
+):focus {
+  border-color: rgba(217,48,79,.72) !important;
+  box-shadow: 0 0 0 4px rgba(217,48,79,.10) !important;
+}
+
+/* Customer navbar / mobile nav */
+.customer-navbar,
+.my-trips-nav,
+.customer-profile-nav {
+  background: rgba(255,255,255,.90) !important;
+  border-bottom: 1px solid rgba(231,235,241,.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.customer-navbar-menu a,
+.customer-navbar-menu button {
+  border-radius: 10px;
+  transition: background .18s ease, color .18s ease;
+}
+.customer-navbar-menu a:hover,
+.customer-navbar-menu button:hover { background: var(--busgo-red-soft); color: var(--busgo-red); }
+
+.customer-mobile-nav {
+  background: rgba(255,255,255,.94) !important;
+  border-top: 1px solid rgba(231,235,241,.92);
+  box-shadow: 0 -8px 24px rgba(16,24,40,.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* Customer hero/search */
+.customer-hero,
+.customer-search-page {
+  background:
+    radial-gradient(circle at 88% 10%, rgba(217,48,79,.16), transparent 30rem),
+    linear-gradient(180deg, #fff 0%, #f7f8fb 100%);
+}
+.customer-hero-content {
+  width: min(var(--busgo-page-max), calc(100% - 40px));
+  margin-inline: auto;
+}
+.customer-hero-eyebrow {
+  color: var(--busgo-red);
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.customer-search-card {
+  box-shadow: var(--busgo-shadow-md);
+  border-radius: var(--busgo-radius-lg);
+}
+.customer-search-submit { background: linear-gradient(135deg, #df3656, #c62445) !important; }
+.customer-swap-button { box-shadow: 0 8px 18px rgba(16,24,40,.10); }
+
+/* Results */
+.customer-bus-card {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  overflow: hidden;
+}
+.customer-bus-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--busgo-shadow-md);
+  border-color: #f0c6cf;
+}
+.customer-bus-price { color: var(--busgo-ink); font-weight: 800; }
+.customer-bus-amenities { color: var(--busgo-muted); }
+
+/* Booking flow */
+.booking-page { background: var(--busgo-bg); }
+.booking-container {
+  width: min(1120px, calc(100% - 32px));
+  margin-inline: auto;
+}
+.booking-stepper {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(246,247,251,.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.booking-step-number {
+  box-shadow: 0 0 0 4px rgba(217,48,79,.08);
+}
+.booking-price-lock {
+  border: 1px solid #b7ead2;
+  background: linear-gradient(180deg, #f4fff9 0%, #effcf6 100%);
+  border-radius: 14px;
+}
+.booking-confirmation {
+  background: linear-gradient(180deg, #fff 0%, #fbfcfe 100%);
+}
+
+/* Drawer */
+.drawer-brand,
+.drawer-profile-card { margin-inline: 12px; }
+.drawer-profile-card {
+  border: 1px solid var(--busgo-line);
+  box-shadow: var(--busgo-shadow-sm);
+  border-radius: 16px;
+  background: #fff;
+}
+.drawer-logo,
+.customer-brand-icon,
+.customer-auth-brand-icon,
+.customer-signup-brand-icon {
+  box-shadow: 0 8px 18px rgba(217,48,79,.16);
+}
+ion-menu ion-item {
+  --border-radius: 12px;
+  margin: 3px 8px;
+}
+ion-menu ion-item:hover { --background: #fff2f5; }
+
+/* Operator shell */
+.operator-sidebar {
+  background: #000000 !important;
+  border-right: 1px solid #1f2430;
+  box-shadow: 6px 0 24px rgba(16,24,40,.03);
+}
+.operator-sidebar-title { color: #ffffff !important; }
+.operator-sidebar-subtitle { color: #94a3b8 !important; }
+.operator-sidebar-item { color: #cbd5e1 !important; }
+.operator-sidebar-item ion-icon { color: #94a3b8 !important; }
+.operator-sidebar-item:hover { background: #1a1a1a !important; color: #ffffff !important; }
+.operator-sidebar-item:hover ion-icon { color: #ffffff !important; }
+.operator-sidebar-item.active { background: var(--busgo-red) !important; color: #ffffff !important; }
+.operator-sidebar-item.active ion-icon { color: #ffffff !important; }
+.operator-sidebar-profile { background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.14) !important; }
+.operator-sidebar-profile-name { color: #ffffff !important; }
+.operator-sidebar-profile-id { color: #94a3b8 !important; }
+.operator-sidebar-footer,
+.operator-sidebar-brand { border-color: #1f2430 !important; }
+.operator-topbar {
+  background: rgba(255,255,255,.93) !important;
+  border-bottom: 1px solid var(--busgo-line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.operator-dashboard-shell,
+.manage-bus-shell,
+.staff-page,
+.trip-operations-page {
+  background: var(--busgo-bg);
+}
+
+/* Staff & Policies pages sit next to OperatorSidebar — lay the shell out as
+   a row so the content pane fills the space beside the sidebar instead of
+   stacking below it. */
+.operator-dashboard-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+}
+.operator-dashboard-shell > .staff-page,
+.operator-dashboard-shell > .policy-page {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Thin, themed scrollbar for the sidebar nav — replaces the native
+   arrow-button scrollbar Chrome/Windows draws by default. */
+.operator-sidebar-menu {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.operator-sidebar-menu::-webkit-scrollbar {
+  width: 6px;
+}
+.operator-sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.operator-sidebar-menu::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+.operator-sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tables */
+:is(.earnings-table-wrapper,.bookings-table-wrap,.inventory-table-wrap,.staff-table-wrap,.table-wrap) {
+  border: 1px solid var(--busgo-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--busgo-shadow-sm);
+}
+table { border-collapse: separate; border-spacing: 0; }
+thead th {
+  background: #fafbfc;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+tbody tr { transition: background .15s ease; }
+tbody tr:hover { background: #fff9fa; }
+
+/* Empty/loading states */
+:is(.booking-empty,.my-trips-empty,.inventory-empty-state,.fare-empty-state,.no-search-results,.offers-empty) {
+  border: 1px dashed #d7dde6;
+  border-radius: 18px;
+  background: #fff;
+}
+
+/* Dialogs */
+:is(.booking-dialog,.booking-manage-dialog,.staff-modal) {
+  border: 1px solid var(--busgo-line);
+  box-shadow: 0 28px 70px rgba(16,24,40,.20);
+}
+.booking-dialog-backdrop,
+.staff-modal-backdrop { backdrop-filter: blur(4px); }
+
+/* Desktop density */
+@media (min-width: 1200px) {
+  .customer-search-card { padding: 28px; }
+  .customer-bus-list { gap: 16px; }
+  .booking-container { padding-block: 22px 40px; }
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .customer-hero-content { width: min(100% - 28px, 900px); }
+  .booking-container { width: min(100% - 24px, 900px); }
+  .customer-routes-grid,.customer-benefits-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+}
+
+/* Phone */
+@media (max-width: 768px) {
+  ion-toolbar { --min-height: 56px; }
+  .customer-navbar-menu { display: none !important; }
+  .customer-hero-content { width: calc(100% - 24px); }
+  .customer-search-card { border-radius: 20px; box-shadow: 0 14px 30px rgba(16,24,40,.11); }
+  .customer-routes-grid,.customer-benefits-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .customer-bus-card-main,.customer-bus-card-bottom { gap: 12px; }
+  .booking-container { width: calc(100% - 20px); }
+  .booking-stepper { margin-inline: -10px; padding-inline: 10px; overflow-x: auto; scrollbar-width: none; }
+  .booking-stepper::-webkit-scrollbar { display: none; }
+  .booking-point-grid,.booking-review-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .booking-actions,.confirmation-actions { position: sticky; bottom: 0; z-index: 10; background: rgba(246,247,251,.94); padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); backdrop-filter: blur(12px); }
+  .booking-actions > *, .confirmation-actions > * { min-height: 48px; }
+  .operator-sidebar { box-shadow: 12px 0 38px rgba(16,24,40,.12); }
+}
+
+@media (max-width: 480px) {
+  :root { --busgo-radius: 15px; --busgo-radius-lg: 20px; }
+  .customer-hero-content { width: calc(100% - 20px); }
+  .customer-search-card { padding: 14px !important; }
+  .customer-bus-card { border-radius: 16px; }
+  .customer-bus-card-main { flex-direction: column; align-items: stretch !important; }
+  .customer-bus-price { text-align: left !important; }
+  .booking-primary-button,.booking-secondary-button { width: 100%; }
+  .booking-dialog,.booking-manage-dialog { width: calc(100vw - 16px) !important; max-height: 88dvh; overflow-y: auto; border-radius: 18px !important; }
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Keep public BusGo web light-first for consistency; Ionic can still override per-page if explicitly themed. */
+}

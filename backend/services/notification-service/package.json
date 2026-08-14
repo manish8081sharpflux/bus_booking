@@ -1,0 +1,1 @@
+{"name":"notification-service","version":"1.0.0","private":true,"type":"commonjs","scripts":{"dev":"nodemon src/worker.js","start":"node src/worker.js"},"dependencies":{"dotenv":"^16.4.5","pg":"^8.13.1"},"devDependencies":{"nodemon":"^3.1.7"}}

@@ -1,0 +1,13 @@
+{
+    "version":  "0.1.0",
+    "name":  "@bus/event-contracts",
+    "main":  "./dist/index.js",
+    "scripts":  {
+                    "build":  "tsc -p tsconfig.json",
+                    "typecheck":  "tsc -p tsconfig.json --noEmit",
+                    "test":  "node --test dist/**/*.test.js"
+                },
+    "type":  "commonjs",
+    "types":  "./dist/index.d.ts",
+    "private":  true
+}

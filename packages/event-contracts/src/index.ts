@@ -1,0 +1,2 @@
+export interface EventEnvelope<T = unknown> { eventId: string; eventType: string; eventVersion: number; occurredAt: string; producer: string; requestId: string; aggregateType: string; aggregateId: string; payload: T; }
+export function assertEvent(event: EventEnvelope): void { for (const key of ['eventId','eventType','occurredAt','producer','requestId','aggregateType','aggregateId']) if (!event[key as keyof EventEnvelope]) throw new Error(`Invalid event: ${key}`); if (event.eventVersion < 1) throw new Error('Invalid event version'); }

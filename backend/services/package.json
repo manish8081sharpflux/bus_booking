@@ -1,0 +1,31 @@
+{
+  "name": "bus-booking-microservices",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "api-gateway",
+    "auth-service",
+    "booking-service",
+    "operator-service",
+    "search-service",
+    "tracking-service",
+    "consumers",
+    "notification-service",
+    "whatsapp-service"
+  ],
+  "scripts": {
+    "start:gateway": "npm --workspace api-gateway run dev",
+    "start:auth": "npm --workspace auth-service run dev",
+    "start:booking": "npm --workspace booking-service run dev",
+    "start:operator": "npm --workspace operator-service run dev",
+    "start:search": "npm --workspace search-service run dev",
+    "start:tracking": "npm --workspace tracking-service run dev",
+    "start:consumers": "npm --workspace consumers run dev",
+    "start:all": "npm run start:gateway & npm run start:auth & npm run start:booking & npm run start:operator & npm run start:search & npm run start:tracking & npm run start:consumers & npm run start:notifications & npm run start:whatsapp & wait",
+    "start:notifications": "npm --workspace notification-service run dev",
+    "start:whatsapp": "npm --workspace whatsapp-service run dev"
+  },
+  "dependencies": {
+    "cors": "^2.8.6"
+  }
+}

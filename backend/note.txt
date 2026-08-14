@@ -1,0 +1,32 @@
+
+npm run start:gateway &
+npm run start:auth &
+npm run start:booking &
+npm run start:search &
+npm run start:tracking &
+npm run start:consumers &
+npm run start:operator &
+wait
+
+npm run start:all
+
+
+ˇ
+npm run start:auth     
+npm run start:booking
+npm run start:search
+npm run start:tracking
+npm run start:consumers
+npm run start:operator
+
+npm run dev   
+
+brew services stop mongodb-community
+brew services restart mongodb-community
+
+
+mkdir operator-service
+cd operator-service
+npm init -y
+
+npm install express pg kafkajs dotenv cors

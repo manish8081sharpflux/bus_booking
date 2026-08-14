@@ -1,0 +1,1 @@
+export function eventually(assertion: () => void, attempts = 20): void { let error: unknown; for (let index = 0; index < attempts; index += 1) { try { assertion(); return; } catch (caught) { error = caught; } } throw error; }

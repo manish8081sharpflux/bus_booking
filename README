@@ -1,0 +1,38 @@
+
+# Bus Booking System
+
+## Tech Stack
+- Backend: Node.js + Express + MongoDB
+- Frontend: React (Vite)
+- Admin Panel: React (Vite)
+- Mobile: React Native (Expo)
+
+## Architecture
+- Clean Architecture (Backend)
+- Monorepo structure
+
+## Apps
+- /backend → API
+- /frontend → Web App
+- /admin-panel → Role-based Admin/Operator Panel
+- /mobile → Mobile App
+
+## Admin Panel (Role-wise)
+- Login/Register with roles: `ADMIN`, `OPERATOR`, `USER`
+- `ADMIN` can:
+  - View users (`/api/auth/users`)
+  - View and update operator status (`/api/operators/:id/status`)
+- `OPERATOR` can:
+  - View operators list (`/api/operators`)
+- `USER` can authenticate but has no admin-panel permissions
+
+## Required Backend Env Notes
+- In `auth-service` env:
+  - `ADMIN_CREATION_KEY=<your-secret>` (required to create ADMIN users)
+- In `api-gateway` env:
+  - `ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174`
+
+## Run Admin Panel
+1. `cd admin-panel`
+2. `npm install`
+3. `npm run dev`

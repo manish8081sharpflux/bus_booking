@@ -1,0 +1,28 @@
+name: Native Mobile Checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  android-ios-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install native app dependencies
+        working-directory: BusGoMobile
+        run: npm install --no-audit --no-fund
+      - name: Native smoke validation
+        working-directory: BusGoMobile
+        run: npm run validate
+      - name: Native TypeScript
+        working-directory: BusGoMobile
+        run: npm run typecheck
+      - name: Expo configuration validation
+        working-directory: BusGoMobile
+        run: npx expo config --type public

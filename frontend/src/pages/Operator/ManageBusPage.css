@@ -1,0 +1,1395 @@
+/* ============================================================
+   MANAGE BUS PAGE
+============================================================ */
+
+.manage-bus-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  background: #f5f7fb;
+}
+
+/* ============================================================
+   IONIC SCROLLING CONTENT
+============================================================ */
+
+.manage-bus-content {
+  --background: #f5f7fb;
+
+  position: relative;
+  flex: 1;
+  min-width: 0;
+
+  /*
+   * Keep this ONLY if OperatorSidebar is position: fixed.
+   * Width must match your sidebar width.
+   */
+  margin-left: 302px;
+}
+
+.manage-bus-content::part(scroll) {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   MAIN
+============================================================ */
+
+.manage-bus-main {
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+
+  padding:
+    40px
+    clamp(28px, 3.2vw, 52px)
+    80px;
+}
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.manage-bus-header {
+  width: 100%;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 32px;
+
+  margin-bottom: 28px;
+}
+
+.manage-bus-header-left {
+  flex: 1;
+  min-width: 0;
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 20px;
+}
+
+.manage-bus-back {
+  width: 56px;
+  height: 56px;
+
+  flex: 0 0 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #dce4ee;
+  border-radius: 17px;
+
+  background: #ffffff;
+  color: #172033;
+
+  cursor: pointer;
+
+  font-size: 25px;
+
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.manage-bus-back:hover {
+  transform: translateY(-1px);
+
+  border-color: #cbd5e1;
+
+  box-shadow:
+    0 8px 20px
+    rgba(15, 23, 42, 0.06);
+}
+
+.manage-bus-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.manage-bus-breadcrumb {
+  display: block;
+
+  margin: 3px 0 17px;
+
+  color: #8b9ab2;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.manage-bus-heading h1 {
+  margin: 0;
+
+  color: #121b2d;
+
+  font-size: clamp(34px, 3vw, 44px);
+  line-height: 1;
+
+  font-weight: 850;
+
+  letter-spacing: -1.5px;
+}
+
+.manage-bus-heading p {
+  max-width: 720px;
+
+  margin: 15px 0 0;
+
+  color: #73829c;
+
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   REFRESH BUTTON
+============================================================ */
+
+.manage-bus-refresh {
+  min-width: 128px;
+  height: 54px;
+
+  padding: 0 22px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 1px solid #dce4ee;
+  border-radius: 16px;
+
+  background: #ffffff;
+  color: #27344a;
+
+  font-size: 14px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.manage-bus-refresh ion-icon {
+  color: #f42f56;
+  font-size: 19px;
+}
+
+.manage-bus-refresh:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 8px 22px
+    rgba(15, 23, 42, 0.06);
+}
+
+.manage-bus-refresh:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ============================================================
+   ERROR
+============================================================ */
+
+.manage-bus-error {
+  width: 100%;
+
+  margin-bottom: 22px;
+  padding: 16px 18px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  border: 1px solid #fecdd3;
+  border-radius: 16px;
+
+  background: #fff1f3;
+}
+
+.manage-bus-error > div {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  color: #be123c;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.manage-bus-error ion-icon {
+  flex-shrink: 0;
+  font-size: 21px;
+}
+
+.manage-bus-error button {
+  padding: 9px 15px;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: #f42f56;
+  color: #ffffff;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+/* ============================================================
+   HERO
+============================================================ */
+
+.manage-bus-hero {
+  width: 100%;
+  min-height: 158px;
+
+  box-sizing: border-box;
+
+  padding: 27px 30px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 28px;
+
+  border: 1px solid #dde5ef;
+  border-radius: 23px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 8px 30px
+    rgba(15, 23, 42, 0.04);
+}
+
+.manage-bus-hero-left {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 22px;
+}
+
+.manage-bus-avatar {
+  width: 88px;
+  height: 88px;
+
+  flex: 0 0 88px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 23px;
+
+  background: #fff0f3;
+  color: #f42f56;
+}
+
+.manage-bus-avatar ion-icon {
+  font-size: 42px;
+}
+
+.manage-bus-identity {
+  min-width: 0;
+}
+
+.manage-bus-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 12px;
+}
+
+.manage-bus-name-row h2 {
+  margin: 0;
+
+  color: #121b2d;
+
+  font-size: 29px;
+  line-height: 1.1;
+
+  font-weight: 850;
+
+  letter-spacing: -0.8px;
+}
+
+.manage-bus-registration {
+  display: block;
+
+  margin-top: 10px;
+
+  color: #71819c;
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   STATUS
+============================================================ */
+
+.manage-bus-status {
+  padding: 7px 12px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 850;
+
+  letter-spacing: 0.25px;
+}
+
+.manage-bus-status.active,
+.manage-bus-status.approved {
+  background: #ddf8ed;
+  color: #07865f;
+}
+
+.manage-bus-status.pending,
+.manage-bus-status.pending_approval,
+.manage-bus-status.under_review {
+  background: #fff5d8;
+  color: #a86700;
+}
+
+.manage-bus-status.rejected,
+.manage-bus-status.inactive {
+  background: #ffe4e9;
+  color: #c81e45;
+}
+
+/* ============================================================
+   TAGS
+============================================================ */
+
+.manage-bus-tags {
+  margin-top: 14px;
+
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 8px;
+}
+
+.manage-bus-tags span {
+  padding: 7px 11px;
+
+  border: 1px solid #dfe6ef;
+  border-radius: 9px;
+
+  background: #f8fafc;
+  color: #58677e;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   CREATE TRIP
+============================================================ */
+
+.manage-bus-hero-actions {
+  display: flex;
+  align-items: center;
+}
+
+.manage-bus-trip-button {
+  height: 54px;
+
+  padding: 0 24px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 0;
+  border-radius: 15px;
+
+  background: #f42f56;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 24px
+    rgba(244, 47, 86, 0.21);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.manage-bus-trip-button ion-icon {
+  font-size: 18px;
+}
+
+.manage-bus-trip-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 14px 28px
+    rgba(244, 47, 86, 0.26);
+}
+
+.manage-bus-trip-button:disabled {
+  background: #f4a6b5;
+
+  cursor: not-allowed;
+
+  box-shadow: none;
+}
+
+/* ============================================================
+   VERIFICATION NOTICE
+============================================================ */
+
+.manage-bus-notice {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin-top: 18px;
+
+  padding: 17px 20px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+
+  background: #fffbeb;
+}
+
+.manage-bus-notice-icon {
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #fef3c7;
+  color: #b77900;
+}
+
+.manage-bus-notice-icon ion-icon {
+  font-size: 22px;
+}
+
+.manage-bus-notice strong {
+  color: #563b00;
+
+  font-size: 14px;
+}
+
+.manage-bus-notice p {
+  margin: 4px 0 0;
+
+  color: #8a681d;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   STATS
+============================================================ */
+
+.manage-bus-stats {
+  width: 100%;
+
+  margin-top: 20px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+.manage-bus-stat {
+  min-width: 0;
+  min-height: 118px;
+
+  box-sizing: border-box;
+
+  padding: 20px 22px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+
+  border: 1px solid #dde5ef;
+  border-radius: 20px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 5px 20px
+    rgba(15, 23, 42, 0.025);
+}
+
+.manage-bus-stat-icon {
+  width: 55px;
+  height: 55px;
+
+  flex: 0 0 55px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+}
+
+.manage-bus-stat-icon ion-icon {
+  font-size: 27px;
+}
+
+.manage-bus-stat-icon.pink {
+  background: #fff0f3;
+  color: #f42f56;
+}
+
+.manage-bus-stat-icon.blue {
+  background: #edf4ff;
+  color: #4777e6;
+}
+
+.manage-bus-stat-icon.green {
+  background: #e9f9f3;
+  color: #0b9c72;
+}
+
+.manage-bus-stat-copy {
+  min-width: 0;
+}
+
+.manage-bus-stat-copy strong {
+  display: block;
+
+  color: #121b2d;
+
+  font-size: 28px;
+  line-height: 1;
+
+  font-weight: 850;
+}
+
+.manage-bus-stat-copy span {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #7b8aa3;
+
+  font-size: 13px;
+}
+
+/* ============================================================
+   CONTENT GRID
+============================================================ */
+
+.manage-bus-grid {
+  width: 100%;
+
+  margin-top: 22px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.15fr)
+    minmax(360px, 0.85fr);
+
+  gap: 20px;
+
+  align-items: start;
+}
+
+/* ============================================================
+   CARDS
+============================================================ */
+
+.manage-bus-card {
+  width: 100%;
+  min-width: 0;
+
+  box-sizing: border-box;
+
+  padding: 25px;
+
+  border: 1px solid #dde5ef;
+  border-radius: 21px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 5px 20px
+    rgba(15, 23, 42, 0.025);
+}
+
+.manage-bus-card.full {
+  grid-column: 1 / -1;
+}
+
+.manage-bus-card-title {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  margin-bottom: 22px;
+}
+
+.manage-bus-card-icon {
+  width: 50px;
+  height: 50px;
+
+  flex: 0 0 50px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 15px;
+}
+
+.manage-bus-card-icon ion-icon {
+  font-size: 24px;
+}
+
+.manage-bus-card-icon.pink {
+  background: #fff0f3;
+  color: #f42f56;
+}
+
+.manage-bus-card-icon.blue {
+  background: #edf4ff;
+  color: #4777e6;
+}
+
+.manage-bus-card-icon.green {
+  background: #e9f9f3;
+  color: #07976d;
+}
+
+.manage-bus-card-title h3 {
+  margin: 0;
+
+  color: #172033;
+
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.manage-bus-card-title p {
+  margin: 5px 0 0;
+
+  color: #8b99ae;
+
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   VEHICLE DETAILS
+============================================================ */
+
+.manage-bus-details-list {
+  margin: 0;
+}
+
+.manage-bus-details-list > div {
+  min-height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 25px;
+
+  border-bottom: 1px solid #edf1f6;
+}
+
+.manage-bus-details-list > div:last-child {
+  border-bottom: 0;
+}
+
+.manage-bus-details-list dt {
+  color: #8290a6;
+
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.manage-bus-details-list dd {
+  margin: 0;
+
+  color: #263249;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  text-align: right;
+}
+
+/* ============================================================
+   SEAT CONFIGURATION
+============================================================ */
+
+.manage-bus-seat-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.manage-bus-info-tile {
+  min-height: 92px;
+
+  box-sizing: border-box;
+
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  border: 1px solid #e4eaf2;
+  border-radius: 14px;
+
+  background: #fafbfd;
+}
+
+.manage-bus-info-tile span {
+  color: #8997ad;
+
+  font-size: 10px;
+  font-weight: 850;
+
+  letter-spacing: 0.4px;
+}
+
+.manage-bus-info-tile strong {
+  display: block;
+
+  margin-top: 9px;
+
+  color: #182238;
+
+  font-size: 15px;
+  line-height: 1.35;
+
+  font-weight: 850;
+}
+
+/* ============================================================
+   COMPLIANCE
+============================================================ */
+
+.manage-bus-compliance-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.manage-bus-compliance-item {
+  min-width: 0;
+
+  padding: 16px;
+
+  border: 1px solid #e5eaf1;
+  border-radius: 14px;
+
+  background: #fafbfd;
+}
+
+.manage-bus-compliance-item span {
+  display: block;
+
+  color: #8b99ad;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.manage-bus-compliance-item strong {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #1e293b;
+
+  font-size: 14px;
+  line-height: 1.4;
+
+  font-weight: 800;
+
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   DOCUMENTS
+============================================================ */
+
+.manage-bus-documents {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.manage-bus-documents article {
+  min-width: 0;
+
+  padding: 15px 16px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+
+  border: 1px solid #e4eaf2;
+  border-radius: 14px;
+
+  background: #fafbfd;
+}
+
+.manage-bus-document-icon {
+  width: 42px;
+  height: 42px;
+
+  flex: 0 0 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #edf4ff;
+  color: #4777e6;
+}
+
+.manage-bus-document-icon ion-icon {
+  font-size: 21px;
+}
+
+.manage-bus-document-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.manage-bus-document-copy strong {
+  display: block;
+
+  color: #202b40;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.manage-bus-document-copy span {
+  display: block;
+
+  margin-top: 4px;
+
+  overflow: hidden;
+
+  color: #8a98ad;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manage-bus-documents article a {
+  flex-shrink: 0;
+
+  padding: 8px 12px;
+
+  border: 1px solid #ffd0da;
+  border-radius: 9px;
+
+  color: #ef3155;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  text-decoration: none;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.manage-bus-documents article a:hover {
+  background: #f42f56;
+  color: #ffffff;
+}
+
+/* ============================================================
+   EMPTY
+============================================================ */
+
+.manage-bus-empty {
+  min-height: 100px;
+
+  padding: 20px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  border: 1px dashed #dce4ee;
+  border-radius: 14px;
+
+  background: #fafbfd;
+
+  color: #8997aa;
+}
+
+.manage-bus-empty > ion-icon {
+  flex-shrink: 0;
+
+  color: #a5b1c3;
+
+  font-size: 28px;
+}
+
+.manage-bus-empty strong {
+  display: block;
+
+  color: #4c5b71;
+
+  font-size: 13px;
+}
+
+.manage-bus-empty p {
+  margin: 4px 0 0;
+
+  color: #94a0b2;
+
+  font-size: 12px;
+}
+
+/* ============================================================
+   LOADING
+============================================================ */
+
+.manage-bus-loading {
+  width: 100%;
+}
+
+.manage-bus-loading-card {
+  min-height: 150px;
+
+  padding: 26px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 20px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #e3e9f1;
+  border-radius: 22px;
+
+  background: #ffffff;
+}
+
+.manage-bus-loading-copy {
+  flex: 1;
+}
+
+.manage-bus-skeleton {
+  position: relative;
+
+  overflow: hidden;
+
+  border-radius: 8px;
+
+  background: #edf1f6;
+}
+
+.manage-bus-skeleton::after {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  transform: translateX(-100%);
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.75),
+      transparent
+    );
+
+  animation:
+    manage-bus-shimmer
+    1.4s
+    infinite;
+}
+
+.manage-bus-skeleton.avatar {
+  width: 82px;
+  height: 82px;
+
+  flex: 0 0 82px;
+
+  border-radius: 20px;
+}
+
+.manage-bus-skeleton.title {
+  width: 180px;
+  height: 24px;
+}
+
+.manage-bus-skeleton.line {
+  width: 280px;
+  max-width: 70%;
+  height: 13px;
+
+  margin-top: 14px;
+}
+
+.manage-bus-skeleton.short {
+  width: 190px;
+  max-width: 50%;
+  height: 13px;
+
+  margin-top: 10px;
+}
+
+.manage-bus-loading-stats {
+  margin-top: 20px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+.manage-bus-skeleton.block {
+  height: 118px;
+
+  border-radius: 20px;
+}
+
+@keyframes manage-bus-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ============================================================
+   EXTRA BOTTOM SCROLL SPACE
+============================================================ */
+
+.manage-bus-main::after {
+  content: '';
+
+  display: block;
+
+  width: 100%;
+  height: 20px;
+}
+
+/* ============================================================
+   LARGE TABLET
+============================================================ */
+
+@media (max-width: 1200px) {
+  .manage-bus-main {
+    padding:
+      32px
+      28px
+      70px;
+  }
+
+  .manage-bus-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(330px, 0.9fr);
+  }
+
+  .manage-bus-compliance-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (max-width: 1050px) {
+  /*
+   * Change 270px if your responsive OperatorSidebar
+   * has a different width.
+   */
+  .manage-bus-content {
+    margin-left: 270px;
+  }
+
+  .manage-bus-main {
+    padding:
+      28px
+      24px
+      70px;
+  }
+
+  .manage-bus-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-bus-card.full {
+    grid-column: auto;
+  }
+
+  .manage-bus-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-bus-hero-actions {
+    justify-content: flex-end;
+  }
+
+  .manage-bus-stats {
+    gap: 12px;
+  }
+
+  .manage-bus-stat {
+    padding: 17px;
+  }
+}
+
+/* ============================================================
+   SMALL TABLET / MOBILE
+============================================================ */
+
+@media (max-width: 800px) {
+  /*
+   * This assumes your sidebar becomes a drawer/mobile
+   * navigation below this breakpoint.
+   */
+  .manage-bus-content {
+    margin-left: 0;
+  }
+
+  .manage-bus-main {
+    padding:
+      22px
+      16px
+      90px;
+  }
+
+  .manage-bus-header {
+    gap: 15px;
+  }
+
+  .manage-bus-header-left {
+    gap: 12px;
+  }
+
+  .manage-bus-back {
+    width: 46px;
+    height: 46px;
+
+    flex-basis: 46px;
+
+    border-radius: 14px;
+  }
+
+  .manage-bus-heading h1 {
+    font-size: 30px;
+  }
+
+  .manage-bus-heading p {
+    font-size: 13px;
+  }
+
+  .manage-bus-refresh {
+    min-width: 48px;
+    width: 48px;
+    height: 48px;
+
+    padding: 0;
+  }
+
+  .manage-bus-refresh span {
+    display: none;
+  }
+
+  .manage-bus-hero {
+    padding: 22px;
+  }
+
+  .manage-bus-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-bus-documents {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-bus-compliance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 560px) {
+  .manage-bus-header {
+    margin-bottom: 20px;
+  }
+
+  .manage-bus-breadcrumb {
+    margin-bottom: 11px;
+
+    font-size: 11px;
+  }
+
+  .manage-bus-heading h1 {
+    font-size: 27px;
+  }
+
+  .manage-bus-heading p {
+    margin-top: 9px;
+  }
+
+  .manage-bus-hero {
+    min-height: auto;
+
+    grid-template-columns: 1fr;
+
+    padding: 20px;
+
+    border-radius: 18px;
+  }
+
+  .manage-bus-hero-left {
+    align-items: flex-start;
+
+    gap: 14px;
+  }
+
+  .manage-bus-avatar {
+    width: 62px;
+    height: 62px;
+
+    flex-basis: 62px;
+
+    border-radius: 17px;
+  }
+
+  .manage-bus-avatar ion-icon {
+    font-size: 31px;
+  }
+
+  .manage-bus-name-row h2 {
+    font-size: 22px;
+  }
+
+  .manage-bus-registration {
+    font-size: 12px;
+  }
+
+  .manage-bus-hero-actions {
+    width: 100%;
+  }
+
+  .manage-bus-trip-button {
+    width: 100%;
+  }
+
+  .manage-bus-seat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-bus-card {
+    padding: 19px;
+
+    border-radius: 17px;
+  }
+
+  .manage-bus-details-list > div {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 5px;
+
+    padding: 13px 0;
+  }
+
+  .manage-bus-details-list dd {
+    text-align: left;
+  }
+
+  .manage-bus-error {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,50 @@
+/* BusGo Admin — final responsive polish */
+:root {
+  --busgo-page-max: 1600px;
+  --busgo-shadow-sm: 0 5px 16px rgba(15, 23, 42, .055);
+  --busgo-shadow-md: 0 18px 42px rgba(15, 23, 42, .09);
+}
+html, body { overflow-x: hidden; }
+body { background: #f6f7fb; }
+.wrapper, main, [role='main'], .container-fixed, .container-fluid { min-width: 0; }
+[data-slot='card'], .card {
+  border-color: #e7ebf1 !important;
+  border-radius: 16px !important;
+  box-shadow: var(--busgo-shadow-sm);
+}
+input, textarea, select, [data-slot='input'], [data-slot='textarea'], [data-slot='select-trigger'] { border-radius: 10px !important; }
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(225,29,72,.10) !important;
+  border-color: rgba(225,29,72,.65) !important;
+}
+button, [data-slot='button'] { min-height: 38px; border-radius: 10px; }
+.sidebar { box-shadow: 8px 0 28px rgba(15,23,42,.035); }
+.header { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+[data-slot='table-container'], .table-responsive, .overflow-x-auto {
+  max-width: 100%; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch;
+}
+table { min-width: 0; }
+thead tr { background: #fafbfc; }
+thead th { color: #667085; font-size: 12px; font-weight: 750; letter-spacing: .02em; }
+tbody tr { transition: background-color .15s ease; }
+tbody tr:hover { background: #fff8fa; }
+.admin-ops-page, .admin-dashboard-page, .bus-verification-page { width: 100%; max-width: var(--busgo-page-max); margin-inline: auto; }
+[role='dialog'] { max-width: min(calc(100vw - 32px), 720px); max-height: min(88dvh, 900px); }
+@media (min-width: 1280px) { .content { padding-top: 22px; padding-bottom: 34px; } }
+@media (max-width: 1024px) {
+  .content { padding-inline: 18px !important; }
+  .grid.grid-cols-4, .grid.grid-cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+}
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+  .content { padding-inline: 12px !important; }
+  .grid.grid-cols-4, .grid.grid-cols-3, .grid.grid-cols-2 { grid-template-columns: minmax(0,1fr) !important; }
+  [role='dialog'] { width: calc(100vw - 16px) !important; max-width: none !important; max-height: 90dvh; overflow-y: auto; border-radius: 18px !important; }
+  .page-header, .admin-page-header, .toolbar-actions { align-items: flex-start !important; flex-wrap: wrap !important; gap: 10px !important; }
+}
+@media (max-width: 480px) {
+  .content { padding-inline: 10px !important; }
+  [data-slot='card'], .card { border-radius: 14px !important; }
+  .btn, button, [data-slot='button'] { min-height: 42px; }
+}

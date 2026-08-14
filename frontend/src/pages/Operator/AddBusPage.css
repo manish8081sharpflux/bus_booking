@@ -1,0 +1,961 @@
+/* =========================================================
+   ADD BUS PAGE
+   ========================================================= */
+
+:root {
+  --add-bus-bg: #f6f8fc;
+  --add-bus-card: #ffffff;
+
+  --add-bus-text: #0f172a;
+  --add-bus-secondary: #64748b;
+  --add-bus-muted: #94a3b8;
+
+  --add-bus-border: #dce4ee;
+  --add-bus-border-soft: #edf1f5;
+
+  --add-bus-primary: #e52f4f;
+  --add-bus-primary-dark: #cf2745;
+  --add-bus-primary-light: #fff1f3;
+
+  --add-bus-danger: #dc2626;
+}
+
+/* =========================================================
+   PAGE
+   ========================================================= */
+
+.add-bus-page {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 28px 34px 48px;
+
+  background:
+    var(--add-bus-bg);
+
+  color:
+    var(--add-bus-text);
+
+  box-sizing: border-box;
+}
+
+.add-bus-page *,
+.add-bus-page *::before,
+.add-bus-page *::after {
+  box-sizing: border-box;
+}
+
+.add-bus-container {
+  width: 100%;
+  max-width: 1240px;
+
+  margin: 0 auto;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.add-bus-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+
+  margin-bottom: 30px;
+}
+
+.add-bus-back-button {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 1px;
+
+  padding: 0;
+
+  border:
+    1px solid
+    var(--add-bus-border);
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font-size: 22px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 5px
+    rgba(15, 23, 42, 0.05);
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.add-bus-back-button:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.add-bus-back-button:active {
+  transform:
+    translateY(1px);
+}
+
+.add-bus-heading {
+  min-width: 0;
+}
+
+.add-bus-eyebrow {
+  margin: 0;
+
+  color:
+    var(--add-bus-secondary);
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.add-bus-title {
+  margin: 8px 0 0;
+
+  color:
+    var(--add-bus-text);
+
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 750;
+
+  letter-spacing: -0.7px;
+}
+
+.add-bus-subtitle {
+  margin: 10px 0 0;
+
+  color:
+    var(--add-bus-secondary);
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   STEPS
+   ========================================================= */
+
+.add-bus-steps {
+  display: grid;
+
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+
+  gap: 12px;
+
+  margin-bottom: 30px;
+}
+
+.add-bus-step {
+  min-width: 0;
+  min-height: 78px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 14px 15px;
+
+  border:
+    1px solid
+    var(--add-bus-border);
+
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.add-bus-step-number {
+  margin: 0;
+
+  color:
+    var(--add-bus-muted);
+
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 750;
+
+  letter-spacing: 0.3px;
+}
+
+.add-bus-step-title {
+  margin: 8px 0 0;
+
+  overflow: hidden;
+
+  color: #475569;
+
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 650;
+
+  text-overflow: ellipsis;
+}
+
+.add-bus-step.active {
+  border-color: #fecdd3;
+
+  background:
+    var(--add-bus-primary-light);
+}
+
+.add-bus-step.active
+.add-bus-step-number {
+  color:
+    var(--add-bus-primary);
+}
+
+.add-bus-step.active
+.add-bus-step-title {
+  color:
+    var(--add-bus-text);
+}
+
+.add-bus-step.completed {
+  border-color: #a7f3d0;
+
+  background: #ecfdf5;
+}
+
+.add-bus-step.completed
+.add-bus-step-number {
+  color: #059669;
+}
+
+.add-bus-step.completed
+.add-bus-step-title {
+  color: #047857;
+}
+
+/* =========================================================
+   MAIN CARD
+   ========================================================= */
+
+.add-bus-card {
+  overflow: hidden;
+
+  border:
+    1px solid
+    var(--add-bus-border);
+
+  border-radius: 18px;
+
+  background:
+    var(--add-bus-card);
+
+  box-shadow:
+    0 3px 10px
+    rgba(15, 23, 42, 0.04);
+}
+
+/* =========================================================
+   CARD HEADER
+   ========================================================= */
+
+.add-bus-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  padding: 24px 28px;
+
+  border-bottom:
+    1px solid
+    var(--add-bus-border-soft);
+}
+
+.add-bus-card-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 14px;
+
+  background:
+    var(--add-bus-primary-light);
+
+  color:
+    var(--add-bus-primary);
+
+  font-size: 22px;
+}
+
+.add-bus-card-title {
+  margin: 0;
+
+  color:
+    var(--add-bus-text);
+
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 720;
+
+  letter-spacing: -0.3px;
+}
+
+.add-bus-card-subtitle {
+  margin: 6px 0 0;
+
+  color:
+    var(--add-bus-secondary);
+
+  font-size: 13px;
+}
+
+/* =========================================================
+   FORM GRID
+   ========================================================= */
+
+.add-bus-form-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap:
+    27px
+    22px;
+
+  padding:
+    30px
+    28px
+    26px;
+}
+
+.add-bus-field {
+  min-width: 0;
+}
+
+/* =========================================================
+   FLOATING INPUT
+   ========================================================= */
+
+.add-bus-floating-control {
+  position: relative;
+
+  width: 100%;
+}
+
+.add-bus-floating-control input {
+  width: 100%;
+  height: 62px;
+
+  display: block;
+
+  padding:
+    12px
+    17px
+    0;
+
+  border:
+    1px solid
+    #cfd9e6;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color:
+    var(--add-bus-text);
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 450;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.add-bus-floating-control input:hover {
+  border-color: #aebdcd;
+}
+
+.add-bus-floating-control input:focus {
+  border-color:
+    var(--add-bus-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(229, 47, 79, 0.07);
+}
+
+.add-bus-floating-control label {
+  position: absolute;
+
+  left: 13px;
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  max-width:
+    calc(100% - 28px);
+
+  padding:
+    0
+    5px;
+
+  overflow: hidden;
+
+  background: #ffffff;
+
+  color:
+    #475569;
+
+  font-size: 15px;
+  font-weight: 450;
+
+  line-height: 1;
+
+  pointer-events: none;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  transition:
+    top 0.15s ease,
+    transform 0.15s ease,
+    font-size 0.15s ease,
+    color 0.15s ease;
+}
+
+/*
+ * Floating state
+ */
+
+.add-bus-floating-control
+input:focus + label,
+.add-bus-floating-control
+input:not(:placeholder-shown) + label {
+  top: 0;
+
+  transform:
+    translateY(-50%);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-bus-floating-control
+input:focus + label {
+  color:
+    var(--add-bus-primary);
+}
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+.add-bus-select-control {
+  position: relative;
+
+  width: 100%;
+}
+
+.add-bus-select-control select {
+  width: 100%;
+  height: 62px;
+
+  display: block;
+
+  padding:
+    5px
+    46px
+    0
+    17px;
+
+  border:
+    1px solid
+    #cfd9e6;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  appearance: none;
+
+  background: #ffffff;
+
+  color:
+    var(--add-bus-text);
+
+  font-family: inherit;
+  font-size: 15px;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.add-bus-select-control select:hover {
+  border-color: #aebdcd;
+}
+
+.add-bus-select-control select:focus {
+  border-color:
+    var(--add-bus-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(229, 47, 79, 0.07);
+}
+
+.add-bus-select-control label {
+  position: absolute;
+
+  left: 13px;
+  top: 0;
+
+  transform:
+    translateY(-50%);
+
+  z-index: 2;
+
+  padding:
+    0
+    5px;
+
+  background: #ffffff;
+
+  color:
+    #64748b;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+.add-bus-select-control:focus-within
+label {
+  color:
+    var(--add-bus-primary);
+}
+
+.add-bus-select-arrow {
+  position: absolute;
+
+  right: 16px;
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  color: #64748b;
+
+  font-size: 11px;
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   REQUIRED
+   ========================================================= */
+
+.add-bus-required {
+  color:
+    var(--add-bus-primary);
+}
+
+/* =========================================================
+   ERRORS
+   ========================================================= */
+
+.add-bus-floating-control.error
+input,
+.add-bus-select-control.error
+select {
+  border-color:
+    #ef4444;
+}
+
+.add-bus-floating-control.error
+label,
+.add-bus-select-control.error
+label {
+  color:
+    #dc2626;
+}
+
+.add-bus-floating-control.error
+input:focus,
+.add-bus-select-control.error
+select:focus {
+  border-color:
+    #dc2626;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(220, 38, 38, 0.08);
+}
+
+.add-bus-field-error {
+  margin:
+    6px
+    4px
+    0;
+
+  color:
+    var(--add-bus-danger);
+
+  font-size: 11px;
+  font-weight: 550;
+}
+
+/* =========================================================
+   INFO
+   ========================================================= */
+
+.add-bus-info-box {
+  margin:
+    0
+    28px
+    24px;
+
+  padding:
+    13px
+    15px;
+
+  border:
+    1px solid
+    #bfdbfe;
+
+  border-radius: 10px;
+
+  background:
+    #eff6ff;
+
+  color:
+    #1e40af;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   FORM ERROR
+   ========================================================= */
+
+.add-bus-form-error {
+  margin:
+    0
+    28px
+    24px;
+
+  padding:
+    13px
+    15px;
+
+  border:
+    1px solid
+    #fecaca;
+
+  border-radius: 10px;
+
+  background:
+    #fef2f2;
+
+  color:
+    #dc2626;
+
+  font-size: 13px;
+  font-weight: 550;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.add-bus-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  padding:
+    18px
+    28px;
+
+  border-top:
+    1px solid
+    var(--add-bus-border-soft);
+
+  background:
+    #ffffff;
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.add-bus-button {
+  min-height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding:
+    0
+    18px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.add-bus-button ion-icon {
+  font-size: 16px;
+}
+
+.add-bus-button.secondary {
+  border:
+    1px solid
+    #cbd5e1;
+
+  background: #ffffff;
+
+  color: #475569;
+}
+
+.add-bus-button.secondary:hover {
+  border-color: #94a3b8;
+
+  background: #f8fafc;
+}
+
+.add-bus-button.primary {
+  border:
+    1px solid
+    var(--add-bus-primary);
+
+  background:
+    var(--add-bus-primary);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 12px
+    rgba(229, 47, 79, 0.16);
+}
+
+.add-bus-button.primary:hover {
+  border-color:
+    var(--add-bus-primary-dark);
+
+  background:
+    var(--add-bus-primary-dark);
+}
+
+.add-bus-button:active {
+  transform:
+    translateY(1px);
+}
+
+.add-bus-section-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 0 4px;
+  border-top: 1px solid #e4eaf3;
+  color: #111b32;
+}
+
+.add-bus-section-heading span { font-size: 18px; font-weight: 800; }
+.add-bus-section-heading small { color: #71819a; font-size: 13px; }
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (
+  max-width: 1100px
+) {
+  .add-bus-page {
+    padding:
+      26px
+      24px
+      42px;
+  }
+
+  .add-bus-steps {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+@media (
+  max-width: 780px
+) {
+  .add-bus-page {
+    padding:
+      20px
+      16px
+      34px;
+  }
+
+  .add-bus-header {
+    margin-bottom: 24px;
+  }
+
+  .add-bus-title {
+    font-size: 28px;
+  }
+
+  .add-bus-form-grid {
+    grid-template-columns:
+      1fr;
+
+    gap: 24px;
+
+    padding:
+      25px
+      20px;
+  }
+
+  .add-bus-card-header {
+    padding:
+      22px
+      20px;
+  }
+
+  .add-bus-info-box,
+  .add-bus-form-error {
+    margin:
+      0
+      20px
+      20px;
+  }
+
+  .add-bus-footer {
+    padding:
+      17px
+      20px;
+  }
+}
+
+@media (
+  max-width: 560px
+) {
+  .add-bus-page {
+    padding:
+      16px
+      12px
+      28px;
+  }
+
+  .add-bus-header {
+    gap: 12px;
+  }
+
+  .add-bus-back-button {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
+
+  .add-bus-title {
+    font-size: 25px;
+  }
+
+  .add-bus-subtitle {
+    font-size: 13px;
+  }
+
+  .add-bus-steps {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+
+    gap: 9px;
+  }
+
+  .add-bus-step {
+    min-height: 68px;
+
+    padding:
+      12px;
+  }
+
+  .add-bus-step-title {
+    font-size: 13px;
+  }
+
+  .add-bus-card {
+    border-radius: 14px;
+  }
+
+  .add-bus-card-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
+
+  .add-bus-card-title {
+    font-size: 19px;
+  }
+
+  .add-bus-footer {
+    flex-direction: column-reverse;
+  }
+
+  .add-bus-button {
+    width: 100%;
+  }
+}

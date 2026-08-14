@@ -1,0 +1,833 @@
+/* =========================================================
+   ADD BUS - AMENITIES PAGE
+========================================================= */
+
+.amenities-page {
+    min-height: 100%;
+    background: #f6f8fc;
+    padding: 28px 42px 38px;
+    color: #101828;
+}
+
+.amenities-container {
+    width: 100%;
+    max-width: 1420px;
+    margin: 0 auto;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.amenities-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.amenities-back-icon {
+    width: 52px;
+    height: 52px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    background: #ffffff;
+    color: #344054;
+
+    font-size: 22px;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 2px 5px rgba(16, 24, 40, 0.06);
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.amenities-back-icon:hover {
+    border-color: #ef334f;
+    color: #ef334f;
+    background: #fff8f9;
+    transform: translateX(-2px);
+}
+
+
+.amenities-heading {
+    padding-top: 1px;
+}
+
+.amenities-bus-name {
+    margin-bottom: 7px;
+
+    color: #667085;
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.amenities-heading h1 {
+    margin: 0;
+
+    color: #101828;
+
+    font-size: 32px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.amenities-heading p {
+    margin: 9px 0 0;
+
+    color: #667085;
+
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+.bus-progress {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
+
+    margin-bottom: 32px;
+}
+
+.bus-step {
+    min-height: 86px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 16px 18px;
+
+    background: #ffffff;
+
+    border: 1px solid #dfe5ee;
+    border-radius: 14px;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.bus-step-number {
+    margin-bottom: 8px;
+
+    color: #98a2b3;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.bus-step-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    color: #475467;
+
+    font-size: 15px;
+    font-weight: 650;
+}
+
+.bus-step-title ion-icon {
+    font-size: 18px;
+}
+
+
+/* Completed */
+
+.bus-step.completed {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+}
+
+.bus-step.completed .bus-step-number {
+    color: #059669;
+}
+
+.bus-step.completed .bus-step-title {
+    color: #047857;
+}
+
+
+/* Active */
+
+.bus-step.active {
+    border-color: #fda4af;
+    background: #fff1f3;
+
+    box-shadow:
+        0 0 0 1px rgba(239, 51, 79, 0.04);
+}
+
+.bus-step.active .bus-step-number {
+    color: #ef334f;
+}
+
+.bus-step.active .bus-step-title {
+    color: #101828;
+}
+
+
+/* =========================================================
+   MAIN CARD
+========================================================= */
+
+.amenities-card {
+    overflow: hidden;
+
+    background: #ffffff;
+
+    border: 1px solid #e1e6ee;
+    border-radius: 20px;
+
+    box-shadow:
+        0 2px 5px rgba(16, 24, 40, 0.04),
+        0 8px 20px rgba(16, 24, 40, 0.03);
+}
+
+
+/* =========================================================
+   CARD HEADER
+========================================================= */
+
+.amenities-card-header {
+    min-height: 115px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+
+    padding: 28px 30px;
+
+    border-bottom: 1px solid #e8edf3;
+}
+
+.amenities-card-header h2 {
+    margin: 0;
+
+    color: #101828;
+
+    font-size: 25px;
+    font-weight: 700;
+}
+
+.amenities-card-header p {
+    margin: 7px 0 0;
+
+    color: #667085;
+
+    font-size: 15px;
+}
+
+
+.amenities-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+
+.selected-count {
+    min-width: 82px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    padding: 9px 14px;
+
+    border: 1px solid #e4e7ec;
+    border-radius: 12px;
+
+    background: #f9fafb;
+}
+
+.selected-count strong {
+    color: #ef334f;
+
+    font-size: 20px;
+    line-height: 1;
+}
+
+.selected-count span {
+    margin-top: 4px;
+
+    color: #667085;
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+.clear-amenities {
+    border: none;
+    background: transparent;
+
+    color: #ef334f;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.clear-amenities:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================================
+   AMENITY GRID
+========================================================= */
+
+.amenities-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 16px;
+
+    padding: 28px 30px 32px;
+}
+
+
+/* =========================================================
+   AMENITY ITEM
+========================================================= */
+
+.amenity-item {
+    position: relative;
+
+    min-height: 112px;
+
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+
+    padding: 18px;
+
+    text-align: left;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+
+    background: #ffffff;
+
+    cursor: pointer;
+
+    outline: none;
+
+    transition:
+        border-color 0.18s ease,
+        background 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.18s ease;
+}
+
+.amenity-item:hover {
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 5px 16px rgba(16, 24, 40, 0.06);
+
+    transform: translateY(-1px);
+}
+
+
+/* Selected */
+
+.amenity-item.selected {
+    border-color: #ef334f;
+
+    background: #fff5f6;
+
+    box-shadow:
+        0 0 0 2px rgba(239, 51, 79, 0.08);
+}
+
+
+/* =========================================================
+   ICON
+========================================================= */
+
+.amenity-icon {
+    width: 48px;
+    height: 48px;
+
+    flex: 0 0 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background: #f1f5f9;
+    color: #64748b;
+
+    font-size: 23px;
+
+    transition:
+        background 0.18s ease,
+        color 0.18s ease;
+}
+
+
+.amenity-item.selected .amenity-icon {
+    background: #ef334f;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   AMENITY TEXT
+========================================================= */
+
+.amenity-info {
+    min-width: 0;
+    flex: 1;
+
+    padding-top: 2px;
+}
+
+.amenity-info h3 {
+    margin: 0;
+    padding-right: 28px;
+
+    color: #101828;
+
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.3;
+}
+
+.amenity-info p {
+    margin: 8px 0 0;
+
+    color: #667085;
+
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+
+/* =========================================================
+   CHECK CIRCLE
+========================================================= */
+
+.amenity-check {
+    position: absolute;
+    top: 17px;
+    right: 17px;
+
+    width: 22px;
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1.5px solid #cbd5e1;
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    color: #ffffff;
+
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease;
+}
+
+.amenity-check.checked {
+    border-color: #ef334f;
+    background: #ef334f;
+}
+
+.amenity-check ion-icon {
+    font-size: 15px;
+    stroke-width: 3;
+}
+
+
+/* =========================================================
+   INFORMATION BOX
+========================================================= */
+
+.amenities-information {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+
+    margin-top: 20px;
+
+    padding: 15px 18px;
+
+    border: 1px solid #f6d365;
+    border-radius: 13px;
+
+    background: #fffbeb;
+}
+
+
+.amenities-info-icon {
+    width: 25px;
+    height: 25px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #f59e0b;
+    color: #ffffff;
+
+    font-size: 14px;
+    font-weight: 800;
+}
+
+
+.amenities-information strong {
+    display: block;
+
+    color: #92400e;
+
+    font-size: 14px;
+}
+
+
+.amenities-information p {
+    margin: 3px 0 0;
+
+    color: #a15c07;
+
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.amenities-error {
+    margin-top: 18px;
+
+    padding: 13px 16px;
+
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+
+    background: #fef2f2;
+
+    color: #dc2626;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.amenities-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 28px;
+
+    padding-top: 23px;
+
+    border-top: 1px solid #e2e8f0;
+}
+
+
+/* Back */
+
+.amenities-back-button {
+    min-height: 46px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 0 20px;
+
+    border: 1.5px solid #ef334f;
+    border-radius: 10px;
+
+    background: #ffffff;
+    color: #ef334f;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.amenities-back-button:hover {
+    background: #fff1f3;
+}
+
+.amenities-back-button ion-icon {
+    font-size: 17px;
+}
+
+
+/* Next */
+
+.amenities-next-button {
+    min-height: 48px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 0 24px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: #e72e4b;
+    color: #ffffff;
+
+    box-shadow:
+        0 4px 10px rgba(231, 46, 75, 0.22);
+
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+
+.amenities-next-button:hover {
+    background: #d92342;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 14px rgba(231, 46, 75, 0.26);
+}
+
+
+.amenities-next-button ion-icon {
+    font-size: 18px;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.amenities-loading {
+    min-height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 14px;
+
+    background: #f6f8fc;
+
+    color: #667085;
+}
+
+
+.amenities-loading-spinner {
+    width: 34px;
+    height: 34px;
+
+    border: 3px solid #e5e7eb;
+    border-top-color: #ef334f;
+    border-radius: 50%;
+
+    animation: amenities-spin 0.7s linear infinite;
+}
+
+
+@keyframes amenities-spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    .bus-progress {
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+
+    .amenities-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+}
+
+
+/* =========================================================
+   SMALL TABLET
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .amenities-page {
+        padding:
+            20px 18px 30px;
+    }
+
+    .amenities-heading h1 {
+        font-size: 27px;
+    }
+
+    .bus-progress {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .amenities-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+
+        padding: 22px;
+    }
+
+    .amenities-card-actions {
+        width: 100%;
+
+        justify-content: space-between;
+    }
+
+    .amenities-grid {
+        grid-template-columns: 1fr;
+
+        padding: 22px;
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 520px) {
+
+    .amenities-page {
+        padding:
+            16px 13px 25px;
+    }
+
+    .amenities-header {
+        gap: 12px;
+    }
+
+    .amenities-back-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .amenities-heading h1 {
+        font-size: 24px;
+    }
+
+    .amenities-heading p {
+        font-size: 14px;
+    }
+
+    .bus-progress {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .bus-step {
+        min-height: 67px;
+    }
+
+    .amenities-card {
+        border-radius: 15px;
+    }
+
+    .amenities-card-header {
+        padding: 20px 17px;
+    }
+
+    .amenities-grid {
+        gap: 12px;
+
+        padding: 17px;
+    }
+
+    .amenity-item {
+        min-height: 100px;
+        padding: 15px;
+    }
+
+    .amenity-icon {
+        width: 43px;
+        height: 43px;
+
+        flex-basis: 43px;
+
+        font-size: 20px;
+    }
+
+    .amenities-footer {
+        gap: 12px;
+    }
+
+    .amenities-back-button,
+    .amenities-next-button {
+        flex: 1;
+    }
+
+}

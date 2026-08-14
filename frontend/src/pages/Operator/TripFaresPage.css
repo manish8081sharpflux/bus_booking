@@ -1,0 +1,1182 @@
+/* =========================================================
+   TRIP FARES
+========================================================= */
+
+:root {
+  --fare-bg: #f5f7fb;
+  --fare-card: #ffffff;
+
+  --fare-text: #101828;
+  --fare-secondary: #667085;
+  --fare-muted: #98a2b3;
+
+  --fare-border: #dde5ef;
+  --fare-soft-border: #edf1f5;
+
+  --fare-primary: #e52f4f;
+  --fare-primary-dark: #cf2745;
+  --fare-primary-soft: #fff1f3;
+
+  --fare-success: #059669;
+  --fare-success-soft: #ecfdf5;
+
+  --fare-danger: #dc2626;
+  --fare-danger-soft: #fef2f2;
+
+  --fare-warning: #d97706;
+}
+
+/* =========================================================
+   GLOBAL
+========================================================= */
+
+.trip-fares-page,
+.trip-fares-page *,
+.trip-fares-page *::before,
+.trip-fares-page *::after {
+  box-sizing: border-box;
+}
+
+.trip-fares-page {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 30px 34px 50px;
+
+  background: var(--fare-bg);
+
+  color: var(--fare-text);
+}
+
+.trip-fares-page button,
+.trip-fares-page input {
+  font-family: inherit;
+}
+
+.trip-fares-container {
+  width: 100%;
+  max-width: 1180px;
+
+  margin: 0 auto;
+}
+
+/* =========================================================
+   PAGE HEADER
+========================================================= */
+
+.fare-page-header {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 17px;
+
+  margin-bottom: 26px;
+}
+
+.fare-back-button {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid var(--fare-border);
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #344054;
+
+  font-size: 21px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 5px
+    rgba(15, 23, 42, 0.04);
+}
+
+.fare-back-button:hover:not(:disabled) {
+  border-color: #cbd5e1;
+
+  background: #f8fafc;
+}
+
+.fare-page-heading {
+  flex: 1;
+}
+
+.fare-eyebrow {
+  color: var(--fare-secondary);
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.fare-page-heading h1 {
+  margin: 6px 0 0;
+
+  color: var(--fare-text);
+
+  font-size: 30px;
+  font-weight: 750;
+
+  letter-spacing: -0.6px;
+}
+
+.fare-page-heading p {
+  margin: 8px 0 0;
+
+  color: var(--fare-secondary);
+
+  font-size: 13px;
+}
+
+/* =========================================================
+   WORKFLOW
+========================================================= */
+
+.fare-workflow {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 24px;
+
+  padding: 17px 22px;
+
+  border: 1px solid var(--fare-border);
+  border-radius: 14px;
+
+  background: #ffffff;
+}
+
+.fare-workflow-step {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  flex: 0 0 auto;
+}
+
+.fare-workflow-step > span {
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.fare-workflow-step.complete > span {
+  border-color: #a7f3d0;
+
+  background: #ecfdf5;
+
+  color: #059669;
+}
+
+.fare-workflow-step.active > span {
+  border-color: var(--fare-primary);
+
+  background: var(--fare-primary);
+
+  color: #ffffff;
+}
+
+.fare-workflow-step > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.fare-workflow-step strong {
+  color: #344054;
+
+  font-size: 11px;
+}
+
+.fare-workflow-step small {
+  color: var(--fare-muted);
+
+  font-size: 9px;
+}
+
+.fare-workflow-line {
+  flex: 1;
+
+  height: 1px;
+
+  margin: 0 13px;
+
+  background: #e4e7ec;
+}
+
+.fare-workflow-line.complete {
+  background: #a7f3d0;
+}
+
+.fare-workflow-line.active {
+  background: #fda4af;
+}
+
+/* =========================================================
+   MESSAGES
+========================================================= */
+
+.fare-success-message,
+.fare-error-message {
+  margin-bottom: 20px;
+
+  padding: 13px 15px;
+
+  border-radius: 10px;
+}
+
+.fare-success-message {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  border: 1px solid #a7f3d0;
+
+  background: var(--fare-success-soft);
+
+  color: #047857;
+}
+
+.fare-success-message > ion-icon {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+
+  font-size: 19px;
+}
+
+.fare-success-message strong {
+  font-size: 12px;
+}
+
+.fare-success-message p {
+  margin: 3px 0 0;
+
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.fare-error-message {
+  border: 1px solid #fecaca;
+
+  background: var(--fare-danger-soft);
+
+  color: var(--fare-danger);
+
+  font-size: 11px;
+  font-weight: 550;
+}
+
+/* =========================================================
+   TRIP CARD
+========================================================= */
+
+.fare-trip-card {
+  margin-bottom: 20px;
+
+  overflow: hidden;
+
+  border: 1px solid var(--fare-border);
+  border-radius: 17px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 12px
+    rgba(15, 23, 42, 0.04);
+}
+
+.fare-trip-top {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 22px 24px;
+
+  border-bottom: 1px solid var(--fare-soft-border);
+}
+
+.fare-trip-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  background: var(--fare-primary-soft);
+
+  color: var(--fare-primary);
+
+  font-size: 21px;
+}
+
+.fare-trip-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.fare-service-number {
+  color: var(--fare-primary);
+
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.fare-trip-title-area h2 {
+  margin: 4px 0 0;
+
+  color: var(--fare-text);
+
+  font-size: 21px;
+  font-weight: 720;
+}
+
+.fare-trip-title-area p {
+  margin: 5px 0 0;
+
+  color: var(--fare-secondary);
+
+  font-size: 11px;
+}
+
+.fare-status {
+  padding: 6px 9px;
+
+  border-radius: 999px;
+
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.fare-status-draft {
+  background: #fef3c7;
+
+  color: #b45309;
+}
+
+.fare-status-scheduled,
+.fare-status-published {
+  background: #dcfce7;
+
+  color: #15803d;
+}
+
+.fare-status-cancelled {
+  background: #fee2e2;
+
+  color: #dc2626;
+}
+
+/* =========================================================
+   TRIP DETAIL GRID
+========================================================= */
+
+.fare-trip-details {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 1px;
+
+  background: var(--fare-soft-border);
+}
+
+.fare-trip-details > div {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 15px 18px;
+
+  background: #ffffff;
+}
+
+.fare-detail-icon {
+  width: 33px;
+  height: 33px;
+
+  flex: 0 0 33px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #f8fafc;
+
+  color: var(--fare-primary);
+
+  font-size: 15px;
+}
+
+.fare-trip-details > div > div:last-child {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.fare-trip-details span {
+  color: var(--fare-muted);
+
+  font-size: 8px;
+}
+
+.fare-trip-details strong {
+  overflow: hidden;
+
+  color: #344054;
+
+  font-size: 10px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   FARE CONFIGURATION CARD
+========================================================= */
+
+.fare-config-card {
+  overflow: hidden;
+
+  border: 1px solid var(--fare-border);
+  border-radius: 17px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 12px
+    rgba(15, 23, 42, 0.04);
+}
+
+.fare-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 24px;
+
+  border-bottom: 1px solid var(--fare-soft-border);
+}
+
+.fare-section-label {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: var(--fare-primary);
+
+  font-size: 9px;
+  font-weight: 750;
+
+  letter-spacing: 0.6px;
+}
+
+.fare-config-header h2 {
+  margin: 0;
+
+  color: var(--fare-text);
+
+  font-size: 20px;
+  font-weight: 720;
+}
+
+.fare-config-header p {
+  margin: 5px 0 0;
+
+  color: var(--fare-secondary);
+
+  font-size: 11px;
+}
+
+.fare-seat-type-count {
+  min-width: 82px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  gap: 2px;
+
+  padding: 10px;
+
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+
+  background: #fff1f3;
+}
+
+.fare-seat-type-count strong {
+  color: var(--fare-primary);
+
+  font-size: 17px;
+}
+
+.fare-seat-type-count span {
+  color: #9f1239;
+
+  font-size: 8px;
+}
+
+/* =========================================================
+   FARE GRID
+========================================================= */
+
+.fare-type-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 16px;
+
+  padding: 24px;
+}
+
+.fare-type-card {
+  padding: 18px;
+
+  border: 1px solid #e1e7ef;
+  border-radius: 13px;
+
+  background: #f8fafc;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.fare-type-card:focus-within {
+  border-color: #fda4af;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(229, 47, 79, 0.05);
+}
+
+.fare-type-card.has-error {
+  border-color: #fecaca;
+
+  background: #fffafa;
+}
+
+.fare-type-card-header {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 18px;
+}
+
+.fare-type-icon {
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: var(--fare-primary-soft);
+
+  color: var(--fare-primary);
+
+  font-size: 18px;
+}
+
+.fare-type-card-header h3 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fare-type-card-header span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: var(--fare-secondary);
+
+  font-size: 9px;
+}
+
+/* =========================================================
+   FARE INPUT
+========================================================= */
+
+.fare-input-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 7px;
+}
+
+.fare-input-label span {
+  color: #475569;
+
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.fare-input-label small {
+  color: var(--fare-muted);
+
+  font-size: 8px;
+}
+
+.fare-input-wrapper {
+  position: relative;
+}
+
+.fare-input-wrapper input {
+  width: 100%;
+  height: 50px;
+
+  padding:
+    0
+    43px
+    0
+    34px;
+
+  border: 1px solid #ccd7e4;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #101828;
+
+  font-size: 15px;
+  font-weight: 650;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.fare-input-wrapper input:focus {
+  border-color: var(--fare-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(229, 47, 79, 0.07);
+}
+
+.fare-input-wrapper input::placeholder {
+  color: #b0b8c4;
+
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.fare-currency {
+  position: absolute;
+
+  top: 50%;
+  left: 13px;
+
+  z-index: 2;
+
+  transform: translateY(-50%);
+
+  color: #475569;
+
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.fare-valid-icon {
+  position: absolute;
+
+  top: 50%;
+  right: 12px;
+
+  transform: translateY(-50%);
+
+  color: var(--fare-success);
+
+  font-size: 18px;
+}
+
+.fare-field-error {
+  margin: 6px 0 0;
+
+  color: var(--fare-danger);
+
+  font-size: 9px;
+}
+
+/* =========================================================
+   FARE PREVIEW
+========================================================= */
+
+.fare-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-top: 11px;
+
+  padding-top: 10px;
+
+  border-top: 1px solid #e5eaf0;
+}
+
+.fare-preview span {
+  color: var(--fare-muted);
+
+  font-size: 8px;
+}
+
+.fare-preview strong {
+  color: var(--fare-primary);
+
+  font-size: 12px;
+}
+
+/* =========================================================
+   INFO BOX
+========================================================= */
+
+.fare-info-box {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  margin:
+    0
+    24px
+    22px;
+
+  padding: 13px 15px;
+
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+
+  background: #f0f9ff;
+}
+
+.fare-info-box > ion-icon {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+
+  color: #0284c7;
+
+  font-size: 18px;
+}
+
+.fare-info-box strong {
+  color: #075985;
+
+  font-size: 11px;
+}
+
+.fare-info-box p {
+  margin: 4px 0 0;
+
+  color: #0369a1;
+
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.fare-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 14px;
+
+  padding: 20px 24px;
+
+  border-top: 1px solid var(--fare-soft-border);
+
+  background: #fbfcfe;
+}
+
+.fare-primary-button,
+.fare-secondary-button {
+  min-height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 0 17px;
+
+  border-radius: 9px;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.fare-primary-button {
+  border: 1px solid var(--fare-primary);
+
+  background: var(--fare-primary);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 10px
+    rgba(229, 47, 79, 0.15);
+}
+
+.fare-primary-button:hover:not(:disabled) {
+  border-color: var(--fare-primary-dark);
+
+  background: var(--fare-primary-dark);
+}
+
+.fare-secondary-button {
+  border: 1px solid var(--fare-primary);
+
+  background: #ffffff;
+
+  color: var(--fare-primary);
+}
+
+.fare-primary-button:disabled,
+.fare-secondary-button:disabled,
+.fare-back-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   NEXT STEP
+========================================================= */
+
+.fare-next-step-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-top: 20px;
+
+  padding: 17px 19px;
+
+  border: 1px solid #a7f3d0;
+  border-radius: 13px;
+
+  background: #ecfdf5;
+}
+
+.fare-next-step-card > div {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+}
+
+.fare-next-step-card > div > ion-icon {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+
+  color: var(--fare-success);
+
+  font-size: 20px;
+}
+
+.fare-next-step-card strong {
+  color: #047857;
+
+  font-size: 11px;
+}
+
+.fare-next-step-card p {
+  margin: 4px 0 0;
+
+  color: #059669;
+
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   NO TYPES
+========================================================= */
+
+.fare-no-types {
+  padding: 50px 20px;
+
+  text-align: center;
+}
+
+.fare-no-types > ion-icon {
+  color: var(--fare-primary);
+
+  font-size: 34px;
+}
+
+.fare-no-types h3 {
+  margin: 11px 0 0;
+
+  font-size: 16px;
+}
+
+.fare-no-types p {
+  margin: 5px 0 0;
+
+  color: var(--fare-secondary);
+
+  font-size: 10px;
+}
+
+/* =========================================================
+   LOADING / EMPTY
+========================================================= */
+
+.fare-loading {
+  min-height: 70vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  color: var(--fare-secondary);
+
+  font-size: 11px;
+}
+
+.fare-spinner {
+  width: 31px;
+  height: 31px;
+
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--fare-primary);
+  border-radius: 50%;
+
+  animation:
+    fare-spin
+    0.75s
+    linear
+    infinite;
+}
+
+@keyframes fare-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fare-empty-state {
+  width: 100%;
+  max-width: 500px;
+
+  margin:
+    80px
+    auto;
+
+  padding: 35px;
+
+  border: 1px solid var(--fare-border);
+  border-radius: 17px;
+
+  background: #ffffff;
+
+  text-align: center;
+}
+
+.fare-empty-state > ion-icon {
+  color: var(--fare-primary);
+
+  font-size: 36px;
+}
+
+.fare-empty-state h2 {
+  margin: 13px 0 0;
+
+  font-size: 20px;
+}
+
+.fare-empty-state p {
+  margin: 8px 0 20px;
+
+  color: var(--fare-secondary);
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (
+  max-width: 900px
+) {
+  .trip-fares-page {
+    padding:
+      24px
+      20px
+      40px;
+  }
+
+  .fare-workflow {
+    overflow-x: auto;
+  }
+
+  .fare-workflow-step {
+    min-width: 100px;
+  }
+
+  .fare-workflow-line {
+    min-width: 35px;
+  }
+
+  .fare-trip-details {
+    grid-template-columns:
+      repeat(
+        2,
+        1fr
+      );
+  }
+}
+
+@media (
+  max-width: 700px
+) {
+  .fare-type-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .fare-actions,
+  .fare-next-step-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fare-primary-button,
+  .fare-secondary-button {
+    width: 100%;
+  }
+}
+
+@media (
+  max-width: 520px
+) {
+  .trip-fares-page {
+    padding:
+      16px
+      11px
+      28px;
+  }
+
+  .fare-page-heading h1 {
+    font-size: 24px;
+  }
+
+  .fare-trip-top {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .fare-status {
+    margin-left: 62px;
+  }
+
+  .fare-trip-details {
+    grid-template-columns:
+      1fr;
+  }
+
+  .fare-config-header {
+    align-items: flex-start;
+  }
+
+  .fare-type-grid {
+    padding: 17px;
+  }
+
+  .fare-info-box {
+    margin:
+      0
+      17px
+      17px;
+  }
+
+  .fare-actions {
+    padding: 17px;
+  }
+}

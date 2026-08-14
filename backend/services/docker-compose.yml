@@ -1,0 +1,228 @@
+version: "3.9"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: bus-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: bus-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  mongodb:
+    image: mongo:7
+    container_name: bus-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: bus-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bus_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: bus-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-api-gateway
+    depends_on:
+      - auth-service
+      - booking-service
+      - operator-service
+      - search-service
+      - tracking-service
+      - whatsapp-service
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      AUTH_SERVICE_URL: http://auth-service:4100
+      BOOKING_SERVICE_URL: http://booking-service:4200
+      OPERATOR_SERVICE_URL: http://operator-service:4600
+      SEARCH_SERVICE_URL: http://search-service:4300
+      TRACKING_SERVICE_URL: http://tracking-service:4400
+      WHATSAPP_SERVICE_URL: http://whatsapp-service:4700
+    command: npm --workspace api-gateway run start
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-auth-service
+    depends_on:
+      - mongodb
+      - postgres
+    ports:
+      - "4100:4100"
+    environment:
+      PORT: 4100
+      MONGO_URI: mongodb://mongodb:27017/bus_auth
+      AUTH_MENU_DATABASE_URL: postgres://postgres:postgres@postgres:5432/bus_booking
+      JWT_SECRET: change-me
+      JWT_EXPIRES_IN: 7d
+    command: npm --workspace auth-service run start
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-booking-service
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "4200:4200"
+    environment:
+      PORT: 4200
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/bus_booking
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: booking-service
+      KAFKA_TOPIC_BOOKING_EVENTS: booking.events
+    command: npm --workspace booking-service run start
+
+  operator-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-operator-service
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "4600:4600"
+    environment:
+      PORT: 4600
+      OPERATOR_DATABASE_URL: postgres://postgres:postgres@postgres:5432/bus_booking
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: change-me
+      SMS_ENABLED: "false"
+      OTP_VERIFY_REQUIRED: "false"
+    command: npm --workspace operator-service run start
+
+  search-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-search-service
+    depends_on:
+      - mongodb
+      - kafka
+    ports:
+      - "4300:4300"
+    environment:
+      PORT: 4300
+      MONGO_URI: mongodb://mongodb:27017/bus_search
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: search-service
+      KAFKA_BOOKING_TOPIC: booking.events
+      KAFKA_GROUP_ID: search-projection-group
+    command: npm --workspace search-service run start
+
+  tracking-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-tracking-service
+    depends_on:
+      - redis
+      - kafka
+    ports:
+      - "4400:4400"
+    environment:
+      PORT: 4400
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: tracking-service
+      KAFKA_TRACKING_TOPIC: tracking.events
+    command: npm --workspace tracking-service run start
+
+  consumers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-consumers
+    depends_on:
+      - mongodb
+      - kafka
+    ports:
+      - "4500:4500"
+    environment:
+      PORT: 4500
+      MONGO_URI: mongodb://mongodb:27017/bus_projection
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CLIENT_ID: consumers-service
+      KAFKA_GROUP_ID: sync-notify-group
+      KAFKA_BOOKING_TOPIC: booking.events
+      KAFKA_TRACKING_TOPIC: tracking.events
+    command: npm --workspace consumers run start
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-notification-service
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/bus_booking
+      WHATSAPP_PROVIDER: CONSOLE
+    command: npm --workspace notification-service run start
+
+  whatsapp-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bus-whatsapp-service
+    depends_on:
+      - postgres
+      - booking-service
+    ports:
+      - "4700:4700"
+    environment:
+      PORT: 4700
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/bus_booking
+      BOOKING_SERVICE_URL: http://booking-service:4200
+      WHATSAPP_VERIFY_TOKEN: busgo-whatsapp-verify
+      WHATSAPP_PAYMENT_BASE_URL: http://localhost:5173/whatsapp-checkout
+    command: npm --workspace whatsapp-service run start
+
+volumes:
+  mongo_data:
+  postgres_data:
+  redis_data:

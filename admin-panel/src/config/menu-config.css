@@ -1,0 +1,534 @@
+/* menu-config.css */
+
+/* ===============================
+   SIDEBAR
+================================ */
+
+.app-sidebar {
+  width: 270px;
+  min-height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e8edf3;
+  padding: 18px 14px;
+  color: #172033;
+
+  display: flex;
+  flex-direction: column;
+
+  transition:
+    width 0.25s ease,
+    transform 0.25s ease;
+}
+
+/* ===============================
+   BRAND
+================================ */
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  min-height: 64px;
+  padding: 0 12px 18px;
+
+  border-bottom: 1px solid #edf0f4;
+  margin-bottom: 14px;
+}
+
+.sidebar-brand-logo {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: linear-gradient(
+    135deg,
+    #ef233c,
+    #d90429
+  );
+
+  color: #ffffff;
+}
+
+.sidebar-brand-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.sidebar-brand-subtitle {
+  display: block;
+  margin-top: 2px;
+
+  font-size: 11px;
+  color: #98a2b3;
+}
+
+/* ===============================
+   MENU
+================================ */
+
+.sidebar-menu {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  padding-right: 3px;
+}
+
+/* scrollbar */
+
+.sidebar-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: #d8dee8;
+  border-radius: 10px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===============================
+   SECTION HEADING
+================================ */
+
+.menu-heading {
+  padding: 20px 13px 8px;
+
+  color: #9aa4b2;
+
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 800;
+
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* ===============================
+   ITEM
+================================ */
+
+.menu-item {
+  position: relative;
+  width: 100%;
+}
+
+/* menu link */
+
+.menu-link {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  min-height: 46px;
+
+  padding: 0 13px;
+
+  border-radius: 10px;
+
+  color: #4b5872;
+
+  text-decoration: none;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.menu-link:hover {
+  background: #fff4f5;
+  color: #df2448;
+}
+
+/* ===============================
+   ICON
+================================ */
+
+.menu-icon {
+  width: 21px;
+  height: 21px;
+
+  flex-shrink: 0;
+
+  margin-right: 12px;
+
+  color: #738099;
+
+  transition:
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.menu-link:hover .menu-icon {
+  color: #e52b4d;
+  transform: scale(1.04);
+}
+
+/* ===============================
+   TITLE
+================================ */
+
+.menu-title {
+  flex: 1;
+
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===============================
+   ACTIVE ITEM
+================================ */
+
+.menu-item.active > .menu-link,
+.menu-link.active {
+  background: linear-gradient(
+    90deg,
+    #fff0f3 0%,
+    #fff7f8 100%
+  );
+
+  color: #df2047;
+
+  font-weight: 750;
+}
+
+/* left red active indicator */
+
+.menu-item.active > .menu-link::before,
+.menu-link.active::before {
+  content: '';
+
+  position: absolute;
+
+  left: -14px;
+  top: 9px;
+  bottom: 9px;
+
+  width: 4px;
+
+  background: #e6244b;
+
+  border-radius: 0 5px 5px 0;
+}
+
+.menu-item.active > .menu-link .menu-icon,
+.menu-link.active .menu-icon {
+  color: #e6244b;
+}
+
+/* ===============================
+   ARROW
+================================ */
+
+.menu-arrow {
+  width: 18px;
+  height: 18px;
+
+  margin-left: 8px;
+
+  color: #9ba4b4;
+
+  transition: transform 0.2s ease;
+}
+
+.menu-item.open > .menu-link .menu-arrow {
+  transform: rotate(90deg);
+}
+
+/* ===============================
+   SUBMENU
+================================ */
+
+.menu-children {
+  position: relative;
+
+  margin: 3px 0 7px 23px;
+  padding-left: 18px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+/* vertical connector */
+
+.menu-children::before {
+  content: '';
+
+  position: absolute;
+
+  left: 5px;
+  top: 2px;
+  bottom: 7px;
+
+  width: 1px;
+
+  background: #e7eaf0;
+}
+
+/* nested menu */
+
+.menu-children .menu-link {
+  min-height: 39px;
+
+  padding: 0 11px;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  border-radius: 8px;
+}
+
+.menu-children .menu-link:hover {
+  background: #fff5f6;
+}
+
+/* child active */
+
+.menu-children .menu-link.active {
+  background: #fff1f3;
+  color: #e32249;
+
+  font-weight: 700;
+}
+
+/* child dot */
+
+.menu-children .menu-link::before {
+  content: '';
+
+  position: absolute;
+
+  left: -16px;
+
+  width: 6px;
+  height: 6px;
+
+  background: #cbd2dc;
+
+  border: 2px solid #ffffff;
+
+  border-radius: 50%;
+}
+
+.menu-children .menu-link.active::before {
+  background: #e32249;
+}
+
+/* ===============================
+   BADGE
+================================ */
+
+.menu-badge {
+  min-width: 20px;
+  height: 20px;
+
+  padding: 0 6px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 8px;
+
+  border-radius: 999px;
+
+  background: #fff0f2;
+  color: #db2346;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* pending notification */
+
+.menu-badge-danger {
+  background: #e72b4d;
+  color: #ffffff;
+}
+
+/* ===============================
+   DISABLED
+================================ */
+
+.menu-item.disabled,
+.menu-link.disabled {
+  opacity: 0.42;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   SEPARATOR
+================================ */
+
+.menu-separator {
+  height: 1px;
+
+  background: #edf0f4;
+
+  margin: 12px 9px;
+}
+
+/* ===============================
+   FOOTER / PROFILE
+================================ */
+
+.sidebar-footer {
+  margin-top: 15px;
+
+  padding: 14px 10px 4px;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 9px;
+
+  border-radius: 11px;
+
+  transition: background 0.2s ease;
+}
+
+.sidebar-profile:hover {
+  background: #f8fafc;
+}
+
+.sidebar-profile-avatar {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #fff0f3;
+  color: #df2448;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sidebar-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  display: block;
+
+  color: #1d2939;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-profile-role {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #98a2b3;
+
+  font-size: 11px;
+}
+
+/* ===============================
+   COLLAPSED SIDEBAR
+================================ */
+
+.app-sidebar.collapsed {
+  width: 78px;
+}
+
+.app-sidebar.collapsed .sidebar-brand-title,
+.app-sidebar.collapsed .sidebar-brand-subtitle,
+.app-sidebar.collapsed .menu-title,
+.app-sidebar.collapsed .menu-heading,
+.app-sidebar.collapsed .menu-arrow,
+.app-sidebar.collapsed .menu-badge,
+.app-sidebar.collapsed .sidebar-profile-info {
+  display: none;
+}
+
+.app-sidebar.collapsed .menu-link {
+  justify-content: center;
+  padding: 0;
+}
+
+.app-sidebar.collapsed .menu-icon {
+  margin-right: 0;
+}
+
+.app-sidebar.collapsed .menu-children {
+  display: none;
+}
+
+.app-sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* ===============================
+   MOBILE
+================================ */
+
+@media (max-width: 900px) {
+  .app-sidebar {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+    bottom: 0;
+
+    z-index: 1000;
+
+    width: 270px;
+
+    transform: translateX(-100%);
+
+    box-shadow:
+      8px 0 30px rgba(15, 23, 42, 0.12);
+  }
+
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+}

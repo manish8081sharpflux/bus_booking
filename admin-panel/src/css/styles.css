@@ -1,0 +1,340 @@
+/* Tailwind Core */
+@import 'tailwindcss';
+
+/* ReUI Configs */
+@import './config.reui.css';
+
+/** Global Styles **/
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  *:focus-visible {
+    @apply outline-ring rounded-xs shadow-none outline-2 outline-offset-3 transition-none!;
+  }
+}
+
+/* Metronic Components */
+@import './components/image-input.css';
+@import './components/apexcharts.css';
+@import './components/leaflet.css';
+@import './components/rating.css';
+@import './components/image-input.css';
+@import './components/scrollable.css';
+
+/* Demo 1 Layout */
+@import './demos/demo1.css';
+
+/** Dark/Light Theme Variant **/
+@custom-variant dark (&:is(.dark *));
+@custom-variant light (&:not(.dark *));
+
+
+/* =========================================================
+   BUSGO ADMIN THEME
+========================================================= */
+
+@layer base {
+  :root {
+    --busgo-red: #e92f50;
+    --busgo-red-hover: #d92747;
+    --busgo-red-soft: #fff1f3;
+  }
+
+  html:not(.dark) {
+    background: #f5f7fb;
+  }
+
+  html:not(.dark) body {
+    background: #f5f7fb;
+    color: #111827;
+  }
+}
+
+
+/* =========================================================
+   LIGHT MODE
+========================================================= */
+
+html:not(.dark) .demo1 {
+  background: #f5f7fb;
+}
+
+html:not(.dark) .sidebar {
+  background: #ffffff !important;
+  border-inline-end: 1px solid #e6eaf0;
+}
+
+html:not(.dark) .header {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid #e6eaf0;
+  backdrop-filter: blur(10px);
+}
+
+html:not(.dark) .wrapper {
+  background: #f5f7fb;
+}
+
+html:not(.dark) [data-slot='card'] {
+  background: #ffffff;
+  border-color: #e5e9f0;
+  color: #111827;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+html:not(.dark) .sidebar-header {
+  background: #ffffff;
+}
+
+html:not(.dark) [data-slot='accordion-menu-label'] {
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+html:not(.dark) [data-slot='accordion-menu-item'] {
+  color: #475467;
+  border-radius: 9px;
+}
+
+html:not(.dark) [data-slot='accordion-menu-item']:hover {
+  background: #fff4f6;
+  color: #e92f50;
+}
+
+html:not(.dark)
+  [data-slot='accordion-menu-item'][data-selected='true'] {
+  background: #fff1f3;
+  color: #e92f50;
+  font-weight: 600;
+}
+
+html:not(.dark)
+  [data-slot='accordion-menu-item'][data-selected='true']
+  svg {
+  color: #e92f50;
+}
+
+html:not(.dark) [data-slot='accordion-menu-sub-trigger'] {
+  color: #475467;
+}
+
+html:not(.dark)
+  [data-slot='accordion-menu-sub-trigger']:hover {
+  color: #e92f50;
+  background: #fff4f6;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+html:not(.dark) main {
+  background: #f5f7fb;
+}
+
+html:not(.dark) h1,
+html:not(.dark) h2,
+html:not(.dark) h3,
+html:not(.dark) h4 {
+  color: #101828;
+}
+
+
+/* =========================================================
+   BUSGO PRIMARY ELEMENTS
+========================================================= */
+
+.busgo-primary {
+  background: #e92f50;
+  color: #ffffff;
+}
+
+.busgo-primary:hover {
+  background: #d92747;
+}
+
+.busgo-soft {
+  background: #fff1f3;
+  color: #e92f50;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cfd6df;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #aab4c2;
+}
+/* =========================================================
+   BUSGO RESPONSIVE VIEWPORT + FORM VALIDATION HARDENING
+========================================================= */
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 320px;
+    min-height: 100%;
+    margin: 0;
+  }
+
+  body {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+  }
+
+  input:user-invalid,
+  select:user-invalid,
+  textarea:user-invalid,
+  [aria-invalid='true'] {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgb(220 38 38 / 10%) !important;
+  }
+}
+
+[data-slot='card'],
+[data-slot='table'],
+.admin-operations-page,
+.admin-dashboard-page,
+.verification-page {
+  min-width: 0;
+}
+
+.admin-operations-page table,
+.verification-page table,
+[data-slot='table'] {
+  width: 100%;
+}
+
+@media (max-width: 1279px) {
+  .container-fixed,
+  .container-fluid {
+    padding-inline: 20px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .admin-operations-page,
+  .admin-dashboard-page,
+  .verification-page {
+    padding-inline: 18px !important;
+  }
+
+  .admin-operations-page [class*='grid-cols-4'],
+  .admin-dashboard-page [class*='grid-cols-4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-fixed,
+  .container-fluid {
+    padding-inline: 14px;
+  }
+
+  .admin-operations-page,
+  .admin-dashboard-page,
+  .verification-page {
+    padding: 18px 14px 32px !important;
+  }
+
+  .admin-operations-page [class*='grid-cols-'],
+  .admin-dashboard-page [class*='grid-cols-'],
+  .verification-page [class*='grid-cols-'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .admin-operations-page table,
+  .verification-page table,
+  [data-slot='table'] {
+    min-width: 720px;
+  }
+
+  .admin-operations-page .overflow-x-auto,
+  .verification-page .overflow-x-auto,
+  [data-slot='card-table'] {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-slot='dialog-content'],
+  [data-slot='alert-dialog-content'] {
+    width: calc(100vw - 28px) !important;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-operations-page,
+  .admin-dashboard-page,
+  .verification-page {
+    padding-inline: 12px !important;
+  }
+
+  [data-slot='card-header'],
+  [data-slot='card-content'],
+  [data-slot='card-footer'] {
+    padding-inline: 16px;
+  }
+
+  button:not([data-slot='dropdown-menu-trigger']) {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

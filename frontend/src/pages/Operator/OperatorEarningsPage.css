@@ -1,0 +1,1134 @@
+/* =========================================================
+   VARIABLES
+========================================================= */
+
+:root {
+  --earn-primary: #eb3152;
+  --earn-primary-dark: #d52948;
+  --earn-primary-soft: #fff1f4;
+
+  --earn-bg: #f4f7fb;
+  --earn-card: #ffffff;
+
+  --earn-text: #172033;
+  --earn-secondary: #667085;
+  --earn-muted: #98a2b3;
+
+  --earn-border: #e1e7ef;
+  --earn-soft-border: #edf1f5;
+
+  --earn-green: #059669;
+  --earn-green-soft: #ecfdf5;
+
+  --earn-blue: #2563eb;
+  --earn-blue-soft: #eff6ff;
+
+  --earn-purple: #7c3aed;
+  --earn-purple-soft: #f5f3ff;
+
+  --earn-orange: #ea580c;
+  --earn-orange-soft: #fff7ed;
+
+  --earn-red: #dc2626;
+  --earn-red-soft: #fef2f2;
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+
+.operator-earnings-shell,
+.operator-earnings-shell *,
+.operator-earnings-shell *::before,
+.operator-earnings-shell *::after {
+  box-sizing: border-box;
+}
+
+.operator-earnings-shell {
+  height: 100vh;
+  min-height: 0;
+
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+
+  background: var(--earn-bg);
+}
+
+.operator-earnings-shell button,
+.operator-earnings-shell input,
+.operator-earnings-shell select {
+  font-family: inherit;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.operator-earnings-page {
+  width: auto;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+
+  flex: 1;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+
+  margin: 0;
+
+  padding: 38px 32px 70px;
+}
+
+.operator-earnings-page::-webkit-scrollbar {
+  width: 10px;
+}
+
+.operator-earnings-page::-webkit-scrollbar-track {
+  background: #edf2f7;
+}
+
+.operator-earnings-page::-webkit-scrollbar-thumb {
+  border: 2px solid #edf2f7;
+  border-radius: 999px;
+  background: #8aa7a2;
+}
+
+.operator-earnings-page::-webkit-scrollbar-thumb:hover {
+  background: #5f827c;
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.earnings-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 28px;
+
+  margin-bottom: 27px;
+}
+
+.earnings-header > div {
+  min-width: 0;
+}
+
+.earnings-breadcrumb {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #78879f;
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.earnings-header h1 {
+  margin: 0;
+
+  color: var(--earn-text);
+
+  font-size: 34px;
+  font-weight: 770;
+
+  line-height: 1.1;
+
+  letter-spacing: -0.7px;
+}
+
+.earnings-header p {
+  margin: 8px 0 0;
+
+  color: var(--earn-secondary);
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   REFRESH BUTTON
+========================================================= */
+
+.earnings-refresh-button {
+  min-height: 46px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 18px;
+
+  border: 1px solid #d9e1ea;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #263044;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 3px 10px
+    rgba(15, 23, 42, 0.04);
+
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.earnings-refresh-button ion-icon {
+  color: var(--earn-primary);
+  font-size: 17px;
+}
+
+.earnings-refresh-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  border-color: #f2bdc6;
+
+  background: #fffafa;
+
+  box-shadow:
+    0 7px 18px
+    rgba(15, 23, 42, 0.07);
+}
+
+.earnings-refresh-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.earnings-error {
+  margin-bottom: 18px;
+
+  padding: 13px 15px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* =========================================================
+   CAPTURED REVENUE HERO
+========================================================= */
+
+.earnings-hero-card {
+  position: relative;
+
+  min-height: 170px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 25px;
+
+  margin-bottom: 18px;
+
+  padding: 28px 30px;
+
+  overflow: hidden;
+
+  border: 1px solid #f2c0c9;
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #fff4f6 0%,
+      #ffffff 55%,
+      #fff9fa 100%
+    );
+
+  box-shadow:
+    0 7px 22px
+    rgba(15, 23, 42, 0.045);
+}
+
+.earnings-hero-card::after {
+  content: '';
+
+  position: absolute;
+
+  top: -100px;
+  right: -90px;
+
+  width: 280px;
+  height: 280px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(235, 49, 82, 0.16),
+      transparent 68%
+    );
+
+  pointer-events: none;
+}
+
+.earnings-hero-left {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+
+  gap: 18px;
+
+  min-width: 0;
+}
+
+.earnings-hero-icon {
+  width: 62px;
+  height: 62px;
+
+  flex: 0 0 62px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 17px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f43f5e,
+      #e11d48
+    );
+
+  color: #ffffff;
+
+  font-size: 28px;
+
+  box-shadow:
+    0 10px 22px
+    rgba(225, 29, 72, 0.22);
+}
+
+.earnings-hero-left > div:last-child {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.earnings-hero-left span {
+  margin-bottom: 5px;
+
+  color: var(--earn-primary);
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 1px;
+}
+
+.earnings-hero-left strong {
+  color: var(--earn-text);
+
+  font-size: 34px;
+  font-weight: 790;
+
+  line-height: 1.1;
+
+  letter-spacing: -0.5px;
+}
+
+.earnings-hero-left p {
+  max-width: 520px;
+
+  margin: 8px 0 0;
+
+  color: var(--earn-secondary);
+
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.earnings-hero-status {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  padding: 9px 13px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+
+  background: var(--earn-green-soft);
+
+  color: #047857;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.earnings-status-dot {
+  width: 8px;
+  height: 8px;
+
+  flex: 0 0 8px;
+
+  border-radius: 50%;
+
+  background: var(--earn-green);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(5, 150, 105, 0.09);
+}
+
+/* =========================================================
+   STATS GRID
+========================================================= */
+
+.earnings-stats-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 16px;
+
+  margin-bottom: 24px;
+}
+
+/* =========================================================
+   STAT CARD
+========================================================= */
+
+.earnings-stat-card {
+  min-height: 130px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  padding: 20px;
+
+  border: 1px solid var(--earn-border);
+  border-radius: 16px;
+
+  background: var(--earn-card);
+
+  box-shadow:
+    0 4px 14px
+    rgba(15, 23, 42, 0.035);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.earnings-stat-card:hover {
+  transform: translateY(-2px);
+
+  border-color: #ebd1d6;
+
+  box-shadow:
+    0 10px 24px
+    rgba(15, 23, 42, 0.07);
+}
+
+.earnings-stat-icon {
+  width: 49px;
+  height: 49px;
+
+  flex: 0 0 49px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  font-size: 22px;
+}
+
+.earnings-stat-icon.pink {
+  background: var(--earn-primary-soft);
+  color: var(--earn-primary);
+}
+
+.earnings-stat-icon.green {
+  background: var(--earn-green-soft);
+  color: var(--earn-green);
+}
+
+.earnings-stat-icon.blue {
+  background: var(--earn-blue-soft);
+  color: var(--earn-blue);
+}
+
+.earnings-stat-icon.purple {
+  background: var(--earn-purple-soft);
+  color: var(--earn-purple);
+}
+
+.earnings-stat-card > div:last-child {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.earnings-stat-card span {
+  color: var(--earn-secondary);
+
+  font-size: 10px;
+}
+
+.earnings-stat-card strong {
+  color: var(--earn-text);
+
+  font-size: 21px;
+  font-weight: 760;
+
+  line-height: 1.15;
+
+  overflow-wrap: anywhere;
+}
+
+.earnings-stat-card small {
+  color: var(--earn-muted);
+
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   TRANSACTIONS CARD
+========================================================= */
+
+.earnings-transactions-card {
+  overflow: hidden;
+
+  border: 1px solid var(--earn-border);
+  border-radius: 17px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 5px 17px
+    rgba(15, 23, 42, 0.04);
+}
+
+/* =========================================================
+   TRANSACTION HEADER
+========================================================= */
+
+.earnings-transactions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 22px 24px;
+
+  border-bottom:
+    1px solid
+    var(--earn-soft-border);
+}
+
+.earnings-transactions-header h2 {
+  margin: 0;
+
+  color: var(--earn-text);
+
+  font-size: 20px;
+  font-weight: 740;
+
+  letter-spacing: -0.25px;
+}
+
+.earnings-transactions-header p {
+  margin: 5px 0 0;
+
+  color: var(--earn-secondary);
+
+  font-size: 9px;
+}
+
+.earnings-captured-pill {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 7px 11px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+
+  background: var(--earn-green-soft);
+
+  color: #047857;
+
+  font-size: 8px;
+  font-weight: 750;
+
+  white-space: nowrap;
+}
+
+.earnings-captured-pill > span {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: var(--earn-green);
+}
+
+/* =========================================================
+   TABLE WRAPPER
+========================================================= */
+
+.earnings-table-wrapper {
+  width: 100%;
+
+  overflow-x: auto;
+}
+
+.earnings-table {
+  min-width: 1000px;
+}
+
+/* =========================================================
+   TABLE HEAD
+========================================================= */
+
+.earnings-table-head {
+  display: grid;
+
+  grid-template-columns:
+    minmax(240px, 1.4fr)
+    minmax(170px, 1fr)
+    minmax(220px, 1.25fr)
+    minmax(110px, 0.65fr)
+    minmax(145px, 0.8fr);
+
+  align-items: center;
+
+  gap: 17px;
+
+  padding: 12px 24px;
+
+  border-bottom:
+    1px solid
+    var(--earn-soft-border);
+
+  background: #f8fafc;
+}
+
+.earnings-table-head span {
+  color: #8792a5;
+
+  font-size: 8px;
+  font-weight: 750;
+
+  letter-spacing: 0.35px;
+
+  text-transform: uppercase;
+}
+
+/* =========================================================
+   TRANSACTION ROW
+========================================================= */
+
+.earnings-transaction-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(240px, 1.4fr)
+    minmax(170px, 1fr)
+    minmax(220px, 1.25fr)
+    minmax(110px, 0.65fr)
+    minmax(145px, 0.8fr);
+
+  align-items: center;
+
+  gap: 17px;
+
+  padding: 18px 24px;
+
+  border-bottom:
+    1px solid
+    var(--earn-soft-border);
+
+  background: #ffffff;
+
+  transition:
+    background 0.18s ease;
+}
+
+.earnings-transaction-row:last-child {
+  border-bottom: 0;
+}
+
+.earnings-transaction-row:hover {
+  background: #fcfcfd;
+}
+
+/* =========================================================
+   PAYMENT CELL
+========================================================= */
+
+.earnings-payment-cell {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+}
+
+.earnings-payment-icon {
+  width: 39px;
+  height: 39px;
+
+  flex: 0 0 39px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: var(--earn-green-soft);
+
+  color: var(--earn-green);
+
+  font-size: 18px;
+}
+
+.earnings-payment-cell > div:last-child {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.earnings-payment-cell strong {
+  max-width: 240px;
+
+  overflow: hidden;
+
+  color: #263044;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earnings-payment-cell span {
+  max-width: 240px;
+
+  overflow: hidden;
+
+  color: var(--earn-secondary);
+
+  font-size: 8px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earnings-payment-cell small {
+  color: var(--earn-muted);
+
+  font-size: 7px;
+}
+
+/* =========================================================
+   STANDARD CELL
+========================================================= */
+
+.earnings-table-cell {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.earnings-table-cell strong {
+  overflow: hidden;
+
+  color: #263044;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.earnings-table-cell span {
+  overflow: hidden;
+
+  color: var(--earn-secondary);
+
+  font-size: 8px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   AMOUNT
+========================================================= */
+
+.earnings-amount-cell {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  gap: 6px;
+}
+
+.earnings-amount-cell strong {
+  color: var(--earn-text);
+
+  font-size: 12px;
+  font-weight: 760;
+
+  white-space: nowrap;
+}
+
+.earnings-amount-cell span {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 4px 8px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+
+  background: #dcfce7;
+
+  color: #166534;
+
+  font-size: 7px;
+  font-weight: 800;
+
+  letter-spacing: 0.25px;
+}
+
+/* =========================================================
+   LOADING / EMPTY
+========================================================= */
+
+.earnings-state {
+  min-height: 300px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 35px;
+
+  text-align: center;
+}
+
+.earnings-spinner {
+  width: 35px;
+  height: 35px;
+
+  margin-bottom: 8px;
+
+  border: 3px solid #e5e7eb;
+  border-top-color: var(--earn-primary);
+
+  border-radius: 50%;
+
+  animation:
+    earnings-spin
+    0.75s
+    linear
+    infinite;
+}
+
+@keyframes earnings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.earnings-state strong {
+  color: #344054;
+
+  font-size: 12px;
+}
+
+.earnings-state p {
+  max-width: 340px;
+
+  margin: 0;
+
+  color: var(--earn-muted);
+
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.earnings-state.empty > ion-icon {
+  width: 48px;
+  height: 48px;
+
+  padding: 12px;
+
+  margin-bottom: 5px;
+
+  border-radius: 13px;
+
+  background: var(--earn-primary-soft);
+
+  color: var(--earn-primary);
+
+  font-size: 25px;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.earnings-table-wrapper::-webkit-scrollbar {
+  height: 7px;
+}
+
+.earnings-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.earnings-table-wrapper::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.earnings-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* =========================================================
+   LARGE TABLET
+========================================================= */
+
+@media (max-width: 1150px) {
+  .earnings-stats-grid {
+    grid-template-columns:
+      repeat(3, 1fr);
+  }
+
+  .earnings-hero-left strong {
+    font-size: 30px;
+  }
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+  .operator-earnings-page {
+    width: calc(100% - 36px);
+
+    padding-top: 30px;
+  }
+
+  .earnings-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .earnings-refresh-button {
+    align-self: flex-start;
+  }
+
+  .earnings-stats-grid {
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+  .earnings-stat-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .earnings-hero-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .earnings-hero-status {
+    align-self: flex-start;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 650px) {
+  .operator-earnings-page {
+    width: calc(100% - 24px);
+
+    padding:
+      24px
+      0
+      50px;
+  }
+
+  .earnings-header {
+    margin-bottom: 20px;
+  }
+
+  .earnings-header h1 {
+    font-size: 27px;
+  }
+
+  .earnings-header p {
+    font-size: 10px;
+  }
+
+  .earnings-hero-card {
+    min-height: auto;
+
+    padding: 20px;
+
+    border-radius: 15px;
+  }
+
+  .earnings-hero-left {
+    align-items: flex-start;
+  }
+
+  .earnings-hero-icon {
+    width: 50px;
+    height: 50px;
+
+    flex-basis: 50px;
+
+    border-radius: 13px;
+
+    font-size: 22px;
+  }
+
+  .earnings-hero-left strong {
+    font-size: 25px;
+  }
+
+  .earnings-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .earnings-stat-card:last-child {
+    grid-column: auto;
+  }
+
+  .earnings-stat-card {
+    min-height: 110px;
+
+    padding: 17px;
+  }
+
+  .earnings-transactions-header {
+    align-items: flex-start;
+    flex-direction: column;
+
+    padding: 18px;
+  }
+
+  .earnings-table-head,
+  .earnings-transaction-row {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 430px) {
+  .operator-earnings-page {
+    width: calc(100% - 18px);
+  }
+
+  .earnings-header h1 {
+    font-size: 24px;
+  }
+
+  .earnings-refresh-button {
+    width: 100%;
+  }
+
+  .earnings-hero-left {
+    flex-direction: column;
+  }
+
+  .earnings-hero-left strong {
+    font-size: 23px;
+  }
+
+  .earnings-stat-icon {
+    width: 44px;
+    height: 44px;
+
+    flex-basis: 44px;
+  }
+
+  .earnings-stat-card strong {
+    font-size: 18px;
+  }
+}

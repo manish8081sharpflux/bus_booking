@@ -1,0 +1,77 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Logs
+logs/
+*.log
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+
+# Build artifacts
+build/
+dist/
+**/dist/
+coverage/
+.cache/
+.parcel-cache/
+.vite/
+**/.vite/
+.out/
+.next/
+.nuxt/
+.tmp/
+temp/
+*.tsbuildinfo
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Mobile / native app artifacts
+.expo/
+.expo-shared/
+.android-avd/
+**/android/build/
+**/android/.gradle/
+**/ios/Pods/
+**/ios/build/
+**/ios/DerivedData/
+*.keystore
+*.jks
+
+# Local data / uploads
+uploads/
+**/uploads/
+*.db
+*.sqlite
+
+# Misc generated output
+api-gateway.log
+auth-service.log
+*.pem
+*.crt
+*.key
+# Playwright E2E artifacts
+playwright-report/
+test-results/
+tests-artifacts/
+
+# Unofficial WhatsApp Web local session (never commit)
+.wwebjs_auth/
+.wwebjs_cache/
+backend/services/whatsapp-service/.wwebjs_auth/
+backend/services/whatsapp-service/.wwebjs_cache/

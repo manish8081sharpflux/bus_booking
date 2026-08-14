@@ -1,0 +1,930 @@
+/* =========================================================
+   ADD BUS - COMPLIANCE PAGE
+   ========================================================= */
+
+:root {
+  --compliance-bg: #f6f8fc;
+  --compliance-card: #ffffff;
+
+  --compliance-text: #0f172a;
+  --compliance-secondary: #64748b;
+  --compliance-muted: #94a3b8;
+
+  --compliance-border: #dce4ee;
+  --compliance-border-soft: #edf1f5;
+
+  --compliance-primary: #e52f4f;
+  --compliance-primary-dark: #cf2745;
+  --compliance-primary-soft: #fff1f3;
+
+  --compliance-success: #059669;
+  --compliance-success-soft: #ecfdf5;
+
+  --compliance-danger: #dc2626;
+}
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+.compliance-page,
+.compliance-page *,
+.compliance-page *::before,
+.compliance-page *::after {
+  box-sizing: border-box;
+}
+
+.compliance-page {
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 28px 34px 48px;
+
+  background:
+    var(--compliance-bg);
+
+  color:
+    var(--compliance-text);
+}
+
+.compliance-page button,
+.compliance-page input {
+  font-family: inherit;
+}
+
+.compliance-container {
+  width: 100%;
+  max-width: 1220px;
+
+  margin: 0 auto;
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.compliance-loading {
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 14px;
+
+  background:
+    var(--compliance-bg);
+
+  color:
+    var(--compliance-secondary);
+
+  font-size: 14px;
+}
+
+.compliance-loading-spinner {
+  width: 34px;
+  height: 34px;
+
+  border: 3px solid #e2e8f0;
+  border-top-color:
+    var(--compliance-primary);
+
+  border-radius: 50%;
+
+  animation:
+    compliance-spin
+    0.75s
+    linear
+    infinite;
+}
+
+@keyframes compliance-spin {
+  to {
+    transform:
+      rotate(360deg);
+  }
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.compliance-header {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 18px;
+
+  margin-bottom: 30px;
+}
+
+.compliance-back-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border:
+    1px solid
+    var(--compliance-border);
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font-size: 22px;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 5px
+    rgba(15, 23, 42, 0.05);
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.compliance-back-icon:hover {
+  border-color: #cbd5e1;
+
+  background: #f8fafc;
+}
+
+.compliance-back-icon:active {
+  transform:
+    translateY(1px);
+}
+
+.compliance-bus-name {
+  margin: 0;
+
+  color:
+    var(--compliance-secondary);
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.compliance-page-title {
+  margin: 8px 0 0;
+
+  color:
+    var(--compliance-text);
+
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 750;
+
+  letter-spacing: -0.7px;
+}
+
+.compliance-page-subtitle {
+  margin: 10px 0 0;
+
+  color:
+    var(--compliance-secondary);
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   STEPS
+   ========================================================= */
+
+.compliance-steps {
+  display: grid;
+
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+
+  gap: 12px;
+
+  margin-bottom: 30px;
+}
+
+.compliance-step {
+  min-width: 0;
+  min-height: 78px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 14px 15px;
+
+  border:
+    1px solid
+    var(--compliance-border);
+
+  border-radius: 12px;
+
+  background: #ffffff;
+}
+
+.compliance-step-number {
+  margin: 0;
+
+  color:
+    var(--compliance-muted);
+
+  font-size: 11px;
+  font-weight: 750;
+
+  letter-spacing: 0.3px;
+}
+
+.compliance-step-title {
+  display: flex;
+  align-items: center;
+
+  gap: 4px;
+
+  margin: 8px 0 0;
+
+  color: #475569;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.compliance-step-title ion-icon {
+  font-size: 15px;
+}
+
+.compliance-step.active {
+  border-color: #fecdd3;
+
+  background:
+    var(--compliance-primary-soft);
+}
+
+.compliance-step.active
+.compliance-step-number {
+  color:
+    var(--compliance-primary);
+}
+
+.compliance-step.active
+.compliance-step-title {
+  color:
+    var(--compliance-text);
+}
+
+.compliance-step.completed {
+  border-color: #a7f3d0;
+
+  background:
+    var(--compliance-success-soft);
+}
+
+.compliance-step.completed
+.compliance-step-number {
+  color:
+    var(--compliance-success);
+}
+
+.compliance-step.completed
+.compliance-step-title {
+  color: #047857;
+}
+
+/* =========================================================
+   CARD
+   ========================================================= */
+
+.compliance-card {
+  overflow: hidden;
+
+  border:
+    1px solid
+    var(--compliance-border);
+
+  border-radius: 18px;
+
+  background:
+    var(--compliance-card);
+
+  box-shadow:
+    0 3px 10px
+    rgba(15, 23, 42, 0.04);
+}
+
+/* =========================================================
+   CARD HEADER
+   ========================================================= */
+
+.compliance-card-header {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 24px 28px;
+
+  border-bottom:
+    1px solid
+    var(--compliance-border-soft);
+}
+
+.compliance-card-icon {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 14px;
+
+  background:
+    var(--compliance-primary-soft);
+
+  color:
+    var(--compliance-primary);
+
+  font-size: 22px;
+}
+
+.compliance-card-title {
+  margin: 0;
+
+  color:
+    var(--compliance-text);
+
+  font-size: 22px;
+  font-weight: 720;
+}
+
+.compliance-card-subtitle {
+  margin: 6px 0 0;
+
+  color:
+    var(--compliance-secondary);
+
+  font-size: 13px;
+}
+
+/* =========================================================
+   FORM GRID
+   ========================================================= */
+
+.compliance-form-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap:
+    27px
+    22px;
+
+  padding:
+    30px
+    28px
+    26px;
+}
+
+.compliance-field {
+  min-width: 0;
+}
+
+.compliance-grid-placeholder {
+  min-height: 1px;
+}
+
+/* =========================================================
+   FLOATING INPUT
+   ========================================================= */
+
+.compliance-floating-control {
+  position: relative;
+
+  width: 100%;
+}
+
+.compliance-floating-control input {
+  width: 100%;
+  height: 62px;
+
+  display: block;
+
+  padding:
+    12px
+    17px
+    0;
+
+  border:
+    1px solid
+    #cfd9e6;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color:
+    var(--compliance-text);
+
+  font-size: 15px;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.compliance-floating-control input:hover {
+  border-color: #aebdcd;
+}
+
+.compliance-floating-control input:focus {
+  border-color:
+    var(--compliance-primary);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(229, 47, 79, 0.07);
+}
+
+/* DATE inputs need normal top padding */
+
+.compliance-floating-control
+input[type='date'] {
+  padding-top: 8px;
+}
+
+/* =========================================================
+   FLOATING LABEL
+   ========================================================= */
+
+.compliance-floating-control label {
+  position: absolute;
+
+  left: 13px;
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  max-width:
+    calc(100% - 30px);
+
+  padding:
+    0
+    5px;
+
+  overflow: hidden;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-size: 15px;
+
+  line-height: 1;
+
+  pointer-events: none;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  transition:
+    top 0.15s ease,
+    transform 0.15s ease,
+    font-size 0.15s ease,
+    color 0.15s ease;
+}
+
+/*
+ * Text inputs float only when
+ * focused or populated.
+ */
+
+.compliance-floating-control
+input:focus + label,
+.compliance-floating-control
+input:not(:placeholder-shown) + label {
+  top: 0;
+
+  transform:
+    translateY(-50%);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/*
+ * Date inputs always need their
+ * labels above the border.
+ */
+
+.compliance-floating-control
+input[type='date'] + label {
+  top: 0;
+
+  transform:
+    translateY(-50%);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.compliance-floating-control
+input:focus + label {
+  color:
+    var(--compliance-primary);
+}
+
+/* =========================================================
+   REQUIRED
+   ========================================================= */
+
+.compliance-required {
+  color:
+    var(--compliance-primary);
+}
+
+/* =========================================================
+   FIELD ERRORS
+   ========================================================= */
+
+.compliance-floating-control.error
+input {
+  border-color: #ef4444;
+}
+
+.compliance-floating-control.error
+label {
+  color:
+    var(--compliance-danger);
+}
+
+.compliance-floating-control.error
+input:focus {
+  border-color:
+    var(--compliance-danger);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(220, 38, 38, 0.08);
+}
+
+.compliance-field-error {
+  margin:
+    6px
+    4px
+    0;
+
+  color:
+    var(--compliance-danger);
+
+  font-size: 11px;
+  font-weight: 550;
+}
+
+/* =========================================================
+   INFO BOX
+   ========================================================= */
+
+.compliance-info-box {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 12px;
+
+  margin:
+    0
+    28px
+    24px;
+
+  padding:
+    14px
+    15px;
+
+  border:
+    1px solid
+    #f6d365;
+
+  border-radius: 11px;
+
+  background: #fffbeb;
+}
+
+.compliance-info-icon {
+  width: 25px;
+  height: 25px;
+
+  flex: 0 0 25px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #f59e0b;
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.compliance-info-box strong {
+  color: #92400e;
+
+  font-size: 13px;
+}
+
+.compliance-info-box p {
+  margin: 4px 0 0;
+
+  color: #a15c07;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   FORM ERROR
+   ========================================================= */
+
+.compliance-form-error {
+  margin:
+    0
+    28px
+    24px;
+
+  padding:
+    13px
+    15px;
+
+  border:
+    1px solid
+    #fecaca;
+
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color:
+    var(--compliance-danger);
+
+  font-size: 13px;
+  font-weight: 550;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.compliance-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 14px;
+
+  padding:
+    18px
+    28px;
+
+  border-top:
+    1px solid
+    var(--compliance-border-soft);
+
+  background: #ffffff;
+}
+
+.compliance-footer-button {
+  min-height: 43px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding:
+    0
+    18px;
+
+  border-radius: 9px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.compliance-footer-button ion-icon {
+  font-size: 16px;
+}
+
+.compliance-footer-button.secondary {
+  border:
+    1px solid
+    var(--compliance-primary);
+
+  background: #ffffff;
+
+  color:
+    var(--compliance-primary);
+}
+
+.compliance-footer-button.secondary:hover {
+  background:
+    var(--compliance-primary-soft);
+}
+
+.compliance-footer-button.primary {
+  border:
+    1px solid
+    var(--compliance-primary);
+
+  background:
+    var(--compliance-primary);
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 12px
+    rgba(229, 47, 79, 0.16);
+}
+
+.compliance-footer-button.primary:hover {
+  border-color:
+    var(--compliance-primary-dark);
+
+  background:
+    var(--compliance-primary-dark);
+}
+
+.compliance-footer-button:active {
+  transform:
+    translateY(1px);
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (
+  max-width: 1100px
+) {
+  .compliance-page {
+    padding:
+      26px
+      24px
+      42px;
+  }
+
+  .compliance-steps {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+@media (
+  max-width: 760px
+) {
+  .compliance-page {
+    padding:
+      20px
+      16px
+      34px;
+  }
+
+  .compliance-page-title {
+    font-size: 28px;
+  }
+
+  .compliance-form-grid {
+    grid-template-columns:
+      1fr;
+
+    gap: 24px;
+
+    padding:
+      25px
+      20px;
+  }
+
+  .compliance-grid-placeholder {
+    display: none;
+  }
+
+  .compliance-card-header {
+    padding:
+      22px
+      20px;
+  }
+
+  .compliance-info-box,
+  .compliance-form-error {
+    margin:
+      0
+      20px
+      20px;
+  }
+
+  .compliance-footer {
+    padding:
+      17px
+      20px;
+  }
+}
+
+@media (
+  max-width: 560px
+) {
+  .compliance-page {
+    padding:
+      16px
+      12px
+      28px;
+  }
+
+  .compliance-header {
+    gap: 12px;
+  }
+
+  .compliance-back-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
+
+  .compliance-page-title {
+    font-size: 25px;
+  }
+
+  .compliance-page-subtitle {
+    font-size: 13px;
+  }
+
+  .compliance-steps {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+
+    gap: 9px;
+  }
+
+  .compliance-step {
+    min-height: 68px;
+
+    padding: 12px;
+  }
+
+  .compliance-step-title {
+    font-size: 13px;
+  }
+
+  .compliance-card {
+    border-radius: 14px;
+  }
+
+  .compliance-card-title {
+    font-size: 19px;
+  }
+
+  .compliance-floating-control input {
+    height: 58px;
+  }
+
+  .compliance-footer {
+    flex-direction:
+      column-reverse;
+  }
+
+  .compliance-footer-button {
+    width: 100%;
+  }
+}

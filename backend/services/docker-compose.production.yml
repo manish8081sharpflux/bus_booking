@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?required}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    ports: ["4000:4000"]
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?required}
+      AUTH_SERVICE_URL: http://auth-service:4100
+      BOOKING_SERVICE_URL: http://booking-service:4200
+      OPERATOR_SERVICE_URL: http://operator-service:4600
+      SEARCH_SERVICE_URL: http://search-service:4300
+      TRACKING_SERVICE_URL: http://tracking-service:4400
+      WHATSAPP_SERVICE_URL: http://whatsapp-service:4700
+    command: npm --workspace api-gateway run start
+
+  auth-service:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4100
+      DATABASE_URL: ${DATABASE_URL:?required}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+    command: npm --workspace auth-service run start
+
+  booking-service:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4200
+      DATABASE_URL: ${DATABASE_URL:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:?required}
+    command: npm --workspace booking-service run start
+
+  operator-service:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4600
+      DATABASE_URL: ${DATABASE_URL:?required}
+      OPERATOR_DATABASE_URL: ${DATABASE_URL:?required}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:?required}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?required}
+      OTP_VERIFY_REQUIRED: "true"
+    command: npm --workspace operator-service run start
+
+  tracking-service:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4400
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:?required}
+      TRACKING_DEVICE_KEY: ${TRACKING_DEVICE_KEY:?required}
+    command: npm --workspace tracking-service run start
+
+  whatsapp-service:
+    build: { context: ., dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4700
+      DATABASE_URL: ${DATABASE_URL:?required}
+      BOOKING_SERVICE_URL: http://booking-service:4200
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:?required}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:?required}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:?required}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:?required}
+      WHATSAPP_PAYMENT_BASE_URL: ${WHATSAPP_PAYMENT_BASE_URL:?required}
+      WHATSAPP_CUSTOMER_APP_BASE_URL: ${WHATSAPP_CUSTOMER_APP_BASE_URL:?required}
+      WHATSAPP_TRACK_BASE_URL: ${WHATSAPP_TRACK_BASE_URL:?required}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:?required}
+    command: npm --workspace whatsapp-service run start
+
+volumes:
+  postgres_data:
+  redis_data:

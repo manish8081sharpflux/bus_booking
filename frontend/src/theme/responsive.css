@@ -1,0 +1,101 @@
+/* BusGo global viewport + validation hardening */
+html, body, #root, ion-app { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
+html, body { overflow-x: hidden; }
+body { min-height: 100dvh; }
+ion-app, ion-page { min-height: 100dvh; }
+ion-content { --padding-bottom: env(safe-area-inset-bottom); }
+
+* { box-sizing: border-box; }
+img, video, canvas, svg { max-width: 100%; }
+input, select, textarea, button { max-width: 100%; }
+button, [role='button'], ion-button { min-height: 40px; }
+
+:is(input, select, textarea):user-invalid,
+.is-invalid {
+  border-color: #dc2626 !important;
+  outline-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .10) !important;
+}
+
+.field-error,
+.form-field-error,
+.validation-error {
+  color: #b42318;
+  font-size: .78rem;
+  line-height: 1.35;
+  margin-top: 6px;
+}
+
+[aria-invalid='true'] { border-color: #dc2626 !important; }
+
+/* Common content shells */
+:is(.page-shell,.home-shell,.booking-shell,.search-results-shell,.customer-bookings-shell,.customer-profile-shell,.operator-dashboard-shell,.staff-page,.trip-operations-page,.wa-checkout-shell) {
+  width: 100%;
+  min-width: 0;
+}
+
+:is(.booking-form-grid,.staff-form-grid,.add-bus-form-grid) > * { min-width: 0; }
+
+:is(.staff-table-wrap,.table-wrap,.bookings-table-wrap,.inventory-table-wrap,.admin-table-wrap) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+  .hero-content { padding-inline: 20px; }
+  .search-overlap-wrap { padding-inline: 16px; }
+  .staff-page { padding-inline: 20px !important; }
+}
+
+@media (max-width: 768px) {
+  :root { --busgo-mobile-gutter: 14px; }
+
+  .hero-slide, .hero-overlay { min-height: 60dvh; }
+  .hero-content { padding: 34px var(--busgo-mobile-gutter) 96px; }
+  .hero-content h1 { font-size: clamp(2rem, 10vw, 3.2rem); }
+  .search-overlap-wrap { margin-top: -52px; padding-inline: var(--busgo-mobile-gutter); }
+
+  :is(.staff-header,.section-head,.search-card-head,.trip-head,.trip-foot) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  :is(.booking-form-grid,.staff-form-grid,.add-bus-form-grid) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .staff-modal-backdrop { align-items: flex-end !important; padding: 0 !important; }
+  .staff-modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: min(90dvh, 760px);
+    overflow-y: auto;
+    border-radius: 22px 22px 0 0 !important;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .wa-checkout-shell { padding-inline: 14px !important; }
+}
+
+@media (max-width: 480px) {
+  body { font-size: 14px; }
+  .hero-inline-stats { gap: 8px; }
+  .hero-inline-stats span { padding: 8px 10px; font-size: .78rem; }
+  .search-card, .offer-card, .route-card, .trip-card { border-radius: 18px; }
+
+  :is(.staff-primary,.trip-btn,button[type='submit']) { width: 100%; }
+  .staff-actions { flex-direction: column-reverse !important; }
+  .staff-actions button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
