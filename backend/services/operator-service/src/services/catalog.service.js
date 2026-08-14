@@ -97,6 +97,19 @@ async function updateRouteStops({ routeId, operatorId, stops }) {
     if (!route.rows[0]) throw Object.assign(new Error('Route not found for this operator.'), { status: 404 })
     await client.query(`DELETE FROM route_stops WHERE route_id=$1::uuid`, [routeId])
     for (const [i, s] of stops.entries()) await insertRouteStop(client, routeId, i, s)
+    const editableTrips=await client.query(`SELECT t.id,t.departure_at FROM trips t WHERE t.route_id=$1::uuid AND t.status IN('DRAFT','SCHEDULED')
+      AND NOT EXISTS(SELECT 1 FROM bookings b WHERE b.trip_id=t.id AND b.status IN('PENDING_PAYMENT','CONFIRMED'))
+      AND NOT EXISTS(SELECT 1 FROM booking_price_quotes q WHERE q.trip_id=t.id) FOR UPDATE`,[routeId])
+    for(const trip of editableTrips.rows){
+      await client.query(`DELETE FROM trip_fares WHERE trip_id=$1::uuid`,[trip.id])
+      await client.query(`DELETE FROM trip_stops WHERE trip_id=$1::uuid`,[trip.id])
+      for(const [i,s] of stops.entries()){
+        const arrival=new Date(new Date(trip.departure_at).getTime()+Number(s.arrivalOffsetMinutes||0)*60000)
+        const departure=new Date(new Date(trip.departure_at).getTime()+Number(s.departureOffsetMinutes||0)*60000)
+        await client.query(`INSERT INTO trip_stops(trip_id,stop_order,city,location_name,address,landmark,contact_number,instructions,latitude,longitude,arrival_at,departure_at,scheduled_at,scheduled_arrival_at,scheduled_departure_at,is_boarding_allowed,is_dropping_allowed)
+          VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$11,$11,$12,$13,$14)`,[trip.id,i+1,String(s.city).trim(),String(s.locationName).trim(),s.address||null,s.landmark||null,s.contactNumber||null,s.instructions||null,s.latitude||null,s.longitude||null,arrival,departure,s.isBoardingAllowed!==false,s.isDroppingAllowed!==false])
+      }
+    }
     const { rows } = await client.query(`SELECT r.*,
       COALESCE((SELECT JSON_AGG(rs ORDER BY rs.stop_order) FROM route_stops rs WHERE rs.route_id=r.id),'[]') stops
       FROM routes r WHERE r.id=$1::uuid`, [routeId])
@@ -330,7 +343,7 @@ async function upsertFareRules({tripId,operatorId,rules}) {
 }
 
 async function cancelTrip({tripId,operatorId,reason,actorUserId=null}) {
-  if(!String(reason||'').trim()) throw Object.assign(new Error('Cancellation reason is required.'),{status:422}); const client=await pool.connect(); try{await client.query('BEGIN'); const {rows}=await client.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE id=$1::uuid AND ($2::uuid IS NULL OR operator_id=$2::uuid) AND status IN('DRAFT','SCHEDULED') RETURNING *`,[tripId,operatorId||null]); if(!rows[0]) throw Object.assign(new Error('Cancellable trip not found.'),{status:409}); await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'CANCELLED',$2,$3::uuid)`,[tripId,String(reason).trim(),actorUserId||null]); const affected=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT') RETURNING id,booking_reference,customer_id`,[tripId,`Trip cancelled: ${String(reason).trim()}`]); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE trip_id=$1::uuid`,[tripId]); for(const b of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','TRIP_CANCELLED',$3::jsonb),($1::uuid,$2::uuid,'SMS','TRIP_CANCELLED',$3::jsonb)`,[b.customer_id,b.id,JSON.stringify({bookingId:b.id,bookingReference:b.booking_reference,reason:String(reason).trim()})]); await client.query('COMMIT'); return {trip:rows[0],affectedBookings:affected.rowCount}
+  if(!String(reason||'').trim()) throw Object.assign(new Error('Cancellation reason is required.'),{status:422}); const client=await pool.connect(); try{await client.query('BEGIN'); const {rows}=await client.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE id=$1::uuid AND ($2::uuid IS NULL OR operator_id=$2::uuid) AND status IN('DRAFT','SCHEDULED') RETURNING *`,[tripId,operatorId||null]); if(!rows[0]) throw Object.assign(new Error('Cancellable trip not found.'),{status:409}); await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'CANCELLED',$2,$3::uuid)`,[tripId,String(reason).trim(),actorUserId||null]); const affected=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT') RETURNING id,booking_reference,customer_id`,[tripId,`Trip cancelled: ${String(reason).trim()}`]); await client.query(`DELETE FROM trip_seat_segment_allocations WHERE trip_id=$1::uuid`,[tripId]); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE trip_id=$1::uuid`,[tripId]); for(const b of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'TRIP_CANCELLED',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','EMAIL','IN_APP']::notification_channel[]) c`,[b.customer_id,b.id,JSON.stringify({bookingId:b.id,bookingReference:b.booking_reference,reason:String(reason).trim()})]); await client.query('COMMIT'); return {trip:rows[0],affectedBookings:affected.rowCount}
   }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
 
@@ -447,13 +460,87 @@ async function listRecurringSchedules(operatorId){
 async function upsertScheduleException({operatorId,scheduleId,date,action,departureTime,busId,baseFare,reason}){
   const normalized=String(action||'').toUpperCase()
   if(!['CANCEL','CHANGE'].includes(normalized)) throw Object.assign(new Error('Exception action must be CANCEL or CHANGE.'),{status:422})
-  const {rows}=await pool.query(`INSERT INTO route_schedule_exceptions(schedule_id,exception_date,action,departure_time,bus_id,base_fare,reason)
-    SELECT s.id,$3::date,$4,$5::time,$6::uuid,$7,$8 FROM route_schedule_templates s WHERE s.id=$1::uuid AND s.operator_id=$2::uuid
-    ON CONFLICT(schedule_id,exception_date) DO UPDATE SET action=EXCLUDED.action,departure_time=EXCLUDED.departure_time,bus_id=EXCLUDED.bus_id,base_fare=EXCLUDED.base_fare,reason=EXCLUDED.reason RETURNING *`,
-    [scheduleId,operatorId,date,normalized,departureTime||null,busId||null,baseFare||null,reason||null])
-  if(!rows[0]) throw Object.assign(new Error('Schedule not found.'),{status:404})
-  if(normalized==='CANCEL') await pool.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE schedule_template_id=$1::uuid AND service_date=$2::date AND status IN('DRAFT','SCHEDULED')`,[scheduleId,date])
-  return rows[0]
+  if(normalized==='CHANGE' && !departureTime && !busId && baseFare==null) throw Object.assign(new Error('A changed schedule needs a new departure time, bus or fare.'),{status:422})
+  const client=await pool.connect()
+  try{
+    await client.query('BEGIN')
+    const schedule=(await client.query(`SELECT * FROM route_schedule_templates WHERE id=$1::uuid AND operator_id=$2::uuid FOR UPDATE`,[scheduleId,operatorId])).rows[0]
+    if(!schedule) throw Object.assign(new Error('Schedule not found.'),{status:404})
+    const exception=(await client.query(`INSERT INTO route_schedule_exceptions(schedule_id,exception_date,action,departure_time,bus_id,base_fare,reason)
+      VALUES($1::uuid,$2::date,$3,$4::time,$5::uuid,$6,$7)
+      ON CONFLICT(schedule_id,exception_date) DO UPDATE SET action=EXCLUDED.action,departure_time=EXCLUDED.departure_time,bus_id=EXCLUDED.bus_id,base_fare=EXCLUDED.base_fare,reason=EXCLUDED.reason RETURNING *`,
+      [scheduleId,date,normalized,departureTime||null,busId||null,baseFare||null,reason||null])).rows[0]
+    const trip=(await client.query(`SELECT * FROM trips WHERE schedule_template_id=$1::uuid AND service_date=$2::date FOR UPDATE`,[scheduleId,date])).rows[0]
+    if(trip){
+      if(!['DRAFT','SCHEDULED'].includes(trip.status)) throw Object.assign(new Error('A started or completed trip cannot be changed.'),{status:409})
+      if(normalized==='CANCEL'){
+        await client.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE id=$1::uuid`,[trip.id])
+      }else{
+        let newDeparture=new Date(trip.departure_at)
+        if(departureTime) newDeparture=new Date(`${date}T${String(departureTime).slice(0,5)}:00`)
+        if(Number.isNaN(newDeparture.getTime())||newDeparture<=new Date()) throw Object.assign(new Error('Changed departure must be in the future.'),{status:422})
+        const deltaMs=newDeparture.getTime()-new Date(trip.departure_at).getTime()
+        const newArrival=new Date(new Date(trip.arrival_at).getTime()+deltaMs)
+        if(busId && String(busId)!==String(trip.bus_id)) await remapTripBus(client,{trip,operatorId,newBusId:busId})
+        await client.query(`UPDATE trips SET departure_at=$2,arrival_at=$3,base_fare=COALESCE($4,base_fare),updated_at=NOW() WHERE id=$1::uuid`,[trip.id,newDeparture,newArrival,baseFare||null])
+        if(deltaMs) await client.query(`UPDATE trip_stops SET arrival_at=arrival_at+($2::bigint*INTERVAL '1 millisecond'),departure_at=departure_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_at=scheduled_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_arrival_at=scheduled_arrival_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_departure_at=scheduled_departure_at+($2::bigint*INTERVAL '1 millisecond') WHERE trip_id=$1::uuid`,[trip.id,deltaMs])
+      }
+      const affected=await client.query(`SELECT id,booking_reference,customer_id FROM bookings WHERE trip_id=$1::uuid AND status='CONFIRMED'`,[trip.id])
+      if(normalized==='CANCEL'){
+        await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT')`,[trip.id,reason||'Scheduled service cancelled'])
+        await client.query(`DELETE FROM trip_seat_segment_allocations WHERE trip_id=$1::uuid`,[trip.id])
+      }
+      const event=normalized==='CANCEL'?'TRIP_CANCELLED':'TRIP_SCHEDULE_CHANGED'
+      const payload=JSON.stringify({tripId:trip.id,serviceDate:date,oldDeparture:trip.departure_at,newDeparture:departureTime?`${date}T${departureTime}`:trip.departure_at,busChanged:Boolean(busId&&String(busId)!==String(trip.bus_id)),reason:reason||null})
+      for(const booking of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload)
+        SELECT $1::uuid,$2::uuid,c,$3,$4::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','EMAIL','IN_APP']::notification_channel[]) c`,[booking.customer_id,booking.id,event,payload])
+      await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason) VALUES($1::uuid,$2,$3)`,[trip.id,normalized==='CANCEL'?'CANCELLED':(busId?'BUS_CHANGED':'DELAYED'),reason||'Recurring schedule exception'])
+    }
+    await client.query('COMMIT')
+    return {...exception,affectedTripId:trip?.id||null}
+  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}
+
+async function remapTripBus(client,{trip,operatorId,newBusId}){
+  const bus=(await client.query(`SELECT id FROM buses WHERE id=$1::uuid AND operator_id=$2::uuid AND status='ACTIVE' FOR UPDATE`,[newBusId,operatorId])).rows[0]
+  if(!bus) throw Object.assign(new Error('Replacement bus must be ACTIVE and owned by this operator.'),{status:422})
+  const bookedSeats=await client.query(`SELECT DISTINCT old.id old_seat_id,old.seat_number,old.seat_type,old.deck,
+    replacement.id new_seat_id FROM booking_passengers bp JOIN bookings bk ON bk.id=bp.booking_id
+    JOIN bus_seats old ON old.id=bp.bus_seat_id LEFT JOIN bus_seats replacement ON replacement.bus_id=$2::uuid AND replacement.is_active
+      AND replacement.seat_number=old.seat_number AND replacement.seat_type=old.seat_type AND replacement.deck=old.deck
+    WHERE bk.trip_id=$1::uuid AND bk.status IN('PENDING_PAYMENT','CONFIRMED')`,[trip.id,newBusId])
+  const missing=bookedSeats.rows.filter(row=>!row.new_seat_id)
+  if(missing.length) throw Object.assign(new Error(`Replacement bus is incompatible. Missing matching seats: ${missing.map(row=>row.seat_number).join(', ')}.`),{status:409,details:{missingSeats:missing.map(row=>({seatNumber:row.seat_number,seatType:row.seat_type,deck:row.deck}))}})
+  await client.query(`DELETE FROM trip_seat_inventory WHERE trip_id=$1::uuid`,[trip.id])
+  await client.query(`UPDATE trips SET bus_id=$2::uuid,updated_at=NOW() WHERE id=$1::uuid`,[trip.id,newBusId])
+  await client.query(`SELECT generate_trip_inventory($1::uuid)`,[trip.id])
+  for(const seat of bookedSeats.rows){
+    await client.query(`UPDATE booking_passengers bp SET bus_seat_id=$3::uuid FROM bookings bk WHERE bp.booking_id=bk.id AND bk.trip_id=$1::uuid AND bp.bus_seat_id=$2::uuid`,[trip.id,seat.old_seat_id,seat.new_seat_id])
+    await client.query(`UPDATE trip_seat_segment_allocations SET bus_seat_id=$3::uuid WHERE trip_id=$1::uuid AND bus_seat_id=$2::uuid`,[trip.id,seat.old_seat_id,seat.new_seat_id])
+  }
+}
+
+async function updateTripSchedule({operatorId,tripId,departureAt,arrivalAt,busId,reason}){
+  const client=await pool.connect()
+  try{
+    await client.query('BEGIN')
+    const trip=(await client.query(`SELECT * FROM trips WHERE id=$1::uuid AND operator_id=$2::uuid FOR UPDATE`,[tripId,operatorId])).rows[0]
+    if(!trip||!['DRAFT','SCHEDULED'].includes(trip.status)) throw Object.assign(new Error('Only a draft or scheduled trip can be changed.'),{status:409})
+    const nextDeparture=departureAt?new Date(departureAt):new Date(trip.departure_at)
+    const nextArrival=arrivalAt?new Date(arrivalAt):new Date(new Date(trip.arrival_at).getTime()+(nextDeparture-new Date(trip.departure_at)))
+    if(Number.isNaN(nextDeparture.getTime())||Number.isNaN(nextArrival.getTime())||nextDeparture<=new Date()||nextArrival<=nextDeparture) throw Object.assign(new Error('Enter a valid future departure and arrival.'),{status:422})
+    const busChanged=Boolean(busId&&String(busId)!==String(trip.bus_id))
+    if(busChanged) await remapTripBus(client,{trip,operatorId,newBusId:busId})
+    const deltaMs=nextDeparture.getTime()-new Date(trip.departure_at).getTime()
+    await client.query(`UPDATE trips SET departure_at=$3,arrival_at=$4,updated_at=NOW() WHERE id=$1::uuid AND operator_id=$2::uuid`,[tripId,operatorId,nextDeparture,nextArrival])
+    if(deltaMs) await client.query(`UPDATE trip_stops SET arrival_at=arrival_at+($2::bigint*INTERVAL '1 millisecond'),departure_at=departure_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_at=scheduled_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_arrival_at=scheduled_arrival_at+($2::bigint*INTERVAL '1 millisecond'),scheduled_departure_at=scheduled_departure_at+($2::bigint*INTERVAL '1 millisecond') WHERE trip_id=$1::uuid`,[tripId,deltaMs])
+    const affected=await client.query(`SELECT id,customer_id FROM bookings WHERE trip_id=$1::uuid AND status='CONFIRMED'`,[tripId])
+    const payload=JSON.stringify({tripId,oldDeparture:trip.departure_at,newDeparture:nextDeparture,oldArrival:trip.arrival_at,newArrival:nextArrival,busChanged,reason:reason||null})
+    for(const booking of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'TRIP_SCHEDULE_CHANGED',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','EMAIL','IN_APP']::notification_channel[]) c`,[booking.customer_id,booking.id,payload])
+    await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason) VALUES($1::uuid,$2,$3)`,[tripId,busChanged?'BUS_CHANGED':'DELAYED',reason||'Operator changed the trip schedule'])
+    await client.query('COMMIT')
+    return {tripId,departureAt:nextDeparture,arrivalAt:nextArrival,busChanged,remappedBookings:affected.rowCount}
+  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
 module.exports.getTripOperations=getTripOperations
 module.exports.updateTripStops=updateTripStops
@@ -468,3 +555,4 @@ module.exports.createRecurringSchedule=createRecurringSchedule
 module.exports.materializeSchedule=materializeSchedule
 module.exports.listRecurringSchedules=listRecurringSchedules
 module.exports.upsertScheduleException=upsertScheduleException
+module.exports.updateTripSchedule=updateTripSchedule

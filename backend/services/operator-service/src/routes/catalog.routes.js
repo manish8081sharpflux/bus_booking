@@ -21,6 +21,7 @@ router.get('/trips/:id/inventory',requirePermission('inventory.manage'), control
 router.patch('/trips/:id/publish',requirePermission('trip.manage'), controller.publishTrip)
 router.get('/trips/:id/operations',requirePermission('operator.read'), controller.getTripOperations)
 router.put('/trips/:id/stops',requirePermission('trip.manage'), controller.updateTripStops)
+router.patch('/trips/:id/schedule',requirePermission('trip.manage'),controller.updateTripSchedule)
 router.patch('/trips/:id/seats/block',requirePermission('inventory.manage'), controller.setSeatBlocks)
 router.put('/trips/:id/fare-rules',requirePermission('trip.manage'), controller.upsertFareRules)
 router.patch('/trips/:id/cancel',requirePermission('trip.manage'), controller.cancelTrip)

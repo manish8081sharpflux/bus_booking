@@ -369,6 +369,16 @@ export default function OperatorManagementPage({
     setStopsForm((current) => current.filter((_, i) => i !== index));
   }
 
+  function moveStop(index: number, direction: -1 | 1) {
+    setStopsForm((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
   async function saveStops(e: React.FormEvent) {
     e.preventDefault();
     if (!stopsRoute) return;
@@ -410,6 +420,13 @@ export default function OperatorManagementPage({
             city: s.city.trim(),
             locationName: s.locationName.trim(),
             address: s.address.trim() || null,
+            landmark: s.landmark.trim() || null,
+            latitude: s.latitude === '' ? null : Number(s.latitude),
+            longitude: s.longitude === '' ? null : Number(s.longitude),
+            contactNumber: s.contactNumber.trim() || null,
+            instructions: s.instructions.trim() || null,
+            arrivalOffsetMinutes: Number(s.arrivalOffsetMinutes),
+            departureOffsetMinutes: Number(s.departureOffsetMinutes),
             isBoardingAllowed: s.isBoardingAllowed,
             isDroppingAllowed: s.isDroppingAllowed,
           })),
@@ -1354,6 +1371,10 @@ export default function OperatorManagementPage({
                     </div>
 
                     <div className="route-stops-row-flags">
+
+                      <button type="button" className="route-stops-move" disabled={index === 0} onClick={() => moveStop(index, -1)} aria-label={`Move stop ${index + 1} up`} title="Move up">↑</button>
+
+                      <button type="button" className="route-stops-move" disabled={index === stopsForm.length - 1} onClick={() => moveStop(index, 1)} aria-label={`Move stop ${index + 1} down`} title="Move down">↓</button>
 
                       <label>
                         <input

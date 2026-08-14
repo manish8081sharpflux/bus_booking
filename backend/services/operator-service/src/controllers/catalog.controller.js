@@ -22,3 +22,4 @@ exports.createRecurringSchedule=async(req,res,next)=>{try{res.status(201).json({
 exports.listRecurringSchedules=async(req,res,next)=>{try{res.json({success:true,data:await service.listRecurringSchedules(req.operatorId)})}catch(e){next(e)}}
 exports.materializeSchedule=async(req,res,next)=>{try{res.json({success:true,data:await service.materializeSchedule({operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}
 exports.upsertScheduleException=async(req,res,next)=>{try{res.json({success:true,data:await service.upsertScheduleException({...req.body,operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}
+exports.updateTripSchedule=async(req,res,next)=>{try{res.json({success:true,data:await service.updateTripSchedule({...req.body,operatorId:req.operatorId,tripId:req.params.id})})}catch(e){next(e)}}
