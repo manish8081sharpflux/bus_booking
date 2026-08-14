@@ -806,6 +806,55 @@ class AuthService {
     return { ...mapUser(user), roles };
   }
 
+
+  async updateProfile(userId, payload = {}) {
+    const current = await authDao.findUserById(userId);
+    if (!current) {
+      throw new ApiError({ code: 'not_found', message: 'User not found', status: 404 });
+    }
+
+    const displayName = String(payload.displayName ?? payload.fullName ?? payload.name ?? current.display_name ?? '')
+      .trim()
+      .replace(/\s{2,}/g, ' ');
+
+    const email = payload.email === undefined
+      ? current.email
+      : (String(payload.email || '').trim().toLowerCase() || null);
+
+    if (!/^[\p{L}\p{M} .'-]{2,80}$/u.test(displayName)) {
+      throw new ApiError({ code: 'bad_request', message: 'Enter a valid full name between 2 and 80 characters', status: 400 });
+    }
+
+    if (email && (email.length > 254 || !/^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$/i.test(email))) {
+      throw new ApiError({ code: 'bad_request', message: 'Enter a valid email address', status: 400 });
+    }
+
+    if (email && email !== current.email) {
+      const duplicate = await authDao.findUserByEmailOrPhone(email);
+      if (duplicate && duplicate.id !== userId) {
+        throw new ApiError({ code: 'conflict', message: 'This email is already linked to another account', status: 409 });
+      }
+    }
+
+    await authDao.updateUser(userId, {
+      display_name: displayName,
+      email,
+      email_verified_at: email === current.email ? current.email_verified_at : null,
+    });
+
+    await authDao.query(
+      `UPDATE platform_users
+       SET full_name=$2,
+           email=$3,
+           updated_at=NOW()
+       WHERE auth_user_id=$1 OR auth_user_id=$4`,
+      [String(userId), displayName, email, `identity:${userId}`]
+    );
+
+    const updated = await authDao.findUserById(userId);
+    const roles = (await resolveRoles(userId)).map((role) => role.code);
+    return { ...mapUser(updated), roles };
+  }
   async listUsers(queryParams = {}) {
     const page = Math.max(parseInt(queryParams.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(queryParams.limit, 10) || 10, 1), 100);

@@ -14,6 +14,7 @@ router.post('/refresh', controller.refresh);
 router.post('/logout', requireAuth, controller.logout);
 router.post('/logout-all', requireAuth, controller.logoutAll);
 router.get('/me', requireAuth, controller.me);
+router.patch('/me', requireAuth, controller.updateMe);
 router.get('/sessions', requireAuth, controller.sessions);
 router.delete('/sessions/:id', requireAuth, controller.revokeSession);
 router.post('/forgot-password', controller.forgotPassword);

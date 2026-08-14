@@ -696,11 +696,7 @@ export default function CustomerProfilePage() {
               <button
                 type="button"
                 className="profile-edit-button"
-                onClick={() =>
-                  window.alert(
-                    'Connect this button to your edit-profile page or modal.',
-                  )
-                }
+                onClick={() => history.push('/profile/edit')}
               >
                 <IonIcon
                   icon={
