@@ -3343,3 +3343,32 @@
 @media (max-width: 720px) {
   .booking-points-card .booking-section-heading h2 { font-size: 19px; }
 }
+
+/* Saved travellers */
+.booking-saved-traveller {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+
+.booking-saved-traveller select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d9dde7;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 12px;
+  font: inherit;
+  color: #1f2937;
+}
+
+.booking-saved-traveller select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, .12);
+}
+
+.booking-saved-traveller small {
+  color: #667085;
+  font-weight: 400;
+  line-height: 1.4;
+}

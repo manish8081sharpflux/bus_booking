@@ -253,6 +253,17 @@ type Passenger = {
   age: string;
 
   gender: string;
+
+  savedTravellerId?: string;
+};
+
+type SavedTraveller = {
+  id: string;
+  full_name: string;
+  age: number;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  relation?: string | null;
+  is_default: boolean;
 };
 
 type Booking = {
@@ -702,6 +713,8 @@ export default function BookingFlowPage() {
 
   const [passengers, setPassengers] = useState<Passenger[]>([]);
 
+  const [savedTravellers, setSavedTravellers] = useState<SavedTraveller[]>([]);
+
   const [contact, setContact] = useState({
     mobile: '',
     email: '',
@@ -776,6 +789,33 @@ export default function BookingFlowPage() {
      SELECTED SEATS
   ======================================================= */
 
+  useEffect(() => {
+    const token = localStorage.getItem('customer_access_token');
+
+    if (!token) {
+      setSavedTravellers([]);
+      return;
+    }
+
+    fetch(`${API}/customer/travellers`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(async (response) => {
+        const body = await response.json();
+
+        if (!response.ok || body.success === false) {
+          throw new Error(body.message || 'Unable to load saved travellers.');
+        }
+
+        return body.data as SavedTraveller[];
+      })
+      .then((items) => setSavedTravellers(Array.isArray(items) ? items : []))
+      .catch(() => {
+        setSavedTravellers([]);
+      });
+  }, []);
   const chosen = useMemo(
     () => seats.filter((seat) => selected.includes(seat.id)),
     [seats, selected],
@@ -815,6 +855,7 @@ export default function BookingFlowPage() {
             fullName: '',
             age: '',
             gender: '',
+            savedTravellerId: undefined,
           },
       ),
     );
@@ -836,6 +877,7 @@ export default function BookingFlowPage() {
               ...passenger,
 
               [key]: value,
+              savedTravellerId: undefined,
             }
           : passenger,
       ),
@@ -848,6 +890,52 @@ export default function BookingFlowPage() {
      GO TO PASSENGER STEP
   ======================================================= */
 
+  function applySavedTraveller(seatId: string, travellerId: string) {
+    if (!travellerId) {
+      setPassengers((current) =>
+        current.map((passenger) =>
+          passenger.seatId === seatId
+            ? { ...passenger, savedTravellerId: undefined }
+            : passenger,
+        ),
+      );
+      setMessage('');
+      return;
+    }
+
+    const traveller = savedTravellers.find((item) => item.id === travellerId);
+
+    if (!traveller) {
+      return;
+    }
+
+    const alreadyUsed = passengers.some(
+      (passenger) =>
+        passenger.seatId !== seatId &&
+        passenger.savedTravellerId === travellerId,
+    );
+
+    if (alreadyUsed) {
+      setMessage(`${traveller.full_name} is already assigned to another selected seat.`);
+      return;
+    }
+
+    setPassengers((current) =>
+      current.map((passenger) =>
+        passenger.seatId === seatId
+          ? {
+              ...passenger,
+              fullName: traveller.full_name,
+              age: String(traveller.age),
+              gender: traveller.gender,
+              savedTravellerId: traveller.id,
+            }
+          : passenger,
+      ),
+    );
+
+    setMessage('');
+  }
   function passengerStep() {
     if (!selected.length) {
       setMessage('Select at least one available seat.');
@@ -1604,7 +1692,47 @@ export default function BookingFlowPage() {
                           </div>
                         </div>
 
-                        <div className="booking-form-grid passenger">
+                                                {savedTravellers.length > 0 && (
+                          <label className="booking-form-field booking-saved-traveller">
+                            <span>Choose saved traveller</span>
+
+                            <select
+                              value={passenger.savedTravellerId || ''}
+                              onChange={(event) =>
+                                applySavedTraveller(passenger.seatId, event.target.value)
+                              }
+                            >
+                              <option value="">Enter passenger manually</option>
+
+                              {savedTravellers.map((traveller) => {
+                                const usedByAnotherSeat = passengers.some(
+                                  (item) =>
+                                    item.seatId !== passenger.seatId &&
+                                    item.savedTravellerId === traveller.id,
+                                );
+
+                                return (
+                                  <option
+                                    key={traveller.id}
+                                    value={traveller.id}
+                                    disabled={usedByAnotherSeat}
+                                  >
+                                    {traveller.full_name} · {traveller.age} ·{' '}
+                                    {traveller.gender.toLowerCase()}
+                                    {traveller.relation ? ` · ${traveller.relation}` : ''}
+                                    {traveller.is_default ? ' · Default' : ''}
+                                    {usedByAnotherSeat ? ' · Already selected' : ''}
+                                  </option>
+                                );
+                              })}
+                            </select>
+
+                            <small>
+                              Select a saved traveller to fill name, age and gender automatically.
+                            </small>
+                          </label>
+                        )}
+<div className="booking-form-grid passenger">
                           <label className="booking-form-field">
                             <span>Full Name *</span>
 
