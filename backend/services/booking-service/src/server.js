@@ -5,9 +5,10 @@ const { setupGraceful } = require('../../shared/graceful');
 const { validateProductionEnv } = require('../../shared/production/env');
 
 async function bootstrap() {
-  validateProductionEnv({ service: 'booking-service', requiredVars: ['DATABASE_URL', 'INTERNAL_SERVICE_KEY'], secretVars: ['JWT_SECRET', 'INTERNAL_SERVICE_KEY'] });
+  validateProductionEnv({ service: 'booking-service', requiredVars: ['DATABASE_URL', 'INTERNAL_SERVICE_KEY'], secretVars: ['JWT_SECRET', 'INTERNAL_SERVICE_KEY', 'BOARDING_CREDENTIAL_SECRET'] });
   await pool.query('SELECT 1');
   console.log('[booking-service] PostgreSQL connected');
+  require('./services/refund.worker').startRefundWorker();
 
   if (KAFKA_ENABLED) {
     try {

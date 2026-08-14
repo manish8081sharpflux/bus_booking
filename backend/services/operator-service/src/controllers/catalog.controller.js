@@ -23,3 +23,7 @@ exports.listRecurringSchedules=async(req,res,next)=>{try{res.json({success:true,
 exports.materializeSchedule=async(req,res,next)=>{try{res.json({success:true,data:await service.materializeSchedule({operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}
 exports.upsertScheduleException=async(req,res,next)=>{try{res.json({success:true,data:await service.upsertScheduleException({...req.body,operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}
 exports.updateTripSchedule=async(req,res,next)=>{try{res.json({success:true,data:await service.updateTripSchedule({...req.body,operatorId:req.operatorId,tripId:req.params.id})})}catch(e){next(e)}}
+exports.declareTripDelay=async(req,res,next)=>{try{res.json({success:true,data:await service.declareTripDelay({...req.body,operatorId:req.operatorId,tripId:req.params.id,actorUserId:req.auth?.userId||null})})}catch(e){next(e)}}
+exports.reportBreakdown=async(req,res,next)=>{try{res.json({success:true,data:await service.reportBreakdown({...req.body,operatorId:req.operatorId,tripId:req.params.id,actorUserId:req.auth?.userId||null})})}catch(e){next(e)}}
+exports.replaceTripBus=async(req,res,next)=>{try{res.json({success:true,data:await service.replaceTripBus({...req.body,operatorId:req.operatorId,tripId:req.params.id})})}catch(e){next(e)}}
+exports.assignTripTracker=async(req,res,next)=>{try{res.json({success:true,data:await service.assignTripTracker({...req.body,operatorId:req.operatorId,tripId:req.params.id,actorUserId:req.auth?.userId||null})})}catch(e){next(e)}}

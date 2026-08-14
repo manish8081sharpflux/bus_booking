@@ -15,7 +15,7 @@ const { validateProductionEnv } = require('../../shared/production/env')
 const startServer =
   async () => {
     try {
-      validateProductionEnv({ service: 'operator-service', requiredVars: ['DATABASE_URL', 'ALLOWED_ORIGINS'], secretVars: ['JWT_SECRET'] })
+      validateProductionEnv({ service: 'operator-service', requiredVars: ['DATABASE_URL', 'ALLOWED_ORIGINS'], secretVars: ['JWT_SECRET', 'BOARDING_CREDENTIAL_SECRET'] })
       /*
        * Verify DB before starting.
        */

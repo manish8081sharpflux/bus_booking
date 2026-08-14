@@ -261,10 +261,12 @@ async function searchBookableTrips({from,to,date}){
 module.exports = { createRoute, createTrip, publishTrip, listRoutes, listTrips, operatorBookings, getTripFares, upsertTripFares, getTripInventory, searchBookableTrips }
 
 async function getTripOperations({tripId,operatorId}) {
-  const {rows}=await pool.query(`SELECT t.id,t.service_number,t.status,t.departure_at,t.arrival_at,t.base_fare,t.currency,r.source_city,r.destination_city,b.name bus_name,
+  const {rows}=await pool.query(`SELECT t.id,t.service_number,t.status,t.departure_at,t.arrival_at,t.base_fare,t.currency,t.declared_delay_minutes,t.declared_delay_reason,t.declared_delay_at,t.breakdown_status,t.bus_id,r.source_city,r.destination_city,b.name bus_name,
     COALESCE((SELECT JSON_AGG(ts ORDER BY ts.stop_order) FROM trip_stops ts WHERE ts.trip_id=t.id),'[]') stops,
     COALESCE((SELECT JSON_AGG(fr ORDER BY fr.priority,fr.created_at) FROM trip_fare_rules fr WHERE fr.trip_id=t.id),'[]') fare_rules,
-    COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id',i.bus_seat_id,'seat_number',bs.seat_number,'status',i.status) ORDER BY bs.deck,bs.row_number,bs.column_number) FROM trip_seat_inventory i JOIN bus_seats bs ON bs.id=i.bus_seat_id WHERE i.trip_id=t.id),'[]') inventory
+    COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id',i.bus_seat_id,'seat_number',bs.seat_number,'status',i.status) ORDER BY bs.deck,bs.row_number,bs.column_number) FROM trip_seat_inventory i JOIN bus_seats bs ON bs.id=i.bus_seat_id WHERE i.trip_id=t.id),'[]') inventory,
+    COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id',rb.id,'name',rb.name,'registrationNumber',rb.registration_number,'seatCapacity',rb.seat_capacity) ORDER BY rb.name) FROM buses rb WHERE rb.operator_id=t.operator_id AND rb.status='ACTIVE' AND rb.id<>t.bus_id),'[]') replacement_buses,
+    (SELECT ROW_TO_JSON(ta) FROM trip_tracker_assignments ta WHERE ta.trip_id=t.id AND ta.status='ACTIVE' LIMIT 1) tracker
     FROM trips t JOIN routes r ON r.id=t.route_id JOIN buses b ON b.id=t.bus_id WHERE t.id=$1::uuid AND t.operator_id=$2::uuid`,[tripId,operatorId]);
   if(!rows[0]) throw Object.assign(new Error('Trip not found for this operator.'),{status:404}); return rows[0]
 }
@@ -343,7 +345,9 @@ async function upsertFareRules({tripId,operatorId,rules}) {
 }
 
 async function cancelTrip({tripId,operatorId,reason,actorUserId=null}) {
-  if(!String(reason||'').trim()) throw Object.assign(new Error('Cancellation reason is required.'),{status:422}); const client=await pool.connect(); try{await client.query('BEGIN'); const {rows}=await client.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE id=$1::uuid AND ($2::uuid IS NULL OR operator_id=$2::uuid) AND status IN('DRAFT','SCHEDULED') RETURNING *`,[tripId,operatorId||null]); if(!rows[0]) throw Object.assign(new Error('Cancellable trip not found.'),{status:409}); await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'CANCELLED',$2,$3::uuid)`,[tripId,String(reason).trim(),actorUserId||null]); const affected=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT') RETURNING id,booking_reference,customer_id`,[tripId,`Trip cancelled: ${String(reason).trim()}`]); await client.query(`DELETE FROM trip_seat_segment_allocations WHERE trip_id=$1::uuid`,[tripId]); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE trip_id=$1::uuid`,[tripId]); for(const b of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'TRIP_CANCELLED',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','EMAIL','IN_APP']::notification_channel[]) c`,[b.customer_id,b.id,JSON.stringify({bookingId:b.id,bookingReference:b.booking_reference,reason:String(reason).trim()})]); await client.query('COMMIT'); return {trip:rows[0],affectedBookings:affected.rowCount}
+  if(!String(reason||'').trim()) throw Object.assign(new Error('Cancellation reason is required.'),{status:422}); const client=await pool.connect(); try{await client.query('BEGIN'); const {rows}=await client.query(`UPDATE trips SET status='CANCELLED',breakdown_status=CASE WHEN breakdown_status='NONE' THEN breakdown_status ELSE 'CANCELLED' END,updated_at=NOW() WHERE id=$1::uuid AND ($2::uuid IS NULL OR operator_id=$2::uuid) AND status IN('DRAFT','SCHEDULED','BOARDING','DEPARTED') RETURNING *`,[tripId,operatorId||null]); if(!rows[0]) throw Object.assign(new Error('Cancellable active trip not found.'),{status:409}); await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'CANCELLED',$2,$3::uuid)`,[tripId,String(reason).trim(),actorUserId||null]); const affected=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE trip_id=$1::uuid AND status IN('CONFIRMED','PENDING_PAYMENT') RETURNING id,booking_reference,customer_id`,[tripId,`Trip cancelled: ${String(reason).trim()}`]); await client.query(`INSERT INTO refunds(payment_id,booking_id,amount,reason,status,next_retry_at)
+    SELECT p.id,b.id,p.amount,'Operator trip cancellation: '||$2,'PENDING',NOW() FROM bookings b JOIN LATERAL(SELECT * FROM payments px WHERE px.booking_id=b.id AND px.status='CAPTURED' ORDER BY px.created_at DESC LIMIT 1)p ON TRUE
+    WHERE b.trip_id=$1::uuid AND b.status='CANCELLED' ON CONFLICT DO NOTHING`,[tripId,String(reason).trim()]); await client.query(`DELETE FROM trip_seat_segment_allocations WHERE trip_id=$1::uuid`,[tripId]); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE trip_id=$1::uuid`,[tripId]); for(const b of affected.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'TRIP_CANCELLED',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','EMAIL','IN_APP']::notification_channel[]) c`,[b.customer_id,b.id,JSON.stringify({bookingId:b.id,bookingReference:b.booking_reference,reason:String(reason).trim(),refundStatus:'PROCESSING'})]); await client.query('COMMIT'); return {trip:rows[0],affectedBookings:affected.rowCount,refundsQueued:(await pool.query(`SELECT COUNT(*)::int count FROM refunds r JOIN bookings b ON b.id=r.booking_id WHERE b.trip_id=$1::uuid AND r.reason LIKE 'Operator trip cancellation%'`,[tripId])).rows[0].count}
   }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
 
@@ -356,15 +360,13 @@ async function verifyBoarding({operatorId,bookingId,passengerIds=[],credential,s
   if(!['BOARDED','NO_SHOW','PENDING'].includes(nextStatus)) throw Object.assign(new Error('Invalid boarding status.'),{status:422})
   let verificationMethod=String(method||'MANUAL').toUpperCase()
   if(nextStatus==='BOARDED'&&verificationMethod!=='MANUAL'){
-    const secret=process.env.JWT_SECRET||'development-only-secret'
-    const signature=require('crypto').createHmac('sha256',secret).update(`boarding:${booking.id}:${booking.booking_reference}`).digest('hex').slice(0,24)
-    const validQr=`BUSGO:${booking.id}:${signature}`
-    const validOtp=String(parseInt(signature.slice(0,12),16)%1000000).padStart(6,'0')
-    verificationMethod=String(credential).startsWith('BUSGO:')?'QR':'OTP'
+    const crypto=require('crypto'),secret=process.env.BOARDING_CREDENTIAL_SECRET||'development-boarding-secret'
     const provided=String(credential||'').trim()
-    const expected=verificationMethod==='QR'?validQr:validOtp
-    const a=Buffer.from(provided),b=Buffer.from(expected)
-    if(a.length!==b.length||!require('crypto').timingSafeEqual(a,b)) throw Object.assign(new Error('Invalid QR ticket or boarding OTP.'),{status:401})
+    verificationMethod=provided.startsWith('BUSGO2.')?'QR':'OTP'
+    const hash=verificationMethod==='QR'?crypto.createHmac('sha256',secret).update(provided).digest('hex'):crypto.createHmac('sha256',secret).update(`${booking.id}:${provided}`).digest('hex')
+    const column=verificationMethod==='QR'?'token_hash':'otp_hash'
+    const verified=(await pool.query(`UPDATE boarding_credentials SET used_at=NOW() WHERE booking_id=$1::uuid AND ${column}=$2 AND revoked_at IS NULL AND used_at IS NULL AND expires_at>NOW() RETURNING id`,[bookingId,hash])).rows[0]
+    if(!verified) throw Object.assign(new Error('Invalid or expired QR ticket/boarding OTP. Ask the passenger to refresh the boarding pass.'),{status:401})
   }
   const selected=Array.isArray(passengerIds)?passengerIds.filter(Boolean):[]
   await pool.query(`INSERT INTO passenger_boarding_verifications(booking_id,passenger_id)
@@ -542,6 +544,47 @@ async function updateTripSchedule({operatorId,tripId,departureAt,arrivalAt,busId
     return {tripId,departureAt:nextDeparture,arrivalAt:nextArrival,busChanged,remappedBookings:affected.rowCount}
   }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
 }
+
+async function declareTripDelay({operatorId,tripId,delayMinutes,reason,actorUserId=null}){
+  const minutes=Number(delayMinutes)
+  if(!Number.isInteger(minutes)||minutes<1||minutes>1440||!String(reason||'').trim()) throw Object.assign(new Error('Delay must be 1–1440 minutes with a reason.'),{status:422})
+  const client=await pool.connect();try{
+    await client.query('BEGIN')
+    const trip=(await client.query(`UPDATE trips SET declared_delay_minutes=$3,declared_delay_reason=$4,declared_delay_at=NOW(),updated_at=NOW() WHERE id=$1::uuid AND operator_id=$2::uuid AND status IN('SCHEDULED','BOARDING','DEPARTED') RETURNING *`,[tripId,operatorId,minutes,String(reason).trim()])).rows[0]
+    if(!trip) throw Object.assign(new Error('Only an active trip can be declared delayed.'),{status:409})
+    await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,delay_minutes,created_by) VALUES($1::uuid,'DELAYED',$2,$3,$4::uuid)`,[tripId,String(reason).trim(),minutes,actorUserId||null])
+    const bookings=await client.query(`SELECT id,customer_id,booking_reference FROM bookings WHERE trip_id=$1::uuid AND status='CONFIRMED'`,[tripId])
+    const payload=JSON.stringify({tripId,delayMinutes:minutes,reason:String(reason).trim(),declaredAt:new Date().toISOString()})
+    for(const b of bookings.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'TRIP_DELAYED',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','IN_APP']::notification_channel[]) c`,[b.customer_id,b.id,payload])
+    await client.query('COMMIT');return {trip,notifiedBookings:bookings.rowCount}
+  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}
+
+async function reportBreakdown({operatorId,tripId,reason,actorUserId=null}){
+  if(!String(reason||'').trim()) throw Object.assign(new Error('Breakdown details are required.'),{status:422})
+  const client=await pool.connect();try{
+    await client.query('BEGIN')
+    const trip=(await client.query(`UPDATE trips SET breakdown_status='REPLACEMENT_PENDING',updated_at=NOW() WHERE id=$1::uuid AND operator_id=$2::uuid AND status IN('SCHEDULED','BOARDING','DEPARTED') RETURNING *`,[tripId,operatorId])).rows[0]
+    if(!trip) throw Object.assign(new Error('Breakdown can only be reported for an active trip.'),{status:409})
+    await client.query(`INSERT INTO trip_disruptions(trip_id,disruption_type,reason,created_by) VALUES($1::uuid,'OTHER',$2,$3::uuid)`,[tripId,`BUS_BREAKDOWN: ${String(reason).trim()}`,actorUserId||null])
+    const bookings=await client.query(`SELECT id,customer_id FROM bookings WHERE trip_id=$1::uuid AND status='CONFIRMED'`,[tripId])
+    const payload=JSON.stringify({tripId,status:'REPLACEMENT_PENDING',reason:String(reason).trim()})
+    for(const b of bookings.rows) await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) SELECT $1::uuid,$2::uuid,c,'BUS_BREAKDOWN',$3::jsonb FROM UNNEST(ARRAY['WHATSAPP','SMS','IN_APP']::notification_channel[]) c`,[b.customer_id,b.id,payload])
+    await client.query('COMMIT');return {trip,notifiedBookings:bookings.rowCount,nextActions:['REPLACE_BUS','CANCEL_TRIP']}
+  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}
+
+async function replaceTripBus({operatorId,tripId,busId,reason}){
+  const result=await updateTripSchedule({operatorId,tripId,busId,reason:reason||'Operational bus replacement'})
+  await pool.query(`UPDATE trips SET breakdown_status='RESOLVED',updated_at=NOW() WHERE id=$1::uuid`,[tripId])
+  return result
+}
+
+async function assignTripTracker({operatorId,tripId,sourceType,sourceIdentifier,actorUserId=null}){
+  const type=String(sourceType||'').toUpperCase(),identifier=String(sourceIdentifier||'').trim()
+  if(!['GPS_DEVICE','DRIVER_PHONE','CONDUCTOR_PHONE'].includes(type)||!identifier) throw Object.assign(new Error('Valid tracker type and identifier are required.'),{status:422})
+  const client=await pool.connect();try{await client.query('BEGIN');const trip=await client.query(`SELECT id FROM trips WHERE id=$1::uuid AND operator_id=$2::uuid FOR UPDATE`,[tripId,operatorId]);if(!trip.rows[0])throw Object.assign(new Error('Trip not found.'),{status:404});await client.query(`UPDATE trip_tracker_assignments SET status='INACTIVE',unassigned_at=NOW() WHERE trip_id=$1::uuid AND status='ACTIVE'`,[tripId]);const {rows}=await client.query(`INSERT INTO trip_tracker_assignments(trip_id,source_type,source_identifier,assigned_by) VALUES($1::uuid,$2,$3,$4::uuid) RETURNING *`,[tripId,type,identifier,actorUserId||null]);await client.query('COMMIT');return rows[0]}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+}
 module.exports.getTripOperations=getTripOperations
 module.exports.updateTripStops=updateTripStops
 module.exports.setSeatBlocks=setSeatBlocks
@@ -556,3 +599,7 @@ module.exports.materializeSchedule=materializeSchedule
 module.exports.listRecurringSchedules=listRecurringSchedules
 module.exports.upsertScheduleException=upsertScheduleException
 module.exports.updateTripSchedule=updateTripSchedule
+module.exports.declareTripDelay=declareTripDelay
+module.exports.reportBreakdown=reportBreakdown
+module.exports.replaceTripBus=replaceTripBus
+module.exports.assignTripTracker=assignTripTracker

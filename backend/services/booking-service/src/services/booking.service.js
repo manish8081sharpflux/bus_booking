@@ -731,11 +731,19 @@ class BookingService {
     return (await pool.query(`INSERT INTO support_tickets(ticket_number,customer_id,booking_id,operator_id,category,subject,description,priority) VALUES($1,$2::uuid,$3::uuid,$4::uuid,'BOOKING','WhatsApp support request',$5,'MEDIUM') RETURNING *`,[ticketNumber,customerId,id,b.operator_id,String(reason).slice(0,1000)])).rows[0]
   }
 
-  boardingCredential(bookingId, reference) {
-    const secret=process.env.JWT_SECRET||'development-only-secret'
-    const signature=crypto.createHmac('sha256',secret).update(`boarding:${bookingId}:${reference}`).digest('hex').slice(0,24)
-    const otp=String(parseInt(signature.slice(0,12),16)%1000000).padStart(6,'0')
-    return {qrPayload:`BUSGO:${bookingId}:${signature}`,otp}
+  async boardingCredential(bookingId, reference) {
+    const secret=process.env.BOARDING_CREDENTIAL_SECRET||'development-boarding-secret'
+    const expiresAt=new Date(Date.now()+15*60000)
+    const nonce=crypto.randomBytes(18).toString('base64url')
+    const payload=`${bookingId}.${Math.floor(expiresAt.getTime()/1000)}.${nonce}`
+    const signature=crypto.createHmac('sha256',secret).update(payload).digest('base64url')
+    const qrPayload=`BUSGO2.${payload}.${signature}`
+    const otp=String(parseInt(crypto.createHmac('sha256',secret).update(`otp:${payload}`).digest('hex').slice(0,12),16)%1000000).padStart(6,'0')
+    const tokenHash=crypto.createHmac('sha256',secret).update(qrPayload).digest('hex')
+    const otpHash=crypto.createHmac('sha256',secret).update(`${bookingId}:${otp}`).digest('hex')
+    await pool.query(`UPDATE boarding_credentials SET revoked_at=NOW() WHERE booking_id=$1::uuid AND revoked_at IS NULL`,[bookingId])
+    await pool.query(`INSERT INTO boarding_credentials(booking_id,token_hash,otp_hash,expires_at) VALUES($1::uuid,$2,$3,$4)`,[bookingId,tokenHash,otpHash,expiresAt])
+    return {qrPayload,otp,boardingCredentialExpiresAt:expiresAt.toISOString()}
   }
 
   async boardingPassForAuth(id, authUserId) {
@@ -754,7 +762,7 @@ class BookingService {
       FROM booking_passengers bp JOIN bus_seats bs ON bs.id=bp.bus_seat_id
       LEFT JOIN passenger_boarding_verifications v ON v.passenger_id=bp.id
       WHERE bp.booking_id=$1::uuid ORDER BY bs.seat_number`,[id])).rows
-    return {...booking,...this.boardingCredential(booking.id,booking.booking_reference),passengers}
+    return {...booking,...await this.boardingCredential(booking.id,booking.booking_reference),passengers}
   }
 
 }

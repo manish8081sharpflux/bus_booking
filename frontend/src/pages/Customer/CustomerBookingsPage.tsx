@@ -120,7 +120,7 @@ type TrackingExperience = {
   location: { lat: number; lng: number; speed?: number | null; heading?: number | null; timestamp: string } | null;
   history: Array<{ lat: number; lng: number; timestamp: string }>;
   stops: TrackingStop[];
-  status: { freshness: 'LIVE' | 'DELAYED' | 'OFFLINE' | 'WAITING'; ageSeconds: number | null; progress: number; nextStop: TrackingStop | null; distanceKm: number | null; etaMinutes: number | null; estimatedArrival: string | null; delayMinutes: number };
+  status: { freshness: 'LIVE' | 'DELAYED' | 'OFFLINE' | 'WAITING'; ageSeconds: number | null; progress: number; nextStop: TrackingStop | null; distanceKm: number | null; etaMinutes: number | null; estimatedArrival: string | null; delayMinutes: number; gpsCalculatedDelayMinutes?: number; officialDelay?: {minutes:number;reason?:string;declaredAt?:string}; breakdownStatus?: string };
 };
 type BoardingPass = { booking_reference: string; otp: string; qrPayload: string; boarding_point: string; departure_at: string; passengers: Array<{ id: string; name: string; seat: string; boarding_status: string; verified_at?: string }> };
 
@@ -2314,6 +2314,13 @@ ${money(booking.total_amount)}
                               </span>
                             </div>
                           </div>
+
+                          {!!tracking.status.officialDelay?.minutes && (
+                            <div className="booking-alert error">
+                              <strong>Operator-declared delay: {tracking.status.officialDelay.minutes} minutes</strong>
+                              <span>{tracking.status.officialDelay.reason || 'Operational delay reported by the bus operator.'}</span>
+                            </div>
+                          )}
 
                           <div className="tracking-stats">
                             <div><small>SPEED</small><strong>{tracking.location?.speed != null ? `${Math.round(tracking.location.speed)} km/h` : '—'}</strong></div>

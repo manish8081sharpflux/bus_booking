@@ -7,6 +7,7 @@ import {
   pricetagOutline,
   saveOutline,
   shieldCheckmarkOutline,
+  timeOutline,
 } from 'ionicons/icons';
 import { useHistory, useParams } from 'react-router-dom';
 import './TripOperationsPage.css';
@@ -86,6 +87,10 @@ export default function TripOperationsPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [reason, setReason] = useState('');
+  const [delayMinutes, setDelayMinutes] = useState(45);
+  const [replacementBusId, setReplacementBusId] = useState('');
+  const [trackerType, setTrackerType] = useState('GPS_DEVICE');
+  const [trackerIdentifier, setTrackerIdentifier] = useState('');
 
   async function load() {
     try {
@@ -207,6 +212,11 @@ export default function TripOperationsPage() {
     }
   }
 
+  async function operationalAction(path: string, body: Record<string, unknown>, success: string) {
+    try { setBusy(true); const result=await api(`/trips/${tripId}/${path}`,{method:path==='tracker'?'PUT':'POST',body:JSON.stringify(body)});setMsg(`${success}${result.notifiedBookings != null ? ` ${result.notifiedBookings} booking(s) notified.` : ''}`);await load(); }
+    catch(e){setMsg(e instanceof Error?e.message:'Operational action failed');}finally{setBusy(false)}
+  }
+
   return (
     <IonPage>
       <IonContent fullscreen>
@@ -286,6 +296,30 @@ export default function TripOperationsPage() {
               <div className="card-title"><IonIcon icon={banOutline} /><div><h2>Cancel trip</h2><p>Cancel service, release inventory and notify affected customers.</p></div></div>
               <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Cancellation reason" />
               <button onClick={cancel} disabled={busy || data?.status === 'CANCELLED'}>Cancel trip</button>
+            </article>
+
+            <article className="trip-ops-card">
+              <div className="card-title"><IonIcon icon={timeOutline} /><div><h2>Declare official delay</h2><p>GPS delay remains separate. This sends passenger alerts.</p></div></div>
+              {data?.declared_delay_minutes > 0 && <p><b>Current official delay:</b> {data.declared_delay_minutes} min — {data.declared_delay_reason}</p>}
+              <input className="full-input" type="number" min="1" max="1440" value={delayMinutes} onChange={e=>setDelayMinutes(Number(e.target.value))} />
+              <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Delay reason" />
+              <button className="primary" disabled={busy||!reason.trim()} onClick={()=>operationalAction('delay',{delayMinutes,reason},'Official delay declared.')}>Notify delay</button>
+            </article>
+
+            <article className="trip-ops-card danger">
+              <div className="card-title"><IonIcon icon={banOutline} /><div><h2>Bus breakdown</h2><p>Report breakdown, then replace the bus or cancel the trip.</p></div></div>
+              <p>Status: <b>{data?.breakdown_status || 'NONE'}</b></p>
+              <button disabled={busy||!reason.trim()} onClick={()=>operationalAction('breakdown',{reason},'Breakdown reported.')}>Report breakdown</button>
+              <select className="full-input" value={replacementBusId} onChange={e=>setReplacementBusId(e.target.value)}><option value="">Choose compatible replacement bus</option>{(data?.replacement_buses||[]).map((b:any)=><option key={b.id} value={b.id}>{b.name} · {b.registrationNumber} · {b.seatCapacity} seats</option>)}</select>
+              <button className="primary" disabled={busy||!replacementBusId} onClick={()=>operationalAction('replace-bus',{busId:replacementBusId,reason},'Bus replaced and passenger seats remapped.')}>Replace bus</button>
+            </article>
+
+            <article className="trip-ops-card">
+              <div className="card-title"><IonIcon icon={locationOutline} /><div><h2>Tracking source</h2><p>Assign a physical GPS or crew-phone tracker.</p></div></div>
+              {data?.tracker && <p>Active: <b>{data.tracker.source_type}</b> · {data.tracker.source_identifier}</p>}
+              <select className="full-input" value={trackerType} onChange={e=>setTrackerType(e.target.value)}><option value="GPS_DEVICE">GPS device</option><option value="DRIVER_PHONE">Driver phone</option><option value="CONDUCTOR_PHONE">Conductor phone</option></select>
+              <input className="full-input" value={trackerIdentifier} onChange={e=>setTrackerIdentifier(e.target.value)} placeholder="Device ID or verified phone" />
+              <button className="primary" disabled={busy||!trackerIdentifier.trim()} onClick={()=>operationalAction('tracker',{sourceType:trackerType,sourceIdentifier:trackerIdentifier},'Tracker assigned.')}>Assign tracker</button>
             </article>
           </section>
         </main>
