@@ -2,18 +2,23 @@ import * as authHelper from '@/auth/lib/helpers';
 import { AuthModel, UserModel } from '@/auth/lib/models';
 import { API_BASE_URL } from '@/config/api.config';
 
+type BackendUser = {
+  id: string;
+  name?: string;
+  displayName?: string;
+  mobile?: string;
+  phone?: string;
+  email?: string | null;
+  role?: string;
+  roles?: string[];
+};
+
 interface LoginResponse {
   success: boolean;
   token?: string;
   accessToken?: string;
   refreshToken?: string;
-  user?: {
-    id: string;
-    name: string;
-    mobile: string;
-    email?: string;
-    role: 'ADMIN' | 'OPERATOR' | 'USER';
-  };
+  user?: BackendUser;
   message?: string;
 }
 
@@ -28,31 +33,40 @@ export interface CreateUserPayload {
 
 interface MeResponse {
   success: boolean;
-  user?: {
-    id: string;
-    name: string;
-    mobile: string;
-    email?: string;
-    role: 'ADMIN' | 'OPERATOR' | 'USER';
-  };
+  user?: BackendUser;
   message?: string;
 }
 
-function mapUserToModel(user: NonNullable<LoginResponse['user']>): UserModel {
-  const fullName = user.name || user.mobile;
+function mapUserToModel(user: BackendUser): UserModel {
+  const phone = user.mobile || user.phone || '';
+  const fullName = user.name || user.displayName || phone || user.email || 'User';
+  const roleCodes = user.roles || (user.role ? [user.role] : []);
+  const primaryRole = roleCodes[0] || user.role || 'USER';
 
   return {
     id: user.id,
-    username: user.mobile,
+    username: phone || user.email || user.id,
     email: user.email || '',
     first_name: fullName,
     last_name: '',
     fullname: fullName,
-    phone: user.mobile,
-    is_admin: user.role === 'ADMIN',
+    phone,
+    is_admin: roleCodes.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN'),
     roles: [],
-    role: user.role,
+    role: primaryRole,
   };
+}
+
+function getTokenRoles(token: string): string[] {
+  try {
+    const encodedPayload = token.split('.')[1];
+    if (!encodedPayload) return [];
+    const normalized = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(normalized)) as { roleCodes?: string[]; role?: string };
+    return payload.roleCodes || (payload.role ? [payload.role] : []);
+  } catch {
+    return [];
+  }
 }
 
 function buildAuthError(message: string) {
@@ -157,6 +171,11 @@ export const SupabaseAdapter = {
       },
     });
 
+    if (response.status === 401 || response.status === 403) {
+      authHelper.removeAuth();
+      throw buildAuthError('Your session has expired. Please sign in again.');
+    }
+
     if (!response.ok) {
       return null;
     }
@@ -167,7 +186,10 @@ export const SupabaseAdapter = {
       return null;
     }
 
-    return mapUserToModel(data.user);
+    return mapUserToModel({
+      ...data.user,
+      roles: data.user.roles?.length ? data.user.roles : getTokenRoles(token),
+    });
   },
 
   async getUserProfile(): Promise<UserModel> {

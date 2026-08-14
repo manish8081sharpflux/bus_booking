@@ -651,6 +651,16 @@ const validateSeats =
                 seat.isFemaleReserved,
               ),
 
+            isAccessible: Boolean(seat.isAccessible),
+
+            berthLevel: seatType === 'SLEEPER' && ['LOWER', 'UPPER'].includes(String(seat.berthLevel).toUpperCase())
+              ? String(seat.berthLevel).toUpperCase()
+              : null,
+
+            side: ['LEFT', 'RIGHT', 'CENTER'].includes(String(seat.side).toUpperCase())
+              ? String(seat.side).toUpperCase()
+              : 'CENTER',
+
             isActive:
               true,
           }

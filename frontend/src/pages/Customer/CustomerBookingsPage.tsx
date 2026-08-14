@@ -608,6 +608,11 @@ export default function CustomerBookingsPage() {
           body.success ===
             false
         ) {
+          if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('customer_access_token');
+            localStorage.removeItem('customer_refresh_token');
+            history.replace('/login?returnTo=%2Fbookings');
+          }
           throw new Error(
             body.message ||
               'Unable to load bookings.',

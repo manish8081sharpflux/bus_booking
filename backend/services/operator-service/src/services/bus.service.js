@@ -172,6 +172,8 @@ const createBusWithSeats =
               transmission_type,
               suspension_type,
               service_type,
+              approval_status,
+              operational_status,
               status
             )
 
@@ -187,6 +189,7 @@ const createBusWithSeats =
               $9,
               $10::jsonb,
               $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+              'PENDING_APPROVAL', 'INACTIVE',
               'PENDING_APPROVAL'
             )
 
@@ -262,6 +265,9 @@ const createBusWithSeats =
                 seat_type,
                 is_window,
                 is_female_reserved,
+                is_accessible,
+                berth_level,
+                side,
                 is_active
               )
 
@@ -274,7 +280,10 @@ const createBusWithSeats =
                 $6,
                 $7,
                 $8,
-                $9
+                $9,
+                $10,
+                $11,
+                $12
               )
 
               RETURNING
@@ -287,6 +296,9 @@ const createBusWithSeats =
                 seat_type,
                 is_window,
                 is_female_reserved,
+                is_accessible,
+                berth_level,
+                side,
                 is_active
             `,
             [
@@ -309,6 +321,12 @@ const createBusWithSeats =
               Boolean(
                 seat.isFemaleReserved,
               ),
+
+              Boolean(seat.isAccessible),
+
+              seat.berthLevel || null,
+
+              seat.side || 'CENTER',
 
               Boolean(
                 seat.isActive,
@@ -664,6 +682,9 @@ const getBusSeats =
             seat_type,
             is_window,
             is_female_reserved,
+            is_accessible,
+            berth_level,
+            side,
             is_active
           FROM bus_seats
           WHERE bus_id = $1::uuid
@@ -866,7 +887,7 @@ module.exports = {
       SELECT b.*, o.display_name AS operator_name,
         (SELECT COUNT(*)::int FROM bus_seats s WHERE s.bus_id = b.id) AS configured_seats
       FROM buses b JOIN operators o ON o.id = b.operator_id
-      WHERE b.status = 'PENDING_APPROVAL'
+      WHERE b.approval_status = 'PENDING_APPROVAL'
       ORDER BY b.created_at ASC
     `)
     return rows
@@ -878,7 +899,7 @@ module.exports = {
       await client.query('BEGIN')
       const current = await client.query('SELECT * FROM buses WHERE id = $1::uuid FOR UPDATE', [busId])
       if (!current.rows[0]) throw Object.assign(new Error('Bus not found.'), { status: 404 })
-      if (current.rows[0].status !== 'PENDING_APPROVAL') {
+      if (current.rows[0].approval_status !== 'PENDING_APPROVAL') {
         throw Object.assign(new Error('Only buses pending verification can be reviewed.'), { status: 409 })
       }
       if (!approved && !String(reason || '').trim()) {
@@ -886,9 +907,11 @@ module.exports = {
       }
       const status = approved ? 'ACTIVE' : 'REJECTED'
       const { rows } = await client.query(`
-        UPDATE buses SET status = $2, rejection_reason = $3, reviewed_by = $4::uuid,
+        UPDATE buses SET status = $2, approval_status = $5,
+          operational_status = CASE WHEN $5 = 'APPROVED' THEN 'ACTIVE' ELSE 'INACTIVE' END,
+          rejection_reason = $3, reviewed_by = $4::uuid,
           reviewed_at = NOW(), updated_at = NOW() WHERE id = $1::uuid RETURNING *
-      `, [busId, status, approved ? null : String(reason).trim(), reviewerId || null])
+      `, [busId, status, approved ? null : String(reason).trim(), reviewerId || null, approved ? 'APPROVED' : 'REJECTED'])
       await client.query(`UPDATE bus_compliance SET verification_status = $2,
         verified_by = $3::uuid, verified_at = NOW(), rejection_reason = $4, updated_at = NOW()
         WHERE bus_id = $1::uuid`, [busId, approved ? 'VERIFIED' : 'REJECTED', reviewerId || null, approved ? null : String(reason).trim()])
@@ -904,7 +927,7 @@ module.exports = {
   },
 
   resubmitBus: async ({ busId, operatorId }) => {
-    const { rows } = await pool.query(`UPDATE buses SET status = 'PENDING_APPROVAL',
+    const { rows } = await pool.query(`UPDATE buses SET status = 'PENDING_APPROVAL', approval_status = 'PENDING_APPROVAL', operational_status = 'INACTIVE',
       rejection_reason = NULL, reviewed_by = NULL, reviewed_at = NULL, updated_at = NOW()
       WHERE id = $1::uuid AND operator_id = $2::uuid AND status = 'REJECTED' RETURNING *`, [busId, operatorId])
     if (!rows[0]) throw Object.assign(new Error('Rejected bus not found for this operator.'), { status: 404 })

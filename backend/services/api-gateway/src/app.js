@@ -59,7 +59,11 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api', proxyRoutes);
+// Backward-compatible service aliases for older admin builds. New clients use /api/*.
 app.use('/learn', learningRoutes);
+// Compatibility for older clients that called gateway routes without /api.
+// Keep this after gateway-owned routes so it cannot shadow them.
+app.use('/', proxyRoutes);
 
 app.use(notFound());
 app.use(errorHandler());

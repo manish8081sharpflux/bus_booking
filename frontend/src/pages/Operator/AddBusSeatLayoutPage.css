@@ -638,12 +638,28 @@
     1fr;
 }
 
+.seat-row-1x1 {
+  grid-template-columns: 1fr 48px 1fr;
+}
+
+.seat-row-2x3 {
+  grid-template-columns: 1fr 1fr 48px 1fr 1fr 1fr;
+}
+
 .seat-row-2x2 .seat-after-aisle {
   grid-column-start: 4;
 }
 
 .seat-row-2x1 .seat-after-aisle {
   grid-column-start: 3;
+}
+
+.seat-row-1x1 .seat-after-aisle {
+  grid-column-start: 3;
+}
+
+.seat-row-2x3 .seat-after-aisle {
+  grid-column-start: 4;
 }
 
 /* =========================================================

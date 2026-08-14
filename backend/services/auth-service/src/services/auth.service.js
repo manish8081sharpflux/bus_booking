@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
+// Load the shared service environment before the JWT module captures its secret.
+require('../config/env');
 const { generateAccessToken } = require('../../../shared/auth/jwt');
 const { ApiError } = require('../../../shared/errors');
 const authDao = require('./auth.dao');
@@ -800,7 +802,8 @@ class AuthService {
     if (!user) {
       throw new ApiError({ code: 'not_found', message: 'User not found', status: 404 });
     }
-    return mapUser(user);
+    const roles = (await resolveRoles(user.id)).map((role) => role.code);
+    return { ...mapUser(user), roles };
   }
 
   async listUsers(queryParams = {}) {

@@ -108,9 +108,9 @@ export function SignInPage() {
         className="block w-full space-y-5"
       >
         <div className="text-center space-y-1 pb-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">Welcome back</h1>
           <p className="text-sm text-muted-foreground">
-            Sign in using your mobile number and password.
+            Sign in to continue to BusGo Admin.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export function SignInPage() {
             <FormItem>
               <FormLabel>Mobile Number</FormLabel>
               <FormControl>
-                <Input placeholder="Enter your mobile number" {...field} />
+                <Input autoComplete="username" inputMode="tel" placeholder="e.g. +91 98765 43210" className="h-12" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -161,6 +161,8 @@ export function SignInPage() {
               <div className="relative">
                 <Input
                   placeholder="Your password"
+                  autoComplete="current-password"
+                  className="h-12 pr-11"
                   type={passwordVisible ? 'text' : 'password'}
                   {...field}
                 />
@@ -211,7 +213,7 @@ export function SignInPage() {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isProcessing}>
+        <Button type="submit" className="h-12 w-full bg-rose-500 text-base font-semibold hover:bg-rose-600" disabled={isProcessing}>
           {isProcessing ? (
             <span className="flex items-center gap-2">
               <LoaderCircleIcon className="h-4 w-4 animate-spin" /> Loading...

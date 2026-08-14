@@ -174,21 +174,6 @@ const deriveBusType = (acType: string, seatingType: string) => {
   return `${prefix}_SEATER`;
 };
 
-const BUS_STATUSES = [
-  {
-    value: 'ACTIVE',
-    label: 'Active',
-  },
-  {
-    value: 'INACTIVE',
-    label: 'Inactive',
-  },
-  {
-    value: 'MAINTENANCE',
-    label: 'Maintenance',
-  },
-];
-
 const BUS_CREATION_STEPS = [
   'Bus Details',
   'Seat Layout',
@@ -1012,27 +997,6 @@ React.FC = () => {
       }
     }
 
-    /*
-     * STATUS
-     */
-
-    const allowedStatuses =
-      BUS_STATUSES.map(
-        (
-          item,
-        ) =>
-          item.value,
-      );
-
-    if (
-      !allowedStatuses.includes(
-        form.status,
-      )
-    ) {
-      newErrors.status =
-        'Please select a valid status.';
-    }
-
     setErrors(
       newErrors,
     );
@@ -1112,8 +1076,6 @@ React.FC = () => {
           form.totalSeats,
         ),
 
-      status:
-        form.status,
       fuelType: form.fuelType,
       ownershipType: form.ownershipType,
       acType: form.acType,
@@ -1125,6 +1087,21 @@ React.FC = () => {
       suspensionType: form.suspensionType,
       serviceType: form.serviceType,
     };
+
+    const previousDraftRaw = localStorage.getItem('add_bus_draft');
+    if (previousDraftRaw) {
+      try {
+        const previousDraft = JSON.parse(previousDraftRaw);
+        if (previousDraft.seatLayout !== normalizedData.seatLayout ||
+            previousDraft.deckType !== normalizedData.deckType ||
+            previousDraft.seatingType !== normalizedData.seatingType ||
+            previousDraft.totalSeats !== normalizedData.totalSeats) {
+          localStorage.removeItem('add_bus_seat_layout');
+        }
+      } catch {
+        localStorage.removeItem('add_bus_seat_layout');
+      }
+    }
 
     localStorage.setItem(
       'add_bus_draft',
@@ -1332,7 +1309,7 @@ React.FC = () => {
                 />
 
                 <FloatingTextField
-                  label="Total Seats"
+                  label="Planned Seat Capacity"
                   required
                   type="text"
                   inputMode="numeric"
@@ -1348,26 +1325,10 @@ React.FC = () => {
                   }
                 />
 
-                <FloatingSelectField
-                  label="Status"
-                  value={
-                    form.status
-                  }
-                  options={
-                    BUS_STATUSES
-                  }
-                  error={
-                    errors.status
-                  }
-                  onChange={(
-                    value,
-                  ) =>
-                    updateField(
-                      'status',
-                      value,
-                    )
-                  }
-                />
+                <div className="add-bus-info-box">
+                  <strong>Verification status: Pending approval</strong><br />
+                  Actual capacity will be calculated from enabled seats. Operational status can be changed after approval.
+                </div>
 
                 <div className="add-bus-section-heading">
                   <span>Bus classification</span>

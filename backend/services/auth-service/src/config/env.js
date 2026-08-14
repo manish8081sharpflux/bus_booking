@@ -1,8 +1,11 @@
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+// All backend services share the service-level environment. A service-specific
+// file may override it when one is present.
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env'), override: true });
 
 module.exports = {
-  PORT: Number(process.env.PORT || 4000),
+  PORT: Number(process.env.AUTH_SERVICE_PORT || process.env.PORT || 4100),
   MONGO_URI: process.env.MONGO_URI,
   DATABASE_URL: process.env.DATABASE_URL || '',
   AUTH_DATABASE_URL: process.env.AUTH_DATABASE_URL || process.env.DATABASE_URL || '',

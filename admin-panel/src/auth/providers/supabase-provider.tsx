@@ -88,7 +88,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (auth) {
       try {
         const user = await getUser();
-        setCurrentUser(user || undefined);
+        if (!user) {
+          saveAuth(undefined);
+          setCurrentUser(undefined);
+          return;
+        }
+        setCurrentUser(user);
         await loadMenu(auth.access_token);
       } catch {
         saveAuth(undefined);

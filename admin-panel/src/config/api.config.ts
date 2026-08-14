@@ -1,7 +1,7 @@
 const normalizeBase = (value: string) => value.replace(/\/+$/, '');
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:4000';
+  normalizeBase(import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:4000/api');
 
 export const OPERATOR_API_BASE_URL = (() => {
   const explicitOperatorBase = import.meta.env.VITE_OPERATOR_API_BASE_URL?.trim();
@@ -18,5 +18,5 @@ export const OPERATOR_API_BASE_URL = (() => {
       : `${normalizedGatewayBase}/api`;
   }
 
-  return 'http://localhost:4600';
+  return 'http://localhost:4000/api';
 })();
