@@ -10,11 +10,51 @@ const ROLE_PERMISSIONS={
 };
 const pool=require('../infrastructure/database/postgres.connection');
 
-exports.resolveOperator=(req,res,next)=>{
+exports.resolveOperator=async(req,res,next)=>{
   const operatorId=req.auth?.organizationId;
-  if(!operatorId) return res.status(403).json({success:false,message:'Operator organization is missing from this session. Please sign in again.'});
-  req.operatorId=operatorId;
-  next();
+
+  if(!operatorId){
+    return res.status(403).json({
+      success:false,
+      message:'Operator organization is missing from this session. Please sign in again.',
+    });
+  }
+
+  try{
+    const {rows}=await pool.query(
+      `SELECT id,status FROM operators WHERE id=$1::uuid LIMIT 1`,
+      [operatorId],
+    );
+
+    const operator=rows[0];
+
+    if(!operator){
+      return res.status(403).json({
+        success:false,
+        message:'Operator organization no longer exists.',
+      });
+    }
+
+    if(operator.status!=='APPROVED'){
+      const messages={
+        PENDING:'Your operator application is still pending approval.',
+        REJECTED:'Your operator application has been rejected.',
+        SUSPENDED:'Your operator account is suspended. Contact platform support.',
+      };
+
+      return res.status(403).json({
+        success:false,
+        code:`OPERATOR_${operator.status}`,
+        message:messages[operator.status]||'Operator account is not active.',
+      });
+    }
+
+    req.operatorId=operatorId;
+    req.operatorStatus=operator.status;
+    next();
+  }catch(error){
+    next(error);
+  }
 };
 
 exports.requirePermission=(permission)=>async(req,res,next)=>{

@@ -6,6 +6,7 @@ const {
   findById,
   getOperatorDocuments,
   updateOperatorStatus,
+  getOperatorStatusHistory,
 } = require('../services/operator.service')
 const { generateAccessToken } = require('../../../shared/auth/jwt')
 const { randomUUID } = require('crypto')
@@ -799,6 +800,7 @@ const listOperators =
         'PENDING',
         'APPROVED',
         'REJECTED',
+        'SUSPENDED',
       ]
 
       if (
@@ -1001,7 +1003,7 @@ const approveOperator =
        * provide req.user.id.
        */
       const approvedBy =
-        req.user?.id || null
+        req.auth?.platformUserId || req.auth?.userId || null
 
       const operator =
         await updateOperatorStatus({
@@ -1039,42 +1041,25 @@ const rejectOperator =
     next,
   ) => {
     try {
-      const operatorId =
-        req.params.id
+      const reason = String(req.body?.reason || '').trim()
 
-      const existing =
-        await findById(
-          operatorId,
-        )
-
-      if (!existing) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-
-            message:
-              'Operator not found.',
-          })
+      if (reason.length < 3) {
+        return res.status(422).json({
+          success: false,
+          message: 'Rejection reason is required.',
+        })
       }
 
-      const operator =
-        await updateOperatorStatus({
-          operatorId,
-
-          status:
-            'REJECTED',
-
-          approvedBy:
-            null,
-        })
+      const operator = await updateOperatorStatus({
+        operatorId: req.params.id,
+        status: 'REJECTED',
+        approvedBy: req.auth?.platformUserId || req.auth?.userId || null,
+        reason,
+      })
 
       return res.json({
         success: true,
-
-        message:
-          'Operator application rejected.',
-
+        message: 'Operator application rejected.',
         operator,
       })
     } catch (error) {
@@ -1082,6 +1067,63 @@ const rejectOperator =
     }
   }
 
+const suspendOperator = async (req, res, next) => {
+  try {
+    const reason = String(req.body?.reason || '').trim()
+
+    if (reason.length < 3) {
+      return res.status(422).json({
+        success: false,
+        message: 'Suspension reason is required.',
+      })
+    }
+
+    const operator = await updateOperatorStatus({
+      operatorId: req.params.id,
+      status: 'SUSPENDED',
+      approvedBy: req.auth?.platformUserId || req.auth?.userId || null,
+      reason,
+    })
+
+    return res.json({
+      success: true,
+      message: 'Operator suspended successfully.',
+      operator,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const reactivateOperator = async (req, res, next) => {
+  try {
+    const operator = await updateOperatorStatus({
+      operatorId: req.params.id,
+      status: 'APPROVED',
+      approvedBy: req.auth?.platformUserId || req.auth?.userId || null,
+      reason: String(req.body?.reason || 'Reinstated after review').trim(),
+    })
+
+    return res.json({
+      success: true,
+      message: 'Operator reactivated successfully.',
+      operator,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const operatorStatusHistory = async (req, res, next) => {
+  try {
+    return res.json({
+      success: true,
+      history: await getOperatorStatusHistory(req.params.id),
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 module.exports = {
   checkMobile,
 
@@ -1096,6 +1138,10 @@ module.exports = {
   approveOperator,
 
   rejectOperator,
+
+  suspendOperator,
+  reactivateOperator,
+  operatorStatusHistory,
 }
 const operatorPolicyService = require('../services/operator.service');
 module.exports.getCancellationPolicy = async (req,res,next)=>{try{const operatorId=req.auth.roles.includes('SUPER_ADMIN')?req.params.id:req.auth.organizationId;res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(operatorId)})}catch(e){next(e)}};

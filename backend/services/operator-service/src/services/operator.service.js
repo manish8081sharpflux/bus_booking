@@ -643,70 +643,145 @@ const updateOperatorStatus = async ({
   operatorId,
   status,
   approvedBy = null,
+  reason = null,
 }) => {
-  const result = await pool.query(
-    `
-      UPDATE operators
+  const nextStatus = String(status || '').trim().toUpperCase()
+  const allowed = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED']
 
-      SET
-        status = $1::operator_status,
+  if (!allowed.includes(nextStatus)) {
+    throw Object.assign(new Error('Invalid operator status.'), { status: 422 })
+  }
 
-        approved_by =
-          CASE
-            WHEN $1::operator_status =
-                 'APPROVED'::operator_status
-            THEN $2::uuid
+  const cleanReason = String(reason || '').trim() || null
 
-            WHEN $1::operator_status =
-                 'REJECTED'::operator_status
-            THEN NULL
+  if (
+    ['REJECTED', 'SUSPENDED'].includes(nextStatus) &&
+    (!cleanReason || cleanReason.length < 3)
+  ) {
+    throw Object.assign(
+      new Error(
+        `${nextStatus === 'REJECTED' ? 'Rejection' : 'Suspension'} reason is required.`,
+      ),
+      { status: 422 },
+    )
+  }
 
-            ELSE approved_by
-          END,
+  const client = await pool.connect()
 
-        approved_at =
-          CASE
-            WHEN $1::operator_status =
-                 'APPROVED'::operator_status
-            THEN NOW()
+  try {
+    await client.query('BEGIN')
 
-            WHEN $1::operator_status =
-                 'REJECTED'::operator_status
-            THEN NULL
+    const current = (
+      await client.query(
+        `SELECT id, owner_user_id, status
+         FROM operators
+         WHERE id = $1::uuid
+         FOR UPDATE`,
+        [operatorId],
+      )
+    ).rows[0]
 
-            ELSE approved_at
-          END,
+    if (!current) {
+      throw Object.assign(new Error('Operator not found.'), { status: 404 })
+    }
 
-        updated_at = NOW()
+    const validTransitions = {
+      PENDING: ['APPROVED', 'REJECTED'],
+      APPROVED: ['SUSPENDED'],
+      SUSPENDED: ['APPROVED'],
+      REJECTED: [],
+    }
 
-      WHERE id = $3::uuid
+    if (!validTransitions[current.status]?.includes(nextStatus)) {
+      throw Object.assign(
+        new Error(`Operator cannot move from ${current.status} to ${nextStatus}.`),
+        { status: 409 },
+      )
+    }
 
-      RETURNING
-        id,
-        owner_user_id,
-        legal_name,
-        display_name,
-        registration_number,
-        tax_identifier,
-        support_mobile,
-        support_email,
-        address,
-        status,
-        approved_by,
-        approved_at,
-        created_at,
-        updated_at
-    `,
-    [
-      status,
-      approvedBy,
-      operatorId,
-    ],
-  )
+    const result = await client.query(
+      `UPDATE operators
+       SET status = $1::operator_status,
+           approved_by = CASE
+             WHEN $1::operator_status = 'APPROVED'::operator_status THEN $2::uuid
+             WHEN $1::operator_status = 'REJECTED'::operator_status THEN NULL
+             ELSE approved_by
+           END,
+           approved_at = CASE
+             WHEN $1::operator_status = 'APPROVED'::operator_status
+                  AND status = 'PENDING'::operator_status THEN NOW()
+             WHEN $1::operator_status = 'REJECTED'::operator_status THEN NULL
+             ELSE approved_at
+           END,
+           rejection_reason = CASE
+             WHEN $1::operator_status = 'REJECTED'::operator_status THEN $4
+             ELSE NULL
+           END,
+           rejected_at = CASE
+             WHEN $1::operator_status = 'REJECTED'::operator_status THEN NOW()
+             ELSE NULL
+           END,
+           suspension_reason = CASE
+             WHEN $1::operator_status = 'SUSPENDED'::operator_status THEN $4
+             ELSE NULL
+           END,
+           suspended_at = CASE
+             WHEN $1::operator_status = 'SUSPENDED'::operator_status THEN NOW()
+             ELSE NULL
+           END,
+           status_changed_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $3::uuid
+       RETURNING *`,
+      [nextStatus, approvedBy, operatorId, cleanReason],
+    )
 
-  return result.rows[0] || null
+    await client.query(
+      `INSERT INTO operator_status_history (
+         operator_id,
+         from_status,
+         to_status,
+         reason,
+         changed_by
+       )
+       VALUES (
+         $1::uuid,
+         $2::operator_status,
+         $3::operator_status,
+         $4,
+         $5::uuid
+       )`,
+      [operatorId, current.status, nextStatus, cleanReason, approvedBy],
+    )
+
+    await client.query('COMMIT')
+    return result.rows[0]
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
+async function getOperatorStatusHistory(operatorId) {
+  const { rows } = await pool.query(
+    `SELECT
+       id,
+       operator_id,
+       from_status,
+       to_status,
+       reason,
+       changed_by,
+       created_at
+     FROM operator_status_history
+     WHERE operator_id = $1::uuid
+     ORDER BY created_at DESC`,
+    [operatorId],
+  )
+
+  return rows
+}
 
 async function getCancellationPolicy(operatorId) {
   const { rows } = await pool.query(`SELECT operator_id,rules,reschedule_enabled,reschedule_cutoff_hours,reschedule_fee,updated_at FROM operator_cancellation_policies WHERE operator_id=$1::uuid`, [operatorId])
@@ -753,6 +828,7 @@ module.exports = {
   getOperatorDocuments,
 
   updateOperatorStatus,
+  getOperatorStatusHistory,
   getCancellationPolicy,
   upsertCancellationPolicy,
 }

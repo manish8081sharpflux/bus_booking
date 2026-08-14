@@ -8,6 +8,9 @@ const {
   getOperator,
   approveOperator,
   rejectOperator,
+  suspendOperator,
+  reactivateOperator,
+  operatorStatusHistory,
 } = require('../controllers/operator.controller');
 
 const {
@@ -87,4 +90,34 @@ router.patch(
   rejectOperator,
 );
 
+
+/*
+ * Suspend operator
+ */
+router.patch(
+  '/:id/suspend',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  suspendOperator,
+);
+
+/*
+ * Reactivate operator
+ */
+router.patch(
+  '/:id/reactivate',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  reactivateOperator,
+);
+
+/*
+ * Operator status history
+ */
+router.get(
+  '/:id/status-history',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  operatorStatusHistory,
+);
 module.exports = router;
