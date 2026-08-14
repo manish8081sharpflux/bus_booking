@@ -2063,6 +2063,83 @@
   line-height: 1.4;
 }
 
+/* =========================================================
+   ONE-ROW SEARCH BAR (desktop / RedBus-style)
+   FROM | swap | TO | DATE | SEARCH BUTTON all in a single row.
+   Falls back to the stacked layout below 901px.
+========================================================= */
+@media (min-width: 901px) {
+  .customer-search-form {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* FROM / TO / DATE fields share the row, each flexible */
+  .customer-search-field {
+    flex: 1 1 200px;
+    min-width: 0;
+    min-height: 66px;
+    padding: 10px 14px;
+  }
+
+  /* Date field a little narrower than FROM/TO */
+  .customer-search-field:nth-of-type(4) {
+    flex: 0 1 210px;
+  }
+
+  .customer-field-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    font-size: 18px;
+  }
+
+  /* Swap control becomes an inline round button between FROM and TO,
+     instead of the floating notch used in the stacked layout. */
+  .customer-swap-row {
+    position: static;
+    height: auto;
+    flex: 0 0 auto;
+    width: 44px;
+    align-self: center;
+    justify-content: center;
+  }
+
+  .customer-swap-row > span {
+    display: none;
+  }
+
+  .customer-swap-button {
+    position: static;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+  }
+
+  /* Error message drops to its own full-width line under the row */
+  .customer-search-error {
+    flex: 1 1 100%;
+    order: 5;
+  }
+
+  /* Search button sits at the end of the row, not full width */
+  .customer-search-submit {
+    flex: 0 0 200px;
+    min-height: 66px;
+    margin-top: 0;
+    order: 4;
+  }
+
+  /* WhatsApp entry always spans the full width on its own line */
+  .customer-whatsapp-book {
+    flex: 1 1 100%;
+    order: 6;
+  }
+}
+
 /* Tablet */
 @media (max-width: 1050px) {
   .customer-navbar {
@@ -2460,5 +2537,744 @@
 
   .customer-date-copy strong {
     line-height: 28px;
+  }
+}
+/* =========================================================
+   CUSTOM REDBUS-STYLE CALENDAR + FINAL DESKTOP FIT
+   Added for HomePage.updated.tsx
+========================================================= */
+
+.customer-date-field {
+  overflow: visible;
+}
+
+.customer-date-field.calendar-open {
+  position: relative;
+  z-index: 80;
+  border-color: #f3bbc4;
+  box-shadow: 0 0 0 4px rgba(228, 50, 80, 0.08);
+}
+
+.customer-date-copy {
+  position: relative;
+  overflow: visible;
+}
+
+.customer-calendar-popover {
+  position: absolute;
+  top: calc(100% + 20px);
+  right: -20px;
+  z-index: 200;
+
+  width: 440px;
+  padding: 22px 22px 18px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+
+  background: #ffffff;
+  color: #172033;
+
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.20);
+}
+
+.customer-calendar-popover::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 58px;
+  width: 15px;
+  height: 15px;
+  transform: rotate(45deg);
+  border-left: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.customer-calendar-header {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.customer-calendar-header > strong {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.25px;
+}
+
+.customer-calendar-nav {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #172033;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.customer-calendar-nav:hover:not(:disabled) {
+  background: #f5f7fa;
+}
+
+.customer-calendar-nav:disabled {
+  color: #d0d5dd;
+  cursor: not-allowed;
+}
+
+.customer-calendar-weekdays,
+.customer-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.customer-calendar-weekdays {
+  margin-bottom: 8px;
+}
+
+.customer-calendar-weekdays span {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.customer-calendar-day,
+.customer-calendar-empty {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+}
+
+.customer-calendar-day {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.customer-calendar-day:hover:not(:disabled):not(.active) {
+  background: #fff0f3;
+  color: var(--home-primary);
+  transform: translateY(-1px);
+}
+
+.customer-calendar-day.today:not(.active) {
+  box-shadow: inset 0 0 0 1.5px #d0d5dd;
+}
+
+.customer-calendar-day.active {
+  background: #2f3033;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.18);
+}
+
+.customer-calendar-day:disabled {
+  color: #c7cbd1;
+  cursor: not-allowed;
+}
+
+.customer-calendar-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.customer-calendar-footer button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--home-primary);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.customer-calendar-footer button:hover {
+  background: var(--home-primary-soft);
+}
+
+/* Native date input is no longer used by the updated TSX. */
+.customer-native-date-input,
+.customer-choose-date-wrapper {
+  display: none !important;
+}
+
+@media (min-width: 1051px) {
+  .customer-navbar {
+    min-height: 72px;
+    height: 72px;
+    padding-left: 38px;
+    padding-right: 38px;
+  }
+
+  .customer-hero {
+    min-height: 305px;
+    height: 305px;
+  }
+
+  .customer-hero-content {
+    width: min(1380px, calc(100% - 64px));
+    padding-bottom: 68px;
+  }
+
+  .customer-hero-eyebrow {
+    font-size: 10px;
+  }
+
+  .customer-hero-content h1 {
+    max-width: 720px;
+    margin-top: 7px;
+    font-size: clamp(40px, 4vw, 55px);
+    line-height: 1.02;
+  }
+
+  .customer-hero-content p {
+    margin-top: 11px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .customer-search-area {
+    margin-top: -72px;
+    padding-left: 38px;
+    padding-right: 38px;
+  }
+
+  .customer-search-card {
+    max-width: 1380px;
+    padding: 20px 22px 18px;
+    border-radius: 22px;
+  }
+
+  .customer-search-heading {
+    display: none;
+  }
+
+  .customer-search-form {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .customer-search-field {
+    flex: 1 1 230px;
+    min-width: 0;
+    min-height: 70px;
+    height: 70px;
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .customer-field-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    font-size: 19px;
+    border-radius: 11px;
+  }
+
+  .customer-field-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .customer-field-copy label {
+    margin: 0 0 4px;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .customer-field-copy input {
+    width: 100%;
+    height: 27px;
+    margin: 0;
+    padding: 0 !important;
+    font-size: 15px;
+    line-height: 27px;
+  }
+
+  .customer-swap-row {
+    position: static;
+    flex: 0 0 46px;
+    width: 46px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .customer-swap-row > span {
+    display: none;
+  }
+
+  .customer-swap-button {
+    position: static;
+    top: auto;
+    right: auto;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    flex: 0 0 40px;
+  }
+
+  .customer-date-field {
+    flex: 0 1 255px;
+  }
+
+  .customer-date-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .customer-date-trigger {
+    width: 100%;
+    min-height: 27px;
+    padding: 0;
+    margin: 0;
+  }
+
+  .customer-date-trigger strong,
+  .customer-date-copy strong {
+    font-size: 15px;
+    line-height: 27px;
+  }
+
+  .customer-date-trigger ion-icon {
+    font-size: 17px;
+  }
+
+  .customer-search-submit {
+    flex: 0 0 215px;
+    min-height: 70px;
+    height: 70px;
+    margin: 0;
+    padding: 0 18px;
+    border-radius: 14px;
+    font-size: 12px;
+  }
+
+  .customer-search-error {
+    flex: 1 1 100%;
+    margin: 0;
+    order: 5;
+  }
+
+  .customer-whatsapp-book {
+    flex: 1 1 100%;
+    min-height: 48px;
+    margin-top: 2px;
+    padding: 9px 13px;
+    order: 6;
+  }
+
+  .customer-whatsapp-book > ion-icon:first-child {
+    font-size: 22px;
+  }
+
+  .customer-whatsapp-book strong {
+    font-size: 12px;
+  }
+
+  .customer-whatsapp-book small {
+    font-size: 10px;
+  }
+
+  .customer-quick-date-area {
+    margin-top: 11px;
+    padding-top: 11px;
+    gap: 8px;
+  }
+
+  .customer-quick-label {
+    font-size: 9px;
+  }
+
+  .customer-quick-date,
+  .customer-choose-date {
+    min-height: 40px;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+
+  .customer-quick-date strong,
+  .customer-choose-date strong {
+    font-size: 10px;
+  }
+
+  .customer-quick-date small,
+  .customer-choose-date small {
+    font-size: 8px;
+  }
+
+  .customer-home-section {
+    margin-top: 30px;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1600px) {
+  .customer-hero {
+    min-height: 305px;
+    height: 305px;
+  }
+
+  .customer-hero-content {
+    padding-bottom: 68px;
+  }
+
+  .customer-search-area {
+    margin-top: -72px;
+  }
+
+  .customer-search-field {
+    min-height: 70px;
+    height: 70px;
+    padding: 10px 14px;
+  }
+
+  .customer-field-icon {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+  }
+
+  .customer-field-copy input {
+    height: 27px;
+    padding: 0 !important;
+    line-height: 27px;
+  }
+
+  .customer-date-trigger {
+    min-height: 27px;
+  }
+
+  .customer-date-copy strong {
+    line-height: 27px;
+  }
+}
+
+@media (max-width: 1050px) {
+  .customer-calendar-popover {
+    right: 0;
+    width: min(420px, calc(100vw - 48px));
+  }
+}
+
+@media (max-width: 800px) {
+  .customer-date-field {
+    position: relative;
+  }
+
+  .customer-calendar-popover {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 420px);
+    max-height: 82vh;
+    overflow-y: auto;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .customer-calendar-popover::before {
+    display: none;
+  }
+
+  .customer-calendar-header > strong {
+    font-size: 17px;
+  }
+
+  .customer-calendar-day {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 560px) {
+  .customer-calendar-popover {
+    width: calc(100vw - 28px);
+    padding: 15px;
+  }
+
+  .customer-calendar-weekdays,
+  .customer-calendar-grid {
+    gap: 4px;
+  }
+
+  .customer-calendar-weekdays span {
+    font-size: 10px;
+  }
+}
+
+/* =========================================================
+   FINAL COMPACT CALENDAR OVERRIDE
+   RedBus-style compact desktop calendar
+========================================================= */
+.customer-calendar-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  border: 1px solid #e6eaf0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+  z-index: 500;
+}
+
+.customer-calendar-popover::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 58px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-left: 1px solid #e6eaf0;
+  border-top: 1px solid #e6eaf0;
+  transform: rotate(45deg);
+}
+
+.customer-calendar-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.customer-calendar-header > strong,
+.customer-calendar-header strong {
+  text-align: center;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.customer-calendar-nav {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #182033;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.customer-calendar-nav:hover:not(:disabled) {
+  background: #f5f7fa;
+}
+
+.customer-calendar-nav:disabled {
+  color: #cbd0d8;
+  cursor: default;
+}
+
+.customer-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.customer-calendar-weekdays span {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.customer-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.customer-calendar-day {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.customer-calendar-day:hover:not(:disabled):not(.selected) {
+  background: #fff0f3;
+  color: var(--home-primary);
+}
+
+.customer-calendar-day.selected {
+  background: #272a2f;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 7px 14px rgba(15, 23, 42, 0.16);
+}
+
+.customer-calendar-day.today:not(.selected) {
+  color: var(--home-primary);
+  font-weight: 800;
+}
+
+.customer-calendar-day:disabled {
+  color: #c9ced6;
+  cursor: default;
+}
+
+.customer-calendar-day.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.customer-calendar-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #edf0f4;
+}
+
+.customer-calendar-today {
+  padding: 5px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--home-primary);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (min-width: 801px) and (max-height: 850px) {
+  .customer-calendar-popover {
+    width: 330px;
+    padding: 12px;
+  }
+
+  .customer-calendar-header {
+    margin-bottom: 8px;
+  }
+
+  .customer-calendar-header > strong,
+  .customer-calendar-header strong {
+    font-size: 14px;
+  }
+
+  .customer-calendar-weekdays {
+    margin-bottom: 3px;
+  }
+
+  .customer-calendar-weekdays span {
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .customer-calendar-grid {
+    gap: 2px;
+  }
+
+  .customer-calendar-day {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  .customer-calendar-footer {
+    margin-top: 7px;
+    padding-top: 7px;
+  }
+}
+
+@media (max-width: 800px) {
+  .customer-calendar-popover {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    top: 50%;
+    width: min(92vw, 360px);
+    max-height: 82vh;
+    transform: translate(-50%, -50%);
+    overflow-y: auto;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .customer-calendar-popover::before {
+    display: none;
+  }
+
+  .customer-calendar-day {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 400px) {
+  .customer-calendar-popover {
+    width: calc(100vw - 24px);
+    padding: 12px;
+  }
+
+  .customer-calendar-day {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 11px;
   }
 }
