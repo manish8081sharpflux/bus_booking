@@ -19,6 +19,7 @@ import {
   chevronDownOutline,
   flashOutline,
   locationOutline,
+  navigateOutline,
   searchOutline,
   swapHorizontalOutline,
   timeOutline,
@@ -108,6 +109,67 @@ type SortType =
   | 'arrival'
   | 'duration'
   | 'price';
+
+const SEARCH_LOCATIONS = [
+  ['Pune', 'Maharashtra'], ['Mumbai', 'Maharashtra'], ['Nashik', 'Maharashtra'],
+  ['Nagpur', 'Maharashtra'], ['Aurangabad', 'Maharashtra'], ['Kolhapur', 'Maharashtra'],
+  ['Ahmednagar', 'Maharashtra'], ['Solapur', 'Maharashtra'], ['Goa', 'Goa'],
+  ['Bengaluru', 'Karnataka'], ['Hyderabad', 'Telangana'], ['Indore', 'Madhya Pradesh'],
+  ['Surat', 'Gujarat'], ['Ahmedabad', 'Gujarat'],
+] as const;
+
+const recentLocations = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem('busgo_recent_locations') || '[]');
+    return Array.isArray(stored) ? stored.filter((item) => typeof item === 'string').slice(0, 5) : [];
+  } catch { return []; }
+};
+
+function ModifyLocationField({ label, value, icon, onChange }: {
+  label: string; value: string; icon: string; onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const query = value.trim().toLowerCase();
+  const matches = SEARCH_LOCATIONS.filter(([name, region]) =>
+    `${name} ${region}`.toLowerCase().includes(query),
+  );
+  const choose = (name: string) => { onChange(name); setOpen(false); };
+
+  return (
+    <div className={`modify-search-field modify-location-field${open ? ' is-open' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
+      }}>
+      <IonIcon icon={icon} />
+      <div>
+        <label>{label}</label>
+        <input type="text" autoComplete="off" value={value}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => { onChange(event.target.value); setOpen(true); }}
+          onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false); }} />
+      </div>
+      {value && <button type="button" className="modify-location-clear"
+        aria-label={`Clear ${label}`} onClick={() => { onChange(''); setOpen(true); }}>×</button>}
+      {open && <div className="modify-location-menu">
+        {!query && recentLocations().length > 0 && <section>
+          <h3>Recent searches</h3>
+          {recentLocations().map((name) => <button type="button" key={name} onClick={() => choose(name)}>
+            <IonIcon icon={timeOutline} /><span><strong>{name}</strong><small>Recent location</small></span>
+          </button>)}
+        </section>}
+        <section>
+          <h3>{query ? 'Search results' : 'Popular locations near you'}</h3>
+          {(query ? matches : SEARCH_LOCATIONS.slice(0, 6)).map(([name, region]) =>
+            <button type="button" key={name} onClick={() => choose(name)}>
+              <IonIcon icon={query ? locationOutline : navigateOutline} />
+              <span><strong>{name}</strong><small>{region}</small></span>
+            </button>)}
+          {query && matches.length === 0 && <p>No matching location found.</p>}
+        </section>
+      </div>}
+    </div>
+  );
+}
 
 /* =========================================================
    REQUEST
@@ -773,6 +835,12 @@ export default function SearchResultsPage() {
         return;
       }
 
+      const updatedRecent = [from.trim(), to.trim(), ...recentLocations()]
+        .filter((item, index, all) =>
+          all.findIndex((entry) => entry.toLowerCase() === item.toLowerCase()) === index,
+        ).slice(0, 5);
+      localStorage.setItem('busgo_recent_locations', JSON.stringify(updatedRecent));
+
       history.push(
         `/search?from=${encodeURIComponent(
           from.trim(),
@@ -1327,39 +1395,7 @@ export default function SearchResultsPage() {
 
               {/* FROM */}
 
-              <div className="modify-search-field">
-
-                <IonIcon
-                  icon={
-                    busOutline
-                  }
-                />
-
-                <div>
-
-                  <label>
-                    From
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      from
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setFrom(
-                        event
-                          .target
-                          .value,
-                      )
-                    }
-                  />
-
-                </div>
-
-              </div>
+              <ModifyLocationField label="From" value={from} icon={busOutline} onChange={setFrom} />
 
               {/* SWAP */}
 
@@ -1379,39 +1415,7 @@ export default function SearchResultsPage() {
 
               {/* TO */}
 
-              <div className="modify-search-field">
-
-                <IonIcon
-                  icon={
-                    locationOutline
-                  }
-                />
-
-                <div>
-
-                  <label>
-                    To
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      to
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      setTo(
-                        event
-                          .target
-                          .value,
-                      )
-                    }
-                  />
-
-                </div>
-
-              </div>
+              <ModifyLocationField label="To" value={to} icon={locationOutline} onChange={setTo} />
 
               {/* DATE */}
 

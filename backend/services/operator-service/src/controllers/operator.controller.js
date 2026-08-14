@@ -7,6 +7,8 @@ const {
   getOperatorDocuments,
   updateOperatorStatus,
 } = require('../services/operator.service')
+const { generateAccessToken } = require('../../../shared/auth/jwt')
+const { randomUUID } = require('crypto')
 
 /*
  * =====================================================
@@ -64,6 +66,16 @@ const checkMobile = async (
 
       mobile:
         operator.support_mobile,
+
+      token:
+        process.env.NODE_ENV !== 'production'
+          ? generateAccessToken({
+              userId: operator.owner_user_id || operator.id,
+              organizationId: operator.id,
+              roleCodes: ['OPERATOR_ADMIN'],
+              sessionId: randomUUID(),
+            })
+          : undefined,
 
       operator: {
         id:

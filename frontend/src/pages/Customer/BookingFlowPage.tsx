@@ -8,10 +8,13 @@ import {
   calendarOutline,
   cardOutline,
   checkmarkCircleOutline,
+  checkmarkOutline,
+  chevronDownOutline,
   locationOutline,
   mailOutline,
   personOutline,
   phonePortraitOutline,
+  searchOutline,
   timeOutline,
   walletOutline,
 } from 'ionicons/icons';
@@ -72,6 +75,123 @@ type StopPoint = {
   contact_number?: string;
   scheduled_at?: string;
 };
+
+type StopPointSelectProps = {
+  label: string;
+  points: StopPoint[];
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+};
+
+function LegacyStopPointSelect({ label, points, value, fallback, onChange }: StopPointSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const selectedPoint = points.find((point) => point.id === value);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visiblePoints = points.filter((point) =>
+    [point.location_name, point.city, point.address, point.landmark]
+      .filter(Boolean).join(' ').toLowerCase().includes(normalizedQuery),
+  );
+  const formatPointTime = (scheduledAt?: string) => {
+    if (!scheduledAt) return '--:--';
+    const date = new Date(scheduledAt);
+    return Number.isNaN(date.getTime())
+      ? '--:--'
+      : date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  return (
+    <div className={`booking-point-select${open ? ' is-open' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
+      }}>
+      <span className="booking-point-label">{label}</span>
+      <button className="booking-point-trigger" type="button" aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}>
+        <span>
+          <strong>{selectedPoint?.location_name || `Choose ${label.toLowerCase()}`}</strong>
+          {selectedPoint && <small className="booking-point-selected-meta">
+            <time>{formatPointTime(selectedPoint.scheduled_at)}</time>
+            <span>{selectedPoint.city}</span>
+          </small>}
+        </span>
+        <IonIcon icon={chevronDownOutline} />
+      </button>
+      {open && (
+        <div className="booking-point-menu">
+          <div className="booking-point-search">
+            <IonIcon icon={searchOutline} />
+            <input autoFocus value={query} placeholder={`Search ${label.toLowerCase()}...`}
+              onChange={(event) => setQuery(event.target.value)} />
+          </div>
+          <div className="booking-point-options" role="listbox">
+            {visiblePoints.map((point) => (
+              <button type="button" role="option" aria-selected={point.id === value}
+                className={point.id === value ? 'is-selected' : ''} key={point.id}
+                onClick={() => {
+                  onChange(point.id);
+                  setOpen(false);
+                  setQuery('');
+                }}>
+                <IonIcon icon={locationOutline} />
+                <span>
+                  <strong className="booking-point-option-title">
+                    <time>{formatPointTime(point.scheduled_at)}</time>
+                    <span>{point.location_name}</span>
+                  </strong>
+                  <small>{[point.city, point.landmark || point.address].filter(Boolean).join(' · ')}</small>
+                </span>
+                {point.id === value && <IonIcon className="booking-point-check" icon={checkmarkOutline} />}
+              </button>
+            ))}
+            {!visiblePoints.length && <p>No matching points found.</p>}
+          </div>
+        </div>
+      )}
+      <small className="booking-point-address">{selectedPoint?.address || fallback}</small>
+    </div>
+  );
+}
+
+function StopPointSelect({ label, points, value, fallback, onChange }: StopPointSelectProps) {
+  const heading = label.toLowerCase().startsWith('boarding') ? 'Boarding points' : 'Dropping points';
+  const formatStopTime = (scheduledAt?: string) => {
+    if (!scheduledAt) return '--:--';
+    const date = new Date(scheduledAt);
+    return Number.isNaN(date.getTime())
+      ? '--:--'
+      : date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  return (
+    <div className="booking-stop-list-card">
+      <header><h3>{heading}</h3><p>Select {label}</p></header>
+      <div className="booking-stop-list" role="radiogroup" aria-label={heading}>
+        {points.map((point) => {
+          const selected = point.id === value;
+          return (
+            <button type="button" role="radio" aria-checked={selected}
+              className={selected ? 'is-selected' : ''} key={point.id}
+              onClick={() => onChange(point.id)}>
+              <time>{formatStopTime(point.scheduled_at)}</time>
+              <span className="booking-stop-copy">
+                <strong>{point.location_name}</strong>
+                {(point.address || point.landmark || point.city) &&
+                  <small>{[point.address, point.landmark, point.city].filter(Boolean).join(' · ')}</small>}
+                {selected && <em>Your selected {label}</em>}
+              </span>
+              <span className="booking-stop-radio" aria-hidden="true"><i /></span>
+            </button>
+          );
+        })}
+        {!points.length && <div className="booking-stop-empty">No {label.toLowerCase()} configured for this trip.</div>}
+      </div>
+      {!points.length && <small className="booking-stop-fallback">Route location: {fallback}</small>}
+    </div>
+  );
+}
+
 type CouponResult = {
   valid: boolean;
   code: string;
@@ -933,7 +1053,7 @@ export default function BookingFlowPage() {
       setBusy(true);
       setMessage('');
 
-      await api(`/${booking.id}/payment/complete`, {
+      const paymentResult = await api<{ ticket?: Ticket }>(`/${booking.id}/payment/complete`, {
         method: 'POST',
 
         headers: {
@@ -949,7 +1069,7 @@ export default function BookingFlowPage() {
         }),
       });
 
-      const ticketData = await api<Ticket>(`/${booking.id}/ticket`);
+      const ticketData = paymentResult.ticket || await api<Ticket>(`/${booking.id}/ticket`);
 
       setTicket(ticketData);
 
@@ -1176,6 +1296,26 @@ export default function BookingFlowPage() {
                   </div>
                 </div>
                 <div className="booking-point-grid">
+                  <LegacyStopPointSelect
+                    label="Boarding point"
+                    points={boardingPoints}
+                    value={boardingStopId}
+                    fallback={trip.source_city}
+                    onChange={(value) => {
+                      setBoardingStopId(value);
+                      setMessage('');
+                    }}
+                  />
+                  <LegacyStopPointSelect
+                    label="Dropping point"
+                    points={droppingPoints}
+                    value={droppingStopId}
+                    fallback={trip.destination_city}
+                    onChange={(value) => {
+                      setDroppingStopId(value);
+                      setMessage('');
+                    }}
+                  />
                   <label>
                     <span>Boarding point</span>
                     <select

@@ -21,11 +21,13 @@ import {
   homeOutline,
   locationOutline,
   logoWhatsapp,
+  navigateOutline,
   personOutline,
   receiptOutline,
   searchOutline,
   swapVerticalOutline,
   ticketOutline,
+  timeOutline,
 } from 'ionicons/icons';
 
 import { useHistory } from 'react-router-dom';
@@ -49,6 +51,121 @@ type Offer = {
   description: string;
   badge: string;
 };
+
+type LocationOption = { name: string; region: string };
+
+const LOCATION_OPTIONS: LocationOption[] = [
+  { name: 'Pune', region: 'Maharashtra' },
+  { name: 'Mumbai', region: 'Maharashtra' },
+  { name: 'Nashik', region: 'Maharashtra' },
+  { name: 'Nagpur', region: 'Maharashtra' },
+  { name: 'Aurangabad', region: 'Maharashtra' },
+  { name: 'Kolhapur', region: 'Maharashtra' },
+  { name: 'Ahmednagar', region: 'Maharashtra' },
+  { name: 'Solapur', region: 'Maharashtra' },
+  { name: 'Goa', region: 'Goa' },
+  { name: 'Bengaluru', region: 'Karnataka' },
+  { name: 'Hyderabad', region: 'Telangana' },
+  { name: 'Indore', region: 'Madhya Pradesh' },
+  { name: 'Surat', region: 'Gujarat' },
+  { name: 'Ahmedabad', region: 'Gujarat' },
+];
+
+function readRecentLocations() {
+  try {
+    const value = JSON.parse(localStorage.getItem('busgo_recent_locations') || '[]');
+    return Array.isArray(value) ? value.filter((item) => typeof item === 'string').slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
+function LocationSearchField({
+  label,
+  value,
+  placeholder,
+  destination = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  destination?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const query = value.trim().toLowerCase();
+  const matches = LOCATION_OPTIONS.filter((option) =>
+    `${option.name} ${option.region}`.toLowerCase().includes(query),
+  );
+  const recent = readRecentLocations();
+
+  const choose = (name: string) => {
+    onChange(name);
+    setOpen(false);
+  };
+
+  return (
+    <div
+      className={`customer-search-field customer-location-field${open ? ' location-open' : ''}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
+      }}
+    >
+      <span className={`customer-field-icon${destination ? ' destination' : ''}`}>
+        <IonIcon icon={destination ? busOutline : locationOutline} />
+      </span>
+      <div className="customer-field-copy">
+        <label>{label}</label>
+        <input
+          type="text"
+          autoComplete="off"
+          placeholder={placeholder}
+          value={value}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setOpen(false);
+          }}
+        />
+      </div>
+      {value && (
+        <button className="customer-location-clear" type="button" aria-label={`Clear ${label.toLowerCase()}`}
+          onClick={() => { onChange(''); setOpen(true); }}>
+          ×
+        </button>
+      )}
+      {open && (
+        <div className="customer-location-menu">
+          {!query && recent.length > 0 && (
+            <section>
+              <h3>Recent searches</h3>
+              {recent.map((name) => (
+                <button type="button" key={name} onClick={() => choose(name)}>
+                  <IonIcon icon={timeOutline} />
+                  <span><strong>{name}</strong><small>Recent location</small></span>
+                </button>
+              ))}
+            </section>
+          )}
+          <section>
+            <h3>{query ? 'Search results' : 'Popular locations near you'}</h3>
+            {(query ? matches : LOCATION_OPTIONS.slice(0, 6)).map((option) => (
+              <button type="button" key={option.name} onClick={() => choose(option.name)}>
+                <IonIcon icon={query ? locationOutline : navigateOutline} />
+                <span><strong>{option.name}</strong><small>{option.region}</small></span>
+              </button>
+            ))}
+            {query && matches.length === 0 && <p>No matching location found.</p>}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const toInputDate = (date: Date) => {
   const year = date.getFullYear();
@@ -270,6 +387,13 @@ export default function HomePage() {
 
     setError('');
 
+    const recentLocations = [from, to, ...readRecentLocations()]
+      .filter((location, index, all) =>
+        all.findIndex((item) => item.toLowerCase() === location.toLowerCase()) === index,
+      )
+      .slice(0, 5);
+    localStorage.setItem('busgo_recent_locations', JSON.stringify(recentLocations));
+
     history.push(
       `/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(
         to,
@@ -389,27 +513,15 @@ export default function HomePage() {
               </div>
 
               <div className="customer-search-form">
-                <div className="customer-search-field">
-                  <span className="customer-field-icon">
-                    <IonIcon icon={locationOutline} />
-                  </span>
-
-                  <div className="customer-field-copy">
-                    <label>FROM</label>
-                    <input
-                      type="text"
-                      placeholder="Enter departure city"
-                      value={search.from}
-                      onChange={(event) => {
-                        setSearch((previous) => ({
-                          ...previous,
-                          from: event.target.value,
-                        }));
-                        setError('');
-                      }}
-                    />
-                  </div>
-                </div>
+                <LocationSearchField
+                  label="FROM"
+                  value={search.from}
+                  placeholder="Enter departure city"
+                  onChange={(value) => {
+                    setSearch((previous) => ({ ...previous, from: value }));
+                    setError('');
+                  }}
+                />
 
                 <div className="customer-swap-row">
                   <span />
@@ -423,27 +535,16 @@ export default function HomePage() {
                   </button>
                 </div>
 
-                <div className="customer-search-field">
-                  <span className="customer-field-icon destination">
-                    <IonIcon icon={busOutline} />
-                  </span>
-
-                  <div className="customer-field-copy">
-                    <label>TO</label>
-                    <input
-                      type="text"
-                      placeholder="Enter destination city"
-                      value={search.to}
-                      onChange={(event) => {
-                        setSearch((previous) => ({
-                          ...previous,
-                          to: event.target.value,
-                        }));
-                        setError('');
-                      }}
-                    />
-                  </div>
-                </div>
+                <LocationSearchField
+                  label="TO"
+                  destination
+                  value={search.to}
+                  placeholder="Enter destination city"
+                  onChange={(value) => {
+                    setSearch((previous) => ({ ...previous, to: value }));
+                    setError('');
+                  }}
+                />
 
                 <div
                   className={`customer-search-field customer-date-field${

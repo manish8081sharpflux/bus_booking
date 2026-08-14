@@ -502,6 +502,14 @@ const App: React.FC = () => {
 
           <Route
             exact
+            path="/operator/login"
+            component={
+              OperatorLoginPage
+            }
+          />
+
+          <Route
+            exact
             path="/operator/register"
             component={
               OperatorRegisterPage

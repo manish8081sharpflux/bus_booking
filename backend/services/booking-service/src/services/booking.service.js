@@ -209,11 +209,21 @@ class BookingService {
 
       if (!customerId) {
         const mobile=String(customer.mobile).replace(/\D/g,'')
-        const user=await client.query(`INSERT INTO platform_users(auth_user_id,role,full_name,mobile,email)
-          VALUES($1,'CUSTOMER',$2,$3,$4)
-          ON CONFLICT(mobile) DO UPDATE SET full_name=EXCLUDED.full_name,email=COALESCE(EXCLUDED.email,platform_users.email),updated_at=NOW()
-          RETURNING id`,
-          [`guest:${mobile}`,String(customer.fullName).trim(),mobile,customer.email||null])
+        const email=String(customer.email||'').trim()||null
+        const findCustomer=()=>client.query(`SELECT id FROM platform_users
+          WHERE mobile=$1 OR ($2::text IS NOT NULL AND LOWER(email)=LOWER($2))
+          ORDER BY CASE WHEN mobile=$1 THEN 0 ELSE 1 END LIMIT 1 FOR UPDATE`,[mobile,email])
+        let user=await findCustomer()
+        if(user.rows[0]){
+          await client.query(`UPDATE platform_users SET full_name=$2,updated_at=NOW() WHERE id=$1::uuid`,
+            [user.rows[0].id,String(customer.fullName).trim()])
+        }else{
+          user=await client.query(`INSERT INTO platform_users(auth_user_id,role,full_name,mobile,email)
+            VALUES($1,'CUSTOMER',$2,$3,$4) ON CONFLICT DO NOTHING RETURNING id`,
+            [`guest:${mobile}`,String(customer.fullName).trim(),mobile,email])
+          if(!user.rows[0]) user=await findCustomer()
+        }
+        if(!user.rows[0]) throw fail('Unable to resolve the customer account. Please sign in and try again.',409)
         customerId=user.rows[0].id
       }
 
@@ -322,15 +332,23 @@ class BookingService {
     try {
       await client.query('BEGIN')
       const existing = await client.query('SELECT * FROM payments WHERE idempotency_key=$1::uuid', [idempotencyKey])
-      if (existing.rows[0]) { await client.query('COMMIT'); return existing.rows[0] }
+      if (existing.rows[0]) {
+        await client.query('COMMIT')
+        return {...existing.rows[0],ticket:await this.ticket(bookingId)}
+      }
       const result = await client.query(`SELECT * FROM bookings WHERE id=$1::uuid FOR UPDATE`, [bookingId]); const booking=result.rows[0]
+      if(booking?.status==='CONFIRMED'){
+        const captured=await client.query(`SELECT * FROM payments WHERE booking_id=$1::uuid AND status='CAPTURED' ORDER BY created_at DESC LIMIT 1`,[bookingId])
+        await client.query('COMMIT')
+        return {...(captured.rows[0]||{}),ticket:await this.ticket(bookingId)}
+      }
       if (!booking || booking.status!=='PENDING_PAYMENT' || new Date(booking.expires_at)<=new Date()) throw fail('Booking payment window has expired.',409)
       const payment = await client.query(`INSERT INTO payments(booking_id,provider,provider_payment_id,idempotency_key,amount,currency,status,method)
         VALUES($1::uuid,$2,$3,$4::uuid,$5,$6,'CAPTURED',$7) RETURNING *`, [bookingId,provider,providerPaymentId||crypto.randomUUID(),idempotencyKey,booking.total_amount,booking.currency,method])
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[bookingId])
       await client.query(`UPDATE trip_seat_inventory SET status='BOOKED',hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[bookingId])
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CONFIRMED',$3::jsonb)`,[booking.customer_id,bookingId,JSON.stringify({bookingReference:booking.booking_reference})])
-      await client.query('COMMIT'); return payment.rows[0]
+      await client.query('COMMIT'); return {...payment.rows[0],ticket:await this.ticket(bookingId)}
     } catch(error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
   }
 

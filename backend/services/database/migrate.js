@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const { Client } = require('pg');
 
 const MIGRATIONS_DIR = path.join(__dirname, 'postgres');

@@ -213,6 +213,13 @@ export default function OperatorManagementPage({
               )
             : {};
 
+        if (response.status === 401) {
+          localStorage.removeItem('operator_access_token');
+          localStorage.removeItem('operator');
+          history.replace('/operator');
+          return;
+        }
+
         if (
           !response.ok ||
           body.success ===
@@ -294,6 +301,17 @@ export default function OperatorManagementPage({
   const [stopsForm, setStopsForm] = useState<StopRow[]>([]);
   const [stopsBusy, setStopsBusy] = useState(false);
   const [stopsError, setStopsError] = useState('');
+
+  useEffect(() => {
+    if (!stopsRoute) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [stopsRoute]);
 
   function openStops(route: any) {
     const existing: StopRow[] =

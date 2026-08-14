@@ -93,9 +93,8 @@ const OperatorLoginPage: React.FC = () => {
               result.token,
             )
           } else {
-            localStorage.setItem(
-              'operator_access_token',
-              'dev-operator-token',
+            throw new Error(
+              'Operator authentication is unavailable. Please try again.',
             )
           }
 
