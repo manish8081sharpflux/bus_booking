@@ -209,3 +209,137 @@ async function updateSupportTicket({id,status,resolution,actorUserId}) {
 module.exports.cancelTripAdmin=cancelTripAdmin
 module.exports.listSupportTickets=listSupportTickets
 module.exports.updateSupportTicket=updateSupportTicket
+
+function reconciliationFail(message,status=400){return Object.assign(new Error(message),{status})}
+
+async function listPaymentReconciliation({limit=200}={}) {
+  const safeLimit=Math.max(1,Math.min(500,Number(limit)||200))
+  const [paymentBooking,confirmedWithoutCaptured,pendingPayments,pendingRefunds,webhooks]=await Promise.all([
+    pool.query(`SELECT 'CAPTURED_PAYMENT_BOOKING_MISMATCH' kind,p.id entity_id,p.booking_id,b.booking_reference,
+      p.status payment_status,b.status booking_status,p.amount,p.currency,p.provider,p.provider_order_id,p.provider_payment_id,
+      p.updated_at occurred_at,'CRITICAL' severity,
+      'Payment is captured but booking is not confirmed.' summary
+      FROM payments p JOIN bookings b ON b.id=p.booking_id
+      WHERE p.status='CAPTURED' AND b.status<>'CONFIRMED'
+      ORDER BY p.updated_at DESC LIMIT $1`,[safeLimit]),
+    pool.query(`SELECT 'CONFIRMED_WITHOUT_CAPTURED_PAYMENT' kind,b.id entity_id,b.id booking_id,b.booking_reference,
+      COALESCE(p.status::text,'NOT_PAID') payment_status,b.status booking_status,b.total_amount amount,b.currency,
+      p.provider,p.provider_order_id,p.provider_payment_id,b.updated_at occurred_at,'CRITICAL' severity,
+      'Booking is confirmed but no captured/refunded payment is recorded.' summary
+      FROM bookings b LEFT JOIN LATERAL (
+        SELECT px.* FROM payments px WHERE px.booking_id=b.id ORDER BY px.created_at DESC LIMIT 1
+      ) p ON TRUE
+      WHERE b.status='CONFIRMED' AND COALESCE(p.status::text,'NOT_PAID') NOT IN('CAPTURED','REFUNDED','PARTIALLY_REFUNDED')
+      ORDER BY b.updated_at DESC LIMIT $1`,[safeLimit]),
+    pool.query(`SELECT 'STALE_PENDING_PAYMENT' kind,p.id entity_id,p.booking_id,b.booking_reference,
+      p.status payment_status,b.status booking_status,p.amount,p.currency,p.provider,p.provider_order_id,p.provider_payment_id,
+      p.created_at occurred_at,'HIGH' severity,
+      'Payment has remained pending for more than 30 minutes.' summary
+      FROM payments p JOIN bookings b ON b.id=p.booking_id
+      WHERE p.status='PENDING' AND p.created_at<NOW()-INTERVAL '30 minutes'
+      ORDER BY p.created_at DESC LIMIT $1`,[safeLimit]),
+    pool.query(`SELECT 'STALE_PENDING_REFUND' kind,r.id entity_id,p.booking_id,b.booking_reference,
+      p.status payment_status,b.status booking_status,r.amount,p.currency,p.provider,p.provider_order_id,p.provider_payment_id,
+      COALESCE(r.requested_at,r.created_at) occurred_at,'HIGH' severity,
+      'Refund has remained pending for more than 24 hours.' summary
+      FROM refunds r JOIN payments p ON p.id=r.payment_id JOIN bookings b ON b.id=p.booking_id
+      WHERE r.status='PENDING' AND COALESCE(r.requested_at,r.created_at)<NOW()-INTERVAL '24 hours'
+      ORDER BY COALESCE(r.requested_at,r.created_at) DESC LIMIT $1`,[safeLimit]),
+    pool.query(`SELECT 'WEBHOOK_RECONCILIATION_REQUIRED' kind,e.id entity_id,NULL::uuid booking_id,
+      e.provider_event_id booking_reference,NULL::text payment_status,NULL::text booking_status,NULL::numeric amount,
+      NULL::text currency,e.provider,NULL::text provider_order_id,NULL::text provider_payment_id,
+      e.created_at occurred_at,'HIGH' severity,e.processing_error summary
+      FROM payment_webhook_events e
+      WHERE e.processing_error IS NOT NULL
+      ORDER BY e.created_at DESC LIMIT $1`,[safeLimit]),
+  ])
+  const items=[
+    ...paymentBooking.rows,
+    ...confirmedWithoutCaptured.rows,
+    ...pendingPayments.rows,
+    ...pendingRefunds.rows,
+    ...webhooks.rows,
+  ].sort((a,b)=>new Date(b.occurred_at)-new Date(a.occurred_at)).slice(0,safeLimit)
+  const summary=items.reduce((acc,x)=>{acc.total++;acc[x.severity]=(acc[x.severity]||0)+1;acc.byKind[x.kind]=(acc.byKind[x.kind]||0)+1;return acc},{total:0,CRITICAL:0,HIGH:0,MEDIUM:0,byKind:{}})
+  return {summary,items}
+}
+
+async function actorUserIdFromAuth(authUserId,client=pool) {
+  if(!authUserId)return null
+  const {rows}=await client.query(`SELECT id FROM platform_users WHERE auth_user_id=$1 OR auth_user_id=$2 LIMIT 1`,[String(authUserId),`identity:${authUserId}`])
+  return rows[0]?.id||null
+}
+
+async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUserId=null}) {
+  const normalizedKind=String(kind||'').trim().toUpperCase()
+  const normalizedAction=String(action||'').trim().toUpperCase()
+  const cleanNote=String(note||'').trim()
+  const client=await pool.connect()
+  try{
+    await client.query('BEGIN')
+    const actorUserId=await actorUserIdFromAuth(actorAuthUserId,client)
+
+    if(normalizedKind==='CAPTURED_PAYMENT_BOOKING_MISMATCH' && normalizedAction==='CONFIRM_BOOKING'){
+      const {rows}=await client.query(`SELECT p.*,b.status booking_status,b.booking_reference,b.customer_id
+        FROM payments p JOIN bookings b ON b.id=p.booking_id
+        WHERE p.id=$1::uuid AND p.status='CAPTURED' FOR UPDATE OF p,b`,[id])
+      const row=rows[0]
+      if(!row)throw reconciliationFail('Captured payment mismatch not found.',404)
+      if(row.booking_status==='CONFIRMED'){await client.query('COMMIT');return {status:'ALREADY_RESOLVED',bookingId:row.booking_id}}
+
+      const counts=(await client.query(`SELECT
+        (SELECT COUNT(*)::int FROM booking_passengers WHERE booking_id=$1::uuid) passenger_count,
+        (SELECT COUNT(*)::int FROM trip_seat_segment_allocations WHERE booking_id=$1::uuid AND status IN('HELD','CONFIRMED')) allocation_count`,[row.booking_id])).rows[0]
+      if(!Number(counts.passenger_count)||Number(counts.passenger_count)!==Number(counts.allocation_count))
+        throw reconciliationFail('Cannot confirm automatically because seat allocations no longer match passengers. Refund/manual handling is required.',409)
+
+      await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[row.booking_id])
+      await client.query(`UPDATE trip_seat_segment_allocations SET status='CONFIRMED',expires_at=NULL WHERE booking_id=$1::uuid`,[row.booking_id])
+      await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload)
+        VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CONFIRMED',$3::jsonb)`,[row.customer_id,row.booking_id,JSON.stringify({bookingReference:row.booking_reference,reconciled:true})])
+      await client.query(`INSERT INTO audit_logs(actor_user_id,entity_type,entity_id,action,before_state,after_state)
+        VALUES($1::uuid,'PAYMENT_RECONCILIATION',$2,'CONFIRM_BOOKING',$3::jsonb,$4::jsonb)`,[
+          actorUserId,String(id),JSON.stringify({paymentStatus:row.status,bookingStatus:row.booking_status}),
+          JSON.stringify({bookingStatus:'CONFIRMED',note:cleanNote||null})
+        ])
+      await client.query('COMMIT')
+      return {status:'RESOLVED',action:'CONFIRM_BOOKING',bookingId:row.booking_id,paymentId:row.id}
+    }
+
+    if(normalizedKind==='STALE_PENDING_PAYMENT' && normalizedAction==='MARK_FAILED'){
+      const {rows}=await client.query(`UPDATE payments p SET status='FAILED',
+        failure_code=COALESCE(failure_code,'ADMIN_RECONCILIATION'),
+        failure_message=COALESCE(NULLIF($2,''),failure_message,'Marked failed by payment reconciliation.'),
+        updated_at=NOW()
+        FROM bookings b
+        WHERE p.id=$1::uuid AND b.id=p.booking_id AND p.status='PENDING' AND b.status<>'CONFIRMED'
+        RETURNING p.*`,[id,cleanNote])
+      if(!rows[0])throw reconciliationFail('Only a pending payment on a non-confirmed booking can be marked failed.',409)
+      await client.query(`INSERT INTO audit_logs(actor_user_id,entity_type,entity_id,action,after_state)
+        VALUES($1::uuid,'PAYMENT_RECONCILIATION',$2,'MARK_PAYMENT_FAILED',$3::jsonb)`,
+        [actorUserId,String(id),JSON.stringify({status:'FAILED',note:cleanNote||null})])
+      await client.query('COMMIT')
+      return {status:'RESOLVED',action:'MARK_FAILED',payment:rows[0]}
+    }
+
+    if(normalizedKind==='WEBHOOK_RECONCILIATION_REQUIRED' && normalizedAction==='ACKNOWLEDGE'){
+      const {rows}=await client.query(`UPDATE payment_webhook_events
+        SET processing_error=NULL,processed_at=COALESCE(processed_at,NOW())
+        WHERE id=$1::uuid AND processing_error IS NOT NULL RETURNING *`,[id])
+      if(!rows[0])throw reconciliationFail('Webhook reconciliation item not found or already acknowledged.',404)
+      await client.query(`INSERT INTO audit_logs(actor_user_id,entity_type,entity_id,action,after_state)
+        VALUES($1::uuid,'PAYMENT_RECONCILIATION',$2,'ACKNOWLEDGE_WEBHOOK',$3::jsonb)`,
+        [actorUserId,String(id),JSON.stringify({note:cleanNote||null,providerEventId:rows[0].provider_event_id})])
+      await client.query('COMMIT')
+      return {status:'ACKNOWLEDGED',eventId:rows[0].id}
+    }
+
+    throw reconciliationFail('Unsupported reconciliation action. Allowed: CONFIRM_BOOKING, MARK_FAILED, ACKNOWLEDGE.',422)
+  }catch(e){
+    await client.query('ROLLBACK')
+    throw e
+  }finally{client.release()}
+}
+
+module.exports.listPaymentReconciliation=listPaymentReconciliation
+module.exports.resolvePaymentReconciliation=resolvePaymentReconciliation
