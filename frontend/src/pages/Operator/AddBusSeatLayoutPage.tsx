@@ -667,6 +667,21 @@ React.FC = () => {
       return false;
     }
 
+    const seaterCount = enabledSeats.filter((seat) => seat.seatType === 'SEATER').length;
+    const sleeperCount = enabledSeats.filter((seat) => seat.seatType === 'SLEEPER').length;
+    if (busDraft.seatingType === 'SEATER_SLEEPER' && (seaterCount === 0 || sleeperCount === 0)) {
+      setError('A mixed bus must contain at least one seater and one sleeper berth.');
+      return false;
+    }
+    if ((busDraft.seatingType === 'SEATER' || busDraft.seatingType === 'SEMI_SLEEPER') && sleeperCount > 0) {
+      setError('A pure seater bus cannot contain sleeper berths.');
+      return false;
+    }
+    if (busDraft.seatingType === 'SLEEPER' && seaterCount > 0) {
+      setError('A pure sleeper bus cannot contain seater seats.');
+      return false;
+    }
+
     /*
      * Every seat requires a seat number.
      */
@@ -1132,8 +1147,10 @@ React.FC = () => {
 
   const mixedBus = busDraft.seatingType === 'SEATER_SLEEPER' || busDraft.busType.includes('SEATER_SLEEPER');
   const mixedConfigurationReady = !mixedBus || (busDraft.deckType === 'DOUBLE'
-    ? Boolean(lowerDeckSeatType && upperDeckSeatType)
-    : singleDeckSeaterCount !== '' && singleDeckSeaterCount >= 0 && singleDeckSeaterCount <= busDraft.totalSeats);
+    ? Boolean(lowerDeckSeatType && upperDeckSeatType && lowerDeckSeatType !== upperDeckSeatType)
+    : singleDeckSeaterCount !== '' && singleDeckSeaterCount > 0 && singleDeckSeaterCount < busDraft.totalSeats);
+  const seaterTemplatesAllowed = busDraft.seatingType !== 'SLEEPER';
+  const sleeperTemplatesAllowed = busDraft.seatingType === 'SLEEPER' || busDraft.seatingType === 'SEATER_SLEEPER';
 
   /*
    * =====================================================
@@ -1267,6 +1284,7 @@ React.FC = () => {
 
                     {/* 2 + 2 */}
 
+                    {seaterTemplatesAllowed && (
                     <button
                       type="button"
                       disabled={!mixedConfigurationReady}
@@ -1291,9 +1309,11 @@ React.FC = () => {
                         Standard seater layout
                       </span>
                     </button>
+                    )}
 
                     {/* 2 + 1 */}
 
+                    {seaterTemplatesAllowed && (
                     <button
                       type="button"
                       disabled={!mixedConfigurationReady}
@@ -1318,14 +1338,16 @@ React.FC = () => {
                         Premium seater layout
                       </span>
                     </button>
+                    )}
 
                     {/* SLEEPER */}
 
-                    <button type="button" disabled={!mixedConfigurationReady} onClick={() => generateLayout(busDraft, '2X3')} className={template === '2X3' ? 'seat-template-option active' : 'seat-template-option'}>
+                    {seaterTemplatesAllowed && <button type="button" disabled={!mixedConfigurationReady} onClick={() => generateLayout(busDraft, '2X3')} className={template === '2X3' ? 'seat-template-option active' : 'seat-template-option'}>
                       <strong>2 + 3</strong>
                       <span>High-capacity layout</span>
-                    </button>
+                    </button>}
 
+                    {sleeperTemplatesAllowed && (
                     <button
                       type="button"
                       disabled={
@@ -1354,6 +1376,7 @@ React.FC = () => {
                           : 'Available only for sleeper buses'}
                       </span>
                     </button>
+                    )}
 
                   </div>
 

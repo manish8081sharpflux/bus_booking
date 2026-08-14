@@ -461,6 +461,7 @@ const validateSeats =
     rawSeats,
     totalSeats,
     deckType,
+    seatingType,
   ) => {
     const errors = []
 
@@ -692,6 +693,18 @@ const validateSeats =
       errors.push(
         'Seat numbers must be unique.',
       )
+    }
+
+    const seaterCount = seats.filter((seat) => seat.seatType === 'SEATER').length
+    const sleeperCount = seats.filter((seat) => seat.seatType === 'SLEEPER').length
+    if (seatingType === 'SEATER_SLEEPER' && (seaterCount === 0 || sleeperCount === 0)) {
+      errors.push('A Seater + Sleeper bus must contain at least one seater and one sleeper berth.')
+    }
+    if (['SEATER', 'SEMI_SLEEPER'].includes(seatingType) && sleeperCount > 0) {
+      errors.push('A seater bus cannot contain sleeper berths.')
+    }
+    if (seatingType === 'SLEEPER' && seaterCount > 0) {
+      errors.push('A sleeper bus cannot contain seater seats.')
     }
 
     /*
@@ -1158,6 +1171,7 @@ const addBus =
           parsedSeats,
           data.totalSeats,
           data.deckType,
+          data.seatingType,
         )
 
       if (

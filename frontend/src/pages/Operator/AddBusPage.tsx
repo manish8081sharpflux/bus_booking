@@ -862,6 +862,15 @@ React.FC = () => {
       }
     });
 
+    const allowedLayoutsForType = form.seatingType === 'SLEEPER'
+      ? ['1X1', '2X1_SLEEPER']
+      : form.seatingType === 'SEATER_SLEEPER'
+        ? SEAT_LAYOUTS.map((item) => item.value)
+        : ['1X1', '2X1_SEATER', '2X2', '2X3'];
+    if (form.seatLayout && !allowedLayoutsForType.includes(form.seatLayout)) {
+      newErrors.seatLayout = 'Choose a seat layout compatible with the selected seating type.';
+    }
+
     /*
      * DECK
      */
@@ -1338,7 +1347,7 @@ React.FC = () => {
                 <FloatingSelectField label="Ownership" required value={form.ownershipType} options={OWNERSHIP_TYPES} error={errors.ownershipType} onChange={(value) => updateField('ownershipType', value)} />
                 <FloatingSelectField label="AC Type" required value={form.acType} options={AC_TYPES} error={errors.acType || errors.busType} onChange={(value) => updateField('acType', value)} />
                 <FloatingSelectField label="Seating Type" required value={form.seatingType} options={SEATING_TYPES} error={errors.seatingType} onChange={(value) => updateField('seatingType', value)} />
-                <FloatingSelectField label="Seat Layout" required value={form.seatLayout} options={SEAT_LAYOUTS} error={errors.seatLayout} onChange={(value) => updateField('seatLayout', value)} />
+                <FloatingSelectField label="Seat Layout" required value={form.seatLayout} options={SEAT_LAYOUTS.filter((item) => form.seatingType === 'SLEEPER' ? ['1X1', '2X1_SLEEPER'].includes(item.value) : form.seatingType === 'SEATER_SLEEPER' ? true : item.value !== '2X1_SLEEPER')} error={errors.seatLayout} onChange={(value) => updateField('seatLayout', value)} />
                 <FloatingSelectField label="Bus Category" required value={form.busCategory} options={BUS_CATEGORIES} error={errors.busCategory} onChange={(value) => updateField('busCategory', value)} />
                 <FloatingSelectField label="Axle Type" required value={form.axleType} options={AXLE_TYPES} error={errors.axleType} onChange={(value) => updateField('axleType', value)} />
                 <FloatingSelectField label="Transmission" required value={form.transmissionType} options={TRANSMISSION_TYPES} error={errors.transmissionType} onChange={(value) => updateField('transmissionType', value)} />
