@@ -164,12 +164,90 @@ module.exports.listSupportIssues = listSupportIssues
 module.exports.listAuditLogs = listAuditLogs
 module.exports.getReportsOverview = getReportsOverview
 
-async function generateSettlement({operatorId,periodStart,periodEnd,commissionPercent=10}) {
-  const { rows }=await pool.query(`WITH x AS (SELECT COALESCE(SUM(p.amount) FILTER(WHERE p.status='CAPTURED'),0) gross,COALESCE(SUM(r.amount) FILTER(WHERE r.status IN('PENDING','REFUNDED')),0) refunds FROM bookings b LEFT JOIN payments p ON p.booking_id=b.id LEFT JOIN refunds r ON r.payment_id=p.id WHERE b.operator_id=$1::uuid AND b.created_at::date BETWEEN $2::date AND $3::date) INSERT INTO operator_settlements(operator_id,period_start,period_end,gross_amount,refund_amount,commission_amount,net_payable,status) SELECT $1::uuid,$2::date,$3::date,gross,refunds,ROUND((gross-refunds)*$4/100,2),ROUND((gross-refunds)-((gross-refunds)*$4/100),2),'DRAFT' FROM x ON CONFLICT(operator_id,period_start,period_end) DO UPDATE SET gross_amount=EXCLUDED.gross_amount,refund_amount=EXCLUDED.refund_amount,commission_amount=EXCLUDED.commission_amount,net_payable=EXCLUDED.net_payable,updated_at=NOW() RETURNING *`,[operatorId,periodStart,periodEnd,Number(commissionPercent)]);return rows[0]
+function settlementFail(message,status=400){return Object.assign(new Error(message),{status})}
+
+async function generateSettlement({operatorId,periodStart,periodEnd,commissionPercent}) {
+  if(!operatorId||!periodStart||!periodEnd)throw settlementFail('operatorId, periodStart and periodEnd are required.',422)
+  if(new Date(periodEnd)<new Date(periodStart))throw settlementFail('periodEnd must be on or after periodStart.',422)
+  const op=(await pool.query(`SELECT id,commission_percent FROM operators WHERE id=$1::uuid`,[operatorId])).rows[0]
+  if(!op)throw settlementFail('Operator not found.',404)
+  const rate=commissionPercent!==undefined&&commissionPercent!==null&&commissionPercent!==''?Number(commissionPercent):Number(op.commission_percent)
+  if(!Number.isFinite(rate)||rate<0||rate>100)throw settlementFail('Configure a valid operator commission percent before generating settlement.',422)
+
+  const {rows}=await pool.query(`
+    WITH pay AS (
+      SELECT COALESCE(SUM(p.amount),0)::numeric gross
+      FROM payments p JOIN bookings b ON b.id=p.booking_id
+      WHERE b.operator_id=$1::uuid
+        AND p.status IN('CAPTURED','PARTIALLY_REFUNDED','REFUNDED')
+        AND p.updated_at::date BETWEEN $2::date AND $3::date
+    ), refund AS (
+      SELECT COALESCE(SUM(r.amount),0)::numeric refunds
+      FROM refunds r JOIN payments p ON p.id=r.payment_id JOIN bookings b ON b.id=p.booking_id
+      WHERE b.operator_id=$1::uuid AND r.status='REFUNDED'
+        AND COALESCE(r.completed_at,r.updated_at)::date BETWEEN $2::date AND $3::date
+    ), x AS (
+      SELECT pay.gross,refund.refunds FROM pay CROSS JOIN refund
+    )
+    INSERT INTO operator_settlements(
+      operator_id,period_start,period_end,gross_amount,refund_amount,commission_percent,
+      commission_amount,adjustment_amount,net_payable,status
+    )
+    SELECT $1::uuid,$2::date,$3::date,gross,refunds,$4,
+      ROUND(GREATEST(gross-refunds,0)*$4/100,2),0,
+      ROUND(GREATEST(gross-refunds,0)-ROUND(GREATEST(gross-refunds,0)*$4/100,2),2),'DRAFT'
+    FROM x
+    ON CONFLICT(operator_id,period_start,period_end) DO UPDATE SET
+      gross_amount=EXCLUDED.gross_amount,refund_amount=EXCLUDED.refund_amount,
+      commission_percent=EXCLUDED.commission_percent,commission_amount=EXCLUDED.commission_amount,
+      net_payable=EXCLUDED.net_payable,updated_at=NOW()
+    WHERE operator_settlements.status='DRAFT'
+    RETURNING *`,[operatorId,periodStart,periodEnd,rate])
+  if(!rows[0])throw settlementFail('Settlement already exists and is no longer DRAFT; financial snapshot was not overwritten.',409)
+  return rows[0]
 }
-async function markSettlementPaid({id,payoutReference}){const {rows}=await pool.query(`UPDATE operator_settlements SET status='PAID',payout_reference=$2,paid_at=NOW(),updated_at=NOW() WHERE id=$1::uuid RETURNING *`,[id,payoutReference||`DEMO-${Date.now()}`]);if(!rows[0])throw Object.assign(new Error('Settlement not found.'),{status:404});return rows[0]}
+
+async function settlementActor(authUserId){
+  if(!authUserId)return null
+  const {rows}=await pool.query(`SELECT id FROM platform_users WHERE auth_user_id=$1 OR auth_user_id=$2 LIMIT 1`,[String(authUserId),`identity:${authUserId}`])
+  return rows[0]?.id||null
+}
+async function approveSettlement({id,actorAuthUserId}){
+  const actor=await settlementActor(actorAuthUserId)
+  const {rows}=await pool.query(`UPDATE operator_settlements SET status='APPROVED',approved_at=NOW(),approved_by=$2::uuid,updated_at=NOW()
+    WHERE id=$1::uuid AND status='DRAFT' RETURNING *`,[id,actor])
+  if(!rows[0])throw settlementFail('Only DRAFT settlements can be approved.',409);return rows[0]
+}
+async function processSettlement({id}){
+  const {rows}=await pool.query(`UPDATE operator_settlements SET status='PROCESSING',processing_at=NOW(),failure_reason=NULL,updated_at=NOW()
+    WHERE id=$1::uuid AND status='APPROVED' RETURNING *`,[id])
+  if(!rows[0])throw settlementFail('Only APPROVED settlements can start payout processing.',409);return rows[0]
+}
+async function markSettlementPaid({id,payoutReference}){
+  const ref=String(payoutReference||'').trim()
+  if(!ref)throw settlementFail('Real payoutReference is required; demo payout references are not allowed.',422)
+  const {rows}=await pool.query(`UPDATE operator_settlements SET status='PAID',payout_reference=$2,failure_reason=NULL,paid_at=NOW(),updated_at=NOW()
+    WHERE id=$1::uuid AND status='PROCESSING' RETURNING *`,[id,ref])
+  if(!rows[0])throw settlementFail('Only PROCESSING settlements can be marked PAID.',409);return rows[0]
+}
+async function markSettlementFailed({id,failureReason}){
+  const reason=String(failureReason||'').trim()
+  if(!reason)throw settlementFail('failureReason is required.',422)
+  const {rows}=await pool.query(`UPDATE operator_settlements SET status='FAILED',failure_reason=$2,updated_at=NOW()
+    WHERE id=$1::uuid AND status='PROCESSING' RETURNING *`,[id,reason])
+  if(!rows[0])throw settlementFail('Only PROCESSING settlements can be marked FAILED.',409);return rows[0]
+}
+async function retrySettlement({id}){
+  const {rows}=await pool.query(`UPDATE operator_settlements SET status='APPROVED',failure_reason=NULL,processing_at=NULL,updated_at=NOW()
+    WHERE id=$1::uuid AND status='FAILED' RETURNING *`,[id])
+  if(!rows[0])throw settlementFail('Only FAILED settlements can be retried.',409);return rows[0]
+}
 module.exports.generateSettlement=generateSettlement
+module.exports.approveSettlement=approveSettlement
+module.exports.processSettlement=processSettlement
 module.exports.markSettlementPaid=markSettlementPaid
+module.exports.markSettlementFailed=markSettlementFailed
+module.exports.retrySettlement=retrySettlement
 
 async function listPromotions() {
   const { rows } = await pool.query(`SELECT p.id,p.code,p.title,p.description,p.status,p.discount_type,p.discount_value,p.max_discount_amount,p.starts_at,p.ends_at,p.usage_limit,p.per_user_limit,p.budget_amount,p.budget_consumed,p.eligibility,p.operator_id,p.route_id,p.created_at,p.updated_at,

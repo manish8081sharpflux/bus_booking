@@ -20,7 +20,11 @@ exports.listSupportIssues = async (_req, res, next) => { try { res.json({ succes
 exports.listAuditLogs = async (_req, res, next) => { try { res.json({ success: true, data: await service.listAuditLogs() }) } catch (error) { next(error) } }
 exports.getReportsOverview = async (_req, res, next) => { try { res.json({ success: true, data: await service.getReportsOverview() }) } catch (error) { next(error) } }
 exports.generateSettlement=async(req,res,next)=>{try{res.status(201).json({success:true,data:await service.generateSettlement(req.body)})}catch(e){next(e)}}
+exports.approveSettlement=async(req,res,next)=>{try{res.json({success:true,data:await service.approveSettlement({id:req.params.id,actorAuthUserId:req.auth?.userId||null})})}catch(e){next(e)}}
+exports.processSettlement=async(req,res,next)=>{try{res.json({success:true,data:await service.processSettlement({id:req.params.id})})}catch(e){next(e)}}
 exports.markSettlementPaid=async(req,res,next)=>{try{res.json({success:true,data:await service.markSettlementPaid({id:req.params.id,...req.body})})}catch(e){next(e)}}
+exports.markSettlementFailed=async(req,res,next)=>{try{res.json({success:true,data:await service.markSettlementFailed({id:req.params.id,failureReason:req.body?.failureReason})})}catch(e){next(e)}}
+exports.retrySettlement=async(req,res,next)=>{try{res.json({success:true,data:await service.retrySettlement({id:req.params.id})})}catch(e){next(e)}}
 exports.listPromotions=async(_req,res,next)=>{try{res.json({success:true,data:await service.listPromotions()})}catch(e){next(e)}}
 exports.createPromotion=async(req,res,next)=>{try{res.status(201).json({success:true,data:await service.createPromotion(req.body)})}catch(e){next(e)}}
 exports.updatePromotionStatus=async(req,res,next)=>{try{res.json({success:true,data:await service.updatePromotionStatus({id:req.params.id,status:req.body.status})})}catch(e){next(e)}}
