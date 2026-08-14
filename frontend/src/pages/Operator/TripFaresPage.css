@@ -1180,3 +1180,30 @@
     padding: 17px;
   }
 }
+.fare-segment-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.fare-segment-picker label {
+  display: grid;
+  gap: 7px;
+  color: #526078;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fare-segment-picker select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d7dee8;
+  border-radius: 9px;
+  background: #fff;
+}

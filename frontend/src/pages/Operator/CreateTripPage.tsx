@@ -324,6 +324,12 @@ export default function CreateTripPage() {
       baseFare: '',
     });
 
+  const [recurring, setRecurring] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState<'DAILY' | 'WEEKDAYS' | 'SELECTED_DAYS'>('DAILY');
+  const [scheduleEndDate, setScheduleEndDate] = useState('');
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [scheduleExceptions, setScheduleExceptions] = useState<Array<{date:string;action:'CANCEL'|'CHANGE';departureTime:string;reason:string}>>([]);
+
   const [
     routeBusy,
     setRouteBusy,
@@ -716,9 +722,7 @@ export default function CreateTripPage() {
         return false;
       }
 
-      if (
-        !trip.arrivalTime
-      ) {
+      if (!recurring && !trip.arrivalTime) {
         setError(
           'Arrival time is required.',
         );
@@ -726,8 +730,21 @@ export default function CreateTripPage() {
         return false;
       }
 
+      if (recurring && (!scheduleEndDate || scheduleEndDate < trip.travelDate)) {
+        setError('Recurring schedule end date must be on or after its start date.');
+        return false;
+      }
+      if (recurring && recurrenceType === 'SELECTED_DAYS' && !selectedDays.length) {
+        setError('Choose at least one service day.');
+        return false;
+      }
+      if (recurring && (scheduleExceptions.some((item) => !item.date || item.date < trip.travelDate || item.date > scheduleEndDate || (item.action === 'CHANGE' && !item.departureTime)) || new Set(scheduleExceptions.map((item) => item.date)).size !== scheduleExceptions.length)) {
+        setError('Each exception needs a unique date inside the schedule range and changed services need a departure time.');
+        return false;
+      }
+
       const departure = new Date(`${trip.travelDate}T${trip.departureTime}`);
-      const arrival = new Date(`${trip.travelDate}T${trip.arrivalTime}`);
+      const arrival = new Date(`${trip.travelDate}T${trip.arrivalTime || trip.departureTime}`);
 
       if (Number.isNaN(departure.getTime()) || Number.isNaN(arrival.getTime())) {
         setError('Enter valid departure and arrival times.');
@@ -739,13 +756,13 @@ export default function CreateTripPage() {
         return false;
       }
 
-      if (arrival <= departure) {
+      if (!recurring && arrival <= departure) {
         arrival.setDate(arrival.getDate() + 1);
       }
 
       const durationMinutes = (arrival.getTime() - departure.getTime()) / 60000;
 
-      if (durationMinutes < 5 || durationMinutes > 2880) {
+      if (!recurring && (durationMinutes < 5 || durationMinutes > 2880)) {
         setError('Trip duration must be between 5 minutes and 48 hours.');
         return false;
       }
@@ -814,6 +831,28 @@ export default function CreateTripPage() {
          * Then operator reviews inventory
          * before publishing.
          */
+
+        if (recurring) {
+          await request('/schedules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              routeId: trip.routeId,
+              busId,
+              serviceNumber: trip.serviceNumber.trim(),
+              departureTime: trip.departureTime,
+              baseFare: Number(trip.baseFare),
+              recurrenceType,
+              selectedDays,
+              startDate: trip.travelDate,
+              endDate: scheduleEndDate,
+              exceptions: scheduleExceptions,
+            }),
+          });
+          setMessage('Recurring schedule created and dated trips generated successfully.');
+          history.push('/operator/trips');
+          return;
+        }
 
         const created =
           await request<
@@ -1552,6 +1591,13 @@ export default function CreateTripPage() {
 
                   </div>
 
+                  <div className="trip-field trip-field-full">
+                    <label className="trip-inline-option">
+                      <input type="checkbox" checked={recurring} onChange={(event) => setRecurring(event.target.checked)} />
+                      Create a recurring schedule
+                    </label>
+                  </div>
+
                   {/* TRAVEL DATE */}
 
                   <div className="trip-field">
@@ -1583,6 +1629,51 @@ export default function CreateTripPage() {
                     />
 
                   </div>
+
+                  {recurring && (
+                    <>
+                      <div className="trip-field">
+                        <label>Repeat</label>
+                        <select value={recurrenceType} onChange={(event) => setRecurrenceType(event.target.value as typeof recurrenceType)}>
+                          <option value="DAILY">Daily</option>
+                          <option value="WEEKDAYS">Weekdays (Mon–Fri)</option>
+                          <option value="SELECTED_DAYS">Selected days</option>
+                        </select>
+                      </div>
+                      <div className="trip-field">
+                        <label>Schedule End Date <span>*</span></label>
+                        <input type="date" min={trip.travelDate || getTodayString()} value={scheduleEndDate} onChange={(event) => setScheduleEndDate(event.target.value)} required />
+                      </div>
+                      {recurrenceType === 'SELECTED_DAYS' && (
+                        <div className="trip-field trip-field-full trip-weekdays">
+                          <label>Service days</label>
+                          <div>
+                            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((label, day) => (
+                              <button type="button" key={label} className={selectedDays.includes(day) ? 'selected' : ''} onClick={() => setSelectedDays((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day])}>{label}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="trip-field trip-field-full trip-exceptions">
+                        <div className="trip-exceptions-heading">
+                          <label>Schedule exceptions</label>
+                          <button type="button" onClick={() => setScheduleExceptions((current) => [...current, {date:'',action:'CANCEL',departureTime:'',reason:''}])}>+ Add exception</button>
+                        </div>
+                        {scheduleExceptions.map((exception, index) => (
+                          <div className="trip-exception-row" key={index}>
+                            <input aria-label="Exception date" type="date" min={trip.travelDate} max={scheduleEndDate} value={exception.date} onChange={(event) => setScheduleExceptions((current) => current.map((item, itemIndex) => itemIndex === index ? {...item,date:event.target.value} : item))} required />
+                            <select aria-label="Exception action" value={exception.action} onChange={(event) => setScheduleExceptions((current) => current.map((item, itemIndex) => itemIndex === index ? {...item,action:event.target.value as 'CANCEL'|'CHANGE'} : item))}>
+                              <option value="CANCEL">Cancel service</option>
+                              <option value="CHANGE">Change departure</option>
+                            </select>
+                            {exception.action === 'CHANGE' && <input aria-label="Changed departure time" type="time" value={exception.departureTime} onChange={(event) => setScheduleExceptions((current) => current.map((item, itemIndex) => itemIndex === index ? {...item,departureTime:event.target.value} : item))} required />}
+                            <input aria-label="Exception reason" placeholder="Reason (optional)" value={exception.reason} onChange={(event) => setScheduleExceptions((current) => current.map((item, itemIndex) => itemIndex === index ? {...item,reason:event.target.value} : item))} />
+                            <button type="button" onClick={() => setScheduleExceptions((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
 
                   {/* DEPARTURE */}
 
@@ -1626,7 +1717,8 @@ export default function CreateTripPage() {
 
                     <input
                       type="time"
-                      required
+                      required={!recurring}
+                      disabled={recurring}
                       value={
                         trip.arrivalTime
                       }

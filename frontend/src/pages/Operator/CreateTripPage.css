@@ -333,6 +333,74 @@
     1 / -1;
 }
 
+.trip-inline-option {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.trip-inline-option input {
+  width: 18px !important;
+  height: 18px;
+  margin: 0;
+}
+
+.trip-weekdays > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trip-weekdays button {
+  border: 1px solid #dbe2ea;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: #fff;
+  color: #53627a;
+}
+
+.trip-weekdays button.selected {
+  border-color: #ef2f50;
+  background: #fff0f3;
+  color: #d91f42;
+}
+
+.trip-exceptions-heading,
+.trip-exception-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trip-exceptions-heading {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.trip-exceptions-heading button,
+.trip-exception-row button {
+  border: 1px solid #ef2f50;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #d91f42;
+}
+
+.trip-exception-row {
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid #e7ebf0;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+.trip-exception-row input,
+.trip-exception-row select {
+  flex: 1 1 150px;
+}
+
 .trip-field label {
   display: block;
 

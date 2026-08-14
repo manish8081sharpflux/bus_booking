@@ -18,3 +18,7 @@ exports.cancelTrip=async(req,res,next)=>{try{res.json({success:true,data:await s
 exports.verifyBoarding=async(req,res,next)=>{try{res.json({success:true,data:await service.verifyBoarding({...req.body,operatorId:req.operatorId,bookingId:req.params.id})})}catch(e){next(e)}}
 exports.operationalTrips=async(req,res,next)=>{try{res.json({success:true,data:await service.operationalTrips(req.operatorId,req.auth)})}catch(e){next(e)}}
 exports.transitionTrip=async(req,res,next)=>{try{res.json({success:true,data:await service.transitionTrip({operatorId:req.operatorId,tripId:req.params.id,status:req.body.status,auth:req.auth})})}catch(e){next(e)}}
+exports.createRecurringSchedule=async(req,res,next)=>{try{res.status(201).json({success:true,data:await service.createRecurringSchedule({...req.body,operatorId:req.operatorId})})}catch(e){next(e)}}
+exports.listRecurringSchedules=async(req,res,next)=>{try{res.json({success:true,data:await service.listRecurringSchedules(req.operatorId)})}catch(e){next(e)}}
+exports.materializeSchedule=async(req,res,next)=>{try{res.json({success:true,data:await service.materializeSchedule({operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}
+exports.upsertScheduleException=async(req,res,next)=>{try{res.json({success:true,data:await service.upsertScheduleException({...req.body,operatorId:req.operatorId,scheduleId:req.params.id})})}catch(e){next(e)}}

@@ -10,21 +10,31 @@ class BookingService {
   async searchTrips({ from, to, date }) {
     if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw fail('From, to and date are required.', 422)
     await pool.query('SELECT release_expired_seat_holds()')
-    const { rows } = await pool.query(`SELECT t.id,t.service_number,t.departure_at,t.arrival_at,t.base_fare,t.currency,
-      o.display_name AS operator,b.name AS bus,b.bus_type,b.amenities,r.source_city,r.destination_city,
-      COALESCE((SELECT MIN(tf.fare) FROM trip_fares tf WHERE tf.trip_id=t.id),t.base_fare) AS starting_fare,
-      (SELECT id FROM trip_stops WHERE trip_id=t.id ORDER BY stop_order ASC LIMIT 1) AS origin_stop_id,
-      (SELECT id FROM trip_stops WHERE trip_id=t.id ORDER BY stop_order DESC LIMIT 1) AS destination_stop_id,
+    const { rows } = await pool.query(`SELECT t.id,t.service_number,
+      COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at) departure_at,
+      COALESCE(destination.scheduled_arrival_at,destination.arrival_at,destination.scheduled_at,t.arrival_at) arrival_at,
+      t.base_fare,t.currency,
+      o.display_name AS operator,b.name AS bus,b.bus_type,b.amenities,origin.city source_city,destination.city destination_city,
+      COALESCE((SELECT MIN(tf.fare) FROM trip_fares tf WHERE tf.trip_id=t.id AND tf.origin_stop_id=origin.id AND tf.destination_stop_id=destination.id),t.base_fare) AS starting_fare,
+      origin.id AS origin_stop_id,destination.id AS destination_stop_id,
       COUNT(i.bus_seat_id)::int AS total_seats,
-      COUNT(i.bus_seat_id) FILTER(WHERE i.status='AVAILABLE')::int AS available_seats,
+      COUNT(i.bus_seat_id) FILTER(WHERE i.status IN ('AVAILABLE','HELD','BOOKED') AND NOT EXISTS(
+        SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=t.id AND a.bus_seat_id=i.bus_seat_id
+          AND a.segment_range && int4range(origin.stop_order,destination.stop_order,'[)')
+      ))::int AS available_seats,
       COALESCE((SELECT ROUND(AVG(cr.rating)::numeric,1) FROM customer_reviews cr WHERE cr.operator_id=t.operator_id AND cr.status='PUBLISHED'),0) AS rating,
       COALESCE((SELECT COUNT(*) FROM customer_reviews cr WHERE cr.operator_id=t.operator_id AND cr.status='PUBLISHED'),0)::int AS review_count,
       COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id',ts.id,'name',ts.location_name,'city',ts.city,'address',ts.address,'landmark',rs.landmark,'latitude',rs.latitude,'longitude',rs.longitude,'contactNumber',rs.contact_number) ORDER BY ts.stop_order) FROM trip_stops ts LEFT JOIN route_stops rs ON rs.route_id=t.route_id AND rs.stop_order=ts.stop_order WHERE ts.trip_id=t.id AND ts.is_boarding_allowed),'[]') AS boarding_points,
       COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id',ts.id,'name',ts.location_name,'city',ts.city,'address',ts.address,'landmark',rs.landmark,'latitude',rs.latitude,'longitude',rs.longitude,'contactNumber',rs.contact_number) ORDER BY ts.stop_order) FROM trip_stops ts LEFT JOIN route_stops rs ON rs.route_id=t.route_id AND rs.stop_order=ts.stop_order WHERE ts.trip_id=t.id AND ts.is_dropping_allowed),'[]') AS dropping_points
       FROM trips t JOIN operators o ON o.id=t.operator_id JOIN buses b ON b.id=t.bus_id JOIN routes r ON r.id=t.route_id
+      JOIN trip_stops origin ON origin.trip_id=t.id AND origin.is_boarding_allowed AND (LOWER(origin.city)=LOWER($1) OR LOWER(origin.location_name)=LOWER($1))
+      JOIN trip_stops destination ON destination.trip_id=t.id AND destination.is_dropping_allowed AND destination.stop_order>origin.stop_order
+        AND (LOWER(destination.city)=LOWER($2) OR LOWER(destination.location_name)=LOWER($2))
       LEFT JOIN trip_seat_inventory i ON i.trip_id=t.id
-      WHERE t.status='SCHEDULED' AND t.departure_at::date=$3::date AND LOWER(r.source_city)=LOWER($1) AND LOWER(r.destination_city)=LOWER($2)
-      GROUP BY t.id,o.display_name,b.name,b.bus_type,b.amenities,r.source_city,r.destination_city ORDER BY t.departure_at`, [from.trim(),to.trim(),date])
+      WHERE t.status='SCHEDULED' AND COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at)::date=$3::date
+      GROUP BY t.id,o.display_name,b.name,b.bus_type,b.amenities,origin.id,destination.id
+      HAVING COUNT(i.bus_seat_id) FILTER(WHERE NOT EXISTS(SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=t.id AND a.bus_seat_id=i.bus_seat_id AND a.segment_range && int4range(origin.stop_order,destination.stop_order,'[)')))>0
+      ORDER BY departure_at`, [from.trim(),to.trim(),date])
     const priced=await Promise.all(rows.map(async row=>{
       const rules=(await pool.query(`SELECT * FROM trip_fare_rules WHERE trip_id=$1::uuid AND is_active ORDER BY priority,created_at`,[row.id])).rows
       const result=evaluateFare({baseFare:Number(row.starting_fare),rules,departureAt:row.departure_at,totalSeats:Number(row.total_seats),availableSeats:Number(row.available_seats)})
@@ -33,7 +43,7 @@ class BookingService {
     return priced
   }
 
-  async seatMap(tripId) {
+  async seatMap(tripId, {originStopId=null,destinationStopId=null}={}) {
     await pool.query('SELECT release_expired_seat_holds()')
     const tripResult = await pool.query(`SELECT t.id,t.service_number,t.departure_at,t.arrival_at,t.currency,
       o.display_name operator,b.name bus,b.bus_type,b.amenities,r.source_city,r.destination_city,
@@ -44,13 +54,20 @@ class BookingService {
       FROM trips t JOIN operators o ON o.id=t.operator_id JOIN buses b ON b.id=t.bus_id JOIN routes r ON r.id=t.route_id
       WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND b.status='ACTIVE' AND t.departure_at>NOW()`,[tripId])
     if(!tripResult.rows[0]) throw fail('This trip is not available for booking.',404)
+    originStopId=originStopId||tripResult.rows[0].origin_stop_id
+    destinationStopId=destinationStopId||tripResult.rows[0].destination_stop_id
+    const segment=(await pool.query(`SELECT os.stop_order origin_order,ds.stop_order destination_order FROM trip_stops os JOIN trip_stops ds ON ds.trip_id=os.trip_id WHERE os.id=$1::uuid AND ds.id=$2::uuid AND os.trip_id=$3::uuid AND os.stop_order<ds.stop_order`,[originStopId,destinationStopId,tripId])).rows[0]
+    if(!segment) throw fail('Invalid boarding and dropping segment.',422)
+    tripResult.rows[0].origin_stop_id=originStopId;tripResult.rows[0].destination_stop_id=destinationStopId
     const { rows } = await pool.query(`SELECT bs.id,bs.seat_number,bs.deck,bs.row_number,bs.column_number,bs.seat_type,
-      bs.is_window,bs.is_female_reserved,i.status,
+      bs.is_window,bs.is_female_reserved,
+      CASE WHEN i.status='BLOCKED' OR EXISTS(SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=i.trip_id AND a.bus_seat_id=i.bus_seat_id AND a.segment_range && int4range($2::int,$3::int,'[)')) THEN 'BOOKED' ELSE 'AVAILABLE' END status,
       (SELECT UPPER(bp.gender) FROM booking_passengers bp
        WHERE bp.booking_id=i.booking_id AND bp.bus_seat_id=bs.id LIMIT 1) booked_gender,
-      COALESCE((SELECT tf.fare FROM trip_fares tf WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type ORDER BY tf.fare LIMIT 1),t.base_fare) fare
+      COALESCE((SELECT tf.fare FROM trip_fares tf WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type AND tf.origin_stop_id=$4::uuid AND tf.destination_stop_id=$5::uuid LIMIT 1),
+        (SELECT tf.fare FROM trip_fares tf WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type ORDER BY tf.fare LIMIT 1),t.base_fare) fare
       FROM trip_seat_inventory i JOIN bus_seats bs ON bs.id=i.bus_seat_id JOIN trips t ON t.id=i.trip_id
-      WHERE i.trip_id=$1::uuid ORDER BY bs.deck,bs.row_number,bs.column_number`, [tripId])
+      WHERE i.trip_id=$1::uuid ORDER BY bs.deck,bs.row_number,bs.column_number`, [tripId,segment.origin_order,segment.destination_order,originStopId,destinationStopId])
     const stopsResult = await pool.query(`SELECT ts.id,ts.stop_order,ts.city,ts.location_name,ts.address,ts.is_boarding_allowed,ts.is_dropping_allowed,
       rs.landmark,rs.latitude,rs.longitude,rs.contact_number,
       CASE WHEN ts.stop_order=1 THEN t.departure_at WHEN ts.stop_order=(SELECT MAX(x.stop_order) FROM trip_stops x WHERE x.trip_id=ts.trip_id) THEN t.arrival_at ELSE ts.scheduled_at END AS scheduled_at
@@ -82,7 +99,10 @@ class BookingService {
         WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND t.departure_at>NOW()`,[tripId,originStopId,destinationStopId])).rows[0]
       if(!trip || trip.origin_order>=trip.destination_order) throw fail('Invalid published trip or stop selection.',422)
 
-      const inv=await client.query(`SELECT i.bus_seat_id,bs.seat_number,bs.seat_type,i.status,
+      const inv=await client.query(`SELECT i.bus_seat_id,bs.seat_number,bs.seat_type,
+        CASE WHEN i.status='BLOCKED' OR EXISTS(SELECT 1 FROM trip_seat_segment_allocations a
+          WHERE a.trip_id=i.trip_id AND a.bus_seat_id=i.bus_seat_id
+            AND a.segment_range && int4range($6::int,$7::int,'[)')) THEN 'UNAVAILABLE' ELSE 'AVAILABLE' END status,
         COALESCE((SELECT tf.fare FROM trip_fares tf
           WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type
             AND tf.origin_stop_id=$3::uuid AND tf.destination_stop_id=$4::uuid
@@ -91,7 +111,7 @@ class BookingService {
           $5::numeric) base_fare
         FROM trip_seat_inventory i
         JOIN bus_seats bs ON bs.id=i.bus_seat_id
-        WHERE i.trip_id=$1::uuid AND i.bus_seat_id=ANY($2::uuid[])`,[tripId,uniqueSeatIds,originStopId,destinationStopId,trip.base_fare])
+        WHERE i.trip_id=$1::uuid AND i.bus_seat_id=ANY($2::uuid[])`,[tripId,uniqueSeatIds,originStopId,destinationStopId,trip.base_fare,trip.origin_order,trip.destination_order])
       if(inv.rowCount!==uniqueSeatIds.length) throw fail('One or more selected seats do not belong to this trip.',422)
       if(inv.rows.some(x=>x.status!=='AVAILABLE')) throw fail('One or more selected seats are no longer available.',409)
 
@@ -247,11 +267,13 @@ class BookingService {
         FOR UPDATE OF t`,[tripId,originStopId,destinationStopId])).rows[0]
       if(!trip || trip.origin_order>=trip.destination_order) throw fail('Invalid published trip or stop selection.',422)
 
-      const inventory=await client.query(`SELECT i.bus_seat_id,i.status
+      const inventory=await client.query(`SELECT i.bus_seat_id,i.status,
+        EXISTS(SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=i.trip_id AND a.bus_seat_id=i.bus_seat_id
+          AND a.segment_range && int4range($3::int,$4::int,'[)')) segment_busy
         FROM trip_seat_inventory i
         WHERE i.trip_id=$1::uuid AND i.bus_seat_id=ANY($2::uuid[])
-        FOR UPDATE OF i`,[tripId,seatIds])
-      if(inventory.rowCount!==seatIds.length || inventory.rows.some(x=>x.status!=='AVAILABLE'))
+        FOR UPDATE OF i`,[tripId,seatIds,trip.origin_order,trip.destination_order])
+      if(inventory.rowCount!==seatIds.length || inventory.rows.some(x=>x.status==='BLOCKED'||x.segment_busy))
         throw fail('One or more selected seats are no longer available.',409)
 
       const snapshot=quote.pricing_snapshot||{}
@@ -297,11 +319,10 @@ class BookingService {
             fareBySeat.get(sid),baseFareBySeat.get(sid),adjustmentBySeat.get(sid)||0])
       }
 
-      await client.query(`UPDATE trip_seat_inventory
-        SET status='HELD',booking_id=$3::uuid,hold_token=$4::uuid,
-          hold_expires_at=NOW()+INTERVAL '10 minutes',updated_at=NOW()
-        WHERE trip_id=$1::uuid AND bus_seat_id=ANY($2::uuid[])`,
-        [tripId,seatIds,created.rows[0].id,crypto.randomUUID()])
+      for(const seatId of seatIds) await client.query(`INSERT INTO trip_seat_segment_allocations(
+        trip_id,bus_seat_id,booking_id,origin_stop_order,destination_stop_order,status,expires_at)
+        VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,'HELD',NOW()+INTERVAL '10 minutes')`,
+        [tripId,seatId,created.rows[0].id,trip.origin_order,trip.destination_order])
 
       if(promotionId){
         await client.query(`INSERT INTO promotion_redemptions(promotion_id,booking_id,customer_id,discount_amount)
@@ -320,6 +341,7 @@ class BookingService {
       return created.rows[0]
     } catch (error) {
       await client.query('ROLLBACK')
+      if(error.code==='23P01') throw fail('One or more selected seats were just taken for this route segment.',409)
       throw error
     } finally {
       client.release()
@@ -346,7 +368,7 @@ class BookingService {
       const payment = await client.query(`INSERT INTO payments(booking_id,provider,provider_payment_id,idempotency_key,amount,currency,status,method)
         VALUES($1::uuid,$2,$3,$4::uuid,$5,$6,'CAPTURED',$7) RETURNING *`, [bookingId,provider,providerPaymentId||crypto.randomUUID(),idempotencyKey,booking.total_amount,booking.currency,method])
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[bookingId])
-      await client.query(`UPDATE trip_seat_inventory SET status='BOOKED',hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[bookingId])
+      await client.query(`UPDATE trip_seat_segment_allocations SET status='CONFIRMED',expires_at=NULL WHERE booking_id=$1::uuid`,[bookingId])
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CONFIRMED',$3::jsonb)`,[booking.customer_id,bookingId,JSON.stringify({bookingReference:booking.booking_reference})])
       await client.query('COMMIT'); return {...payment.rows[0],ticket:await this.ticket(bookingId)}
     } catch(error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
@@ -384,7 +406,7 @@ class BookingService {
       if(!paymentProvider.verifyPaymentSignature({orderId:providerOrderId,paymentId:providerPaymentId,signature})) throw fail('Payment signature verification failed.',400)
       const updated=await client.query(`UPDATE payments SET provider_payment_id=$2,status='CAPTURED',method=$3,updated_at=NOW(),provider_payload=provider_payload||$4::jsonb WHERE id=$1::uuid RETURNING *`,[payment.id,providerPaymentId,method,JSON.stringify({signatureVerified:true})])
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[bookingId])
-      await client.query(`UPDATE trip_seat_inventory SET status='BOOKED',hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[bookingId])
+      await client.query(`UPDATE trip_seat_segment_allocations SET status='CONFIRMED',expires_at=NULL WHERE booking_id=$1::uuid`,[bookingId])
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CONFIRMED',$3::jsonb),($1::uuid,$2::uuid,'SMS','BOOKING_CONFIRMED',$3::jsonb)`,[customerId,bookingId,JSON.stringify({bookingReference:(await client.query('SELECT booking_reference FROM bookings WHERE id=$1',[bookingId])).rows[0].booking_reference})])
       await client.query('COMMIT'); return updated.rows[0]
     } catch(e){await client.query('ROLLBACK');throw e} finally{client.release()}
@@ -440,7 +462,7 @@ class BookingService {
         if(status==='REFUNDED') await client.query(`UPDATE payments SET status='REFUNDED',updated_at=NOW() WHERE id=$1`,[payRows[0].id])
       }
       const cancelled=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE id=$1::uuid RETURNING *`,[id,reason])
-      await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[id])
+      await client.query(`DELETE FROM trip_seat_segment_allocations WHERE booking_id=$1::uuid`,[id])
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CANCELLED',$3::jsonb),($1::uuid,$2::uuid,'SMS','BOOKING_CANCELLED',$3::jsonb)`,[customerId,id,JSON.stringify({bookingReference:booking.booking_reference,refundStatus:refundRow?.status||'NOT_REQUIRED'})])
       await client.query('COMMIT'); return {booking:cancelled.rows[0],refund:refundRow}
     } catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
@@ -581,7 +603,7 @@ class BookingService {
       if(!paymentProvider.verifyPaymentSignature({orderId:providerOrderId,paymentId:providerPaymentId,signature})) throw fail('Payment signature verification failed.',400)
       const updated=(await client.query(`UPDATE payments SET provider_payment_id=$2,status='CAPTURED',method=$3,updated_at=NOW(),provider_payload=provider_payload||$4::jsonb WHERE id=$1::uuid RETURNING *`,[payment.id,providerPaymentId,method,JSON.stringify({signatureVerified:true,channel:'WHATSAPP'})])).rows[0]
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[info.booking_id])
-      await client.query(`UPDATE trip_seat_inventory SET status='BOOKED',hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[info.booking_id])
+      await client.query(`UPDATE trip_seat_segment_allocations SET status='CONFIRMED',expires_at=NULL WHERE booking_id=$1::uuid`,[info.booking_id])
       const payload=JSON.stringify({bookingReference:payment.booking_reference,channel:'WHATSAPP'})
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'IN_APP','BOOKING_CONFIRMED',$3::jsonb),($1::uuid,$2::uuid,'WHATSAPP','BOOKING_CONFIRMED',$3::jsonb)`,[payment.customer_id,info.booking_id,payload])
       await client.query(`UPDATE whatsapp_checkout_tokens SET used_at=NOW() WHERE booking_id=$1::uuid`,[info.booking_id])
@@ -640,7 +662,7 @@ class BookingService {
   }
 
   async cancelBooking(id) {
-    const client=await pool.connect(); try { await client.query('BEGIN'); const {rows}=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),updated_at=NOW() WHERE id=$1::uuid AND status IN('PENDING_PAYMENT','CONFIRMED') RETURNING *`,[id]); if(!rows[0]) throw fail('Cancellable booking not found.',404); await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[id]); await client.query('COMMIT'); return rows[0] } catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+    const client=await pool.connect(); try { await client.query('BEGIN'); const {rows}=await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),updated_at=NOW() WHERE id=$1::uuid AND status IN('PENDING_PAYMENT','CONFIRMED') RETURNING *`,[id]); if(!rows[0]) throw fail('Cancellable booking not found.',404); await client.query(`DELETE FROM trip_seat_segment_allocations WHERE booking_id=$1::uuid`,[id]); await client.query('COMMIT'); return rows[0] } catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
   }
 
   async customerIdForPhone(phone) {
@@ -694,7 +716,7 @@ class BookingService {
         if(status==='REFUNDED') await client.query(`UPDATE payments SET status='REFUNDED',updated_at=NOW() WHERE id=$1::uuid`,[pay.id])
       }
       const cancelled=(await client.query(`UPDATE bookings SET status='CANCELLED',cancelled_at=NOW(),cancellation_reason=$2,updated_at=NOW() WHERE id=$1::uuid RETURNING *`,[id,reason])).rows[0]
-      await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[id])
+      await client.query(`DELETE FROM trip_seat_segment_allocations WHERE booking_id=$1::uuid`,[id])
       const payload=JSON.stringify({bookingReference:booking.booking_reference,refundStatus:refund?.status||'NOT_REQUIRED',refundAmount:refund?.amount||0,channel:'WHATSAPP'})
       await client.query(`INSERT INTO notification_outbox(user_id,booking_id,channel,template_key,payload) VALUES($1::uuid,$2::uuid,'WHATSAPP','BOOKING_CANCELLED',$3::jsonb),($1::uuid,$2::uuid,'IN_APP','BOOKING_CANCELLED',$3::jsonb)`,[customerId,id,payload])
       await client.query('COMMIT'); return {booking:cancelled,refund}

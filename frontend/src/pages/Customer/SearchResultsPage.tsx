@@ -2196,7 +2196,7 @@ export default function SearchResultsPage() {
                                 type="button"
                                 onClick={() =>
                                   history.push(
-                                    `/trip/${trip.id}/seats`,
+                                    `/trip/${trip.id}/seats?originStopId=${encodeURIComponent(trip.origin_stop_id || '')}&destinationStopId=${encodeURIComponent(trip.destination_stop_id || '')}`,
                                   )
                                 }
                               >

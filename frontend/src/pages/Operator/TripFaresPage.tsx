@@ -43,8 +43,17 @@ const API =
 ========================================================= */
 
 interface Fare {
+  origin_stop_id: string;
+  destination_stop_id: string;
   seat_type: string;
   fare: string | number;
+}
+
+interface TripStop {
+  id: string;
+  stop_order: number;
+  city: string;
+  location_name: string;
 }
 
 interface SeatType {
@@ -80,6 +89,8 @@ interface FareResponse {
   trip: Trip;
 
   seatTypes: SeatType[];
+
+  stops: TripStop[];
 
   fares: Fare[];
 }
@@ -369,6 +380,11 @@ export default function TripFaresPage() {
       >
     >({});
 
+  const [stops, setStops] = useState<TripStop[]>([]);
+  const [allFares, setAllFares] = useState<Fare[]>([]);
+  const [originStopId, setOriginStopId] = useState('');
+  const [destinationStopId, setDestinationStopId] = useState('');
+
   const [
     loading,
     setLoading,
@@ -449,6 +465,15 @@ export default function TripFaresPage() {
             : [],
         );
 
+        const loadedStops = Array.isArray(data.stops) ? data.stops : [];
+        const loadedFares = Array.isArray(data.fares) ? data.fares : [];
+        const originId = loadedStops[0]?.id || '';
+        const destinationId = loadedStops[loadedStops.length - 1]?.id || '';
+        setStops(loadedStops);
+        setAllFares(loadedFares);
+        setOriginStopId(originId);
+        setDestinationStopId(destinationId);
+
         const current:
           Record<
             string,
@@ -470,8 +495,9 @@ export default function TripFaresPage() {
                 (
                   item,
                 ) =>
-                  item.seat_type ===
-                  seatType.seat_type,
+                  item.seat_type === seatType.seat_type &&
+                  item.origin_stop_id === originId &&
+                  item.destination_stop_id === destinationId,
               );
 
             current[
@@ -515,6 +541,18 @@ export default function TripFaresPage() {
       operatorId,
     ],
   );
+
+  useEffect(() => {
+    if (!originStopId || !destinationStopId || !types.length) return;
+    const current: Record<string, string> = {};
+    types.forEach((seatType) => {
+      const fare = allFares.find((item) => item.seat_type === seatType.seat_type && item.origin_stop_id === originStopId && item.destination_stop_id === destinationStopId);
+      current[seatType.seat_type] = fare ? String(fare.fare) : '';
+    });
+    setValues(current);
+    setOriginalValues(current);
+    setErrors({});
+  }, [originStopId, destinationStopId]);
 
   /* =======================================================
      CHANGED?
@@ -705,6 +743,10 @@ export default function TripFaresPage() {
                     (
                       seatType,
                     ) => ({
+                      originStopId,
+
+                      destinationStopId,
+
                       seatType:
                         seatType.seat_type,
 
@@ -719,6 +761,11 @@ export default function TripFaresPage() {
               }),
           },
         );
+
+        setAllFares((current) => {
+          const retained = current.filter((item) => item.origin_stop_id !== originStopId || item.destination_stop_id !== destinationStopId);
+          return [...retained, ...types.map((seatType) => ({origin_stop_id: originStopId, destination_stop_id: destinationStopId, seat_type: seatType.seat_type, fare: Number(values[seatType.seat_type])}))];
+        });
 
         setOriginalValues({
           ...values,
@@ -1326,6 +1373,27 @@ export default function TripFaresPage() {
                     save
                   }
                 >
+
+                  <div className="fare-segment-picker">
+                    <label>
+                      From stop
+                      <select value={originStopId} onChange={(event) => {
+                        const next = event.target.value;
+                        setOriginStopId(next);
+                        const order = stops.find((stop) => stop.id === next)?.stop_order || 0;
+                        if ((stops.find((stop) => stop.id === destinationStopId)?.stop_order || 0) <= order) setDestinationStopId(stops.find((stop) => stop.stop_order > order)?.id || '');
+                      }}>
+                        {stops.slice(0, -1).map((stop) => <option key={stop.id} value={stop.id}>{stop.location_name}, {stop.city}</option>)}
+                      </select>
+                    </label>
+                    <span>→</span>
+                    <label>
+                      To stop
+                      <select value={destinationStopId} onChange={(event) => setDestinationStopId(event.target.value)}>
+                        {stops.filter((stop) => stop.stop_order > (stops.find((item) => item.id === originStopId)?.stop_order || 0)).map((stop) => <option key={stop.id} value={stop.id}>{stop.location_name}, {stop.city}</option>)}
+                      </select>
+                    </label>
+                  </div>
 
                   <div className="fare-type-grid">
 

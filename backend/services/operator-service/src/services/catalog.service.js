@@ -23,8 +23,7 @@ async function createRoute({ operatorId, sourceCity, destinationCity, distanceKm
       { city: sourceCity, locationName: sourceCity, isDroppingAllowed: false },
       { city: destinationCity, locationName: destinationCity, isBoardingAllowed: false },
     ]
-    for (const [i, stop] of items.entries()) await client.query(`INSERT INTO route_stops(route_id,stop_order,city,location_name,address,is_boarding_allowed,is_dropping_allowed)
-      VALUES($1::uuid,$2,$3,$4,$5,$6,$7)`, [route.id, i + 1, stop.city, stop.locationName, stop.address || null, stop.isBoardingAllowed !== false, stop.isDroppingAllowed !== false])
+    for (const [i, stop] of items.entries()) await insertRouteStop(client, route.id, i, stop)
     await client.query('COMMIT'); return route
   } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
 }
@@ -49,8 +48,15 @@ async function createTrip({ operatorId, busId, routeId, serviceNumber, travelDat
       [operatorId, busId, routeId, normalizedServiceNumber, departure, arrival, fare])
     if (!rows[0]) throw Object.assign(new Error('Route not found for this operator.'), { status: 404 })
     const routeStops = await client.query('SELECT * FROM route_stops WHERE route_id=$1::uuid ORDER BY stop_order', [routeId])
-    for (const s of routeStops.rows) await client.query(`INSERT INTO trip_stops(trip_id,stop_order,city,location_name,address,is_boarding_allowed,is_dropping_allowed)
-      VALUES($1::uuid,$2,$3,$4,$5,$6,$7)`, [rows[0].id,s.stop_order,s.city,s.location_name,s.address,s.is_boarding_allowed,s.is_dropping_allowed])
+    for (const s of routeStops.rows) {
+      const scheduledArrival = new Date(departure.getTime() + Number(s.arrival_offset_minutes || 0) * 60000)
+      const scheduledDeparture = new Date(departure.getTime() + Number(s.departure_offset_minutes || 0) * 60000)
+      await client.query(`INSERT INTO trip_stops(trip_id,stop_order,city,location_name,address,landmark,contact_number,instructions,latitude,longitude,
+        arrival_at,departure_at,scheduled_at,scheduled_arrival_at,scheduled_departure_at,is_boarding_allowed,is_dropping_allowed)
+        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$11,$11,$12,$13,$14)`,
+        [rows[0].id,s.stop_order,s.city,s.location_name,s.address,s.landmark,s.contact_number,s.instructions,s.latitude,s.longitude,
+          scheduledArrival,scheduledDeparture,s.is_boarding_allowed,s.is_dropping_allowed])
+    }
     await client.query('SELECT generate_trip_inventory($1::uuid)', [rows[0].id])
     await client.query('COMMIT'); return rows[0]
   } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
@@ -76,6 +82,11 @@ async function updateRouteStops({ routeId, operatorId, stops }) {
   for (const [i, s] of stops.entries()) {
     if (!s.city || !cityPattern.test(String(s.city).trim())) throw Object.assign(new Error(`Enter a valid city for stop ${i + 1}.`), { status: 422 })
     if (!s.locationName || !String(s.locationName).trim()) throw Object.assign(new Error(`Enter a location name for stop ${i + 1}.`), { status: 422 })
+    const arrival=Number(s.arrivalOffsetMinutes||0),departure=Number(s.departureOffsetMinutes||0)
+    if(!Number.isInteger(arrival)||!Number.isInteger(departure)||arrival<0||departure<arrival)
+      throw Object.assign(new Error(`Stop ${i + 1} departure offset must be at or after its arrival offset.`),{status:422})
+    if(i>0 && arrival<Number(stops[i-1].departureOffsetMinutes||0))
+      throw Object.assign(new Error(`Stop ${i + 1} must occur after the previous stop.`),{status:422})
   }
   if (!stops.some((s) => s.isBoardingAllowed !== false)) throw Object.assign(new Error('At least one stop must allow boarding.'), { status: 422 })
   if (!stops.some((s) => s.isDroppingAllowed !== false)) throw Object.assign(new Error('At least one stop must allow dropping.'), { status: 422 })
@@ -85,16 +96,27 @@ async function updateRouteStops({ routeId, operatorId, stops }) {
     const route = await client.query(`SELECT id FROM routes WHERE id=$1::uuid AND operator_id=$2::uuid FOR UPDATE`, [routeId, operatorId])
     if (!route.rows[0]) throw Object.assign(new Error('Route not found for this operator.'), { status: 404 })
     await client.query(`DELETE FROM route_stops WHERE route_id=$1::uuid`, [routeId])
-    for (const [i, s] of stops.entries()) {
-      await client.query(`INSERT INTO route_stops(route_id,stop_order,city,location_name,address,is_boarding_allowed,is_dropping_allowed)
-        VALUES($1::uuid,$2,$3,$4,$5,$6,$7)`, [routeId, i + 1, String(s.city).trim(), String(s.locationName).trim(), s.address ? String(s.address).trim() : null, s.isBoardingAllowed !== false, s.isDroppingAllowed !== false])
-    }
+    for (const [i, s] of stops.entries()) await insertRouteStop(client, routeId, i, s)
     const { rows } = await client.query(`SELECT r.*,
       COALESCE((SELECT JSON_AGG(rs ORDER BY rs.stop_order) FROM route_stops rs WHERE rs.route_id=r.id),'[]') stops
       FROM routes r WHERE r.id=$1::uuid`, [routeId])
     await client.query('COMMIT')
     return rows[0]
   } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
+}
+
+async function insertRouteStop(client, routeId, index, stop) {
+  const latitude=stop.latitude===''||stop.latitude==null?null:Number(stop.latitude)
+  const longitude=stop.longitude===''||stop.longitude==null?null:Number(stop.longitude)
+  if((latitude===null)!==(longitude===null) || (latitude!==null && (!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)))
+    throw Object.assign(new Error(`Enter both valid latitude and longitude for stop ${index+1}.`),{status:422})
+  return client.query(`INSERT INTO route_stops(route_id,stop_order,city,location_name,address,landmark,latitude,longitude,contact_number,instructions,
+    arrival_offset_minutes,departure_offset_minutes,is_boarding_allowed,is_dropping_allowed)
+    VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,[
+    routeId,index+1,String(stop.city||'').trim(),String(stop.locationName||'').trim(),stop.address?String(stop.address).trim():null,
+    stop.landmark?String(stop.landmark).trim():null,latitude,longitude,stop.contactNumber?String(stop.contactNumber).trim():null,
+    stop.instructions?String(stop.instructions).trim():null,Number(stop.arrivalOffsetMinutes||0),Number(stop.departureOffsetMinutes||0),
+    stop.isBoardingAllowed!==false,stop.isDroppingAllowed!==false])
 }
 
 async function listTrips(operatorId) {
@@ -137,24 +159,26 @@ async function getTripFares({ tripId, operatorId }) {
     FROM trips t JOIN buses b ON b.id=t.bus_id JOIN routes r ON r.id=t.route_id
     WHERE t.id=$1::uuid AND t.operator_id=$2::uuid`,[tripId,operatorId])
   if (!tripResult.rows[0]) throw Object.assign(new Error('Trip not found for this operator.'),{status:404})
-  const [types,fares]=await Promise.all([
+  const [types,fares,stops]=await Promise.all([
     pool.query(`SELECT seat_type,COUNT(*)::int seat_count FROM bus_seats
       WHERE bus_id=$1::uuid AND is_active GROUP BY seat_type ORDER BY seat_type`,[tripResult.rows[0].bus_id]),
-    pool.query(`SELECT tf.id,tf.seat_type,tf.fare,tf.currency FROM trip_fares tf
-      WHERE tf.trip_id=$1::uuid ORDER BY tf.seat_type`,[tripId]),
+    pool.query(`SELECT tf.id,tf.origin_stop_id,tf.destination_stop_id,tf.seat_type,tf.fare,tf.currency FROM trip_fares tf
+      JOIN trip_stops os ON os.id=tf.origin_stop_id JOIN trip_stops ds ON ds.id=tf.destination_stop_id
+      WHERE tf.trip_id=$1::uuid ORDER BY os.stop_order,ds.stop_order,tf.seat_type`,[tripId]),
+    pool.query(`SELECT id,stop_order,city,location_name FROM trip_stops WHERE trip_id=$1::uuid ORDER BY stop_order`,[tripId]),
   ])
-  return {trip:tripResult.rows[0],seatTypes:types.rows,fares:fares.rows}
+  return {trip:tripResult.rows[0],seatTypes:types.rows,stops:stops.rows,fares:fares.rows}
 }
 
 async function upsertTripFares({ tripId, operatorId, fares }) {
   if (!Array.isArray(fares)||!fares.length) throw Object.assign(new Error('At least one fare is required.'),{status:422,errors:{fares:'At least one fare is required.'}})
-  const normalized=fares.map(item=>({seatType:String(item.seatType||'').trim().toUpperCase(),fare:Number(item.fare)}))
+  const normalized=fares.map(item=>({seatType:String(item.seatType||'').trim().toUpperCase(),fare:Number(item.fare),originStopId:item.originStopId||null,destinationStopId:item.destinationStopId||null}))
   const errors={}
   for(const item of normalized){
     if(!item.seatType) errors.seatType='Seat type is required.'
     if(!Number.isFinite(item.fare)||item.fare<=0||item.fare>100000) errors[item.seatType||'fare']='Fare must be greater than 0 and at most ₹100,000.'
   }
-  if(new Set(normalized.map(item=>item.seatType)).size!==normalized.length) errors.fares='Duplicate seat types are not allowed.'
+  if(new Set(normalized.map(item=>`${item.originStopId||'FIRST'}:${item.destinationStopId||'LAST'}:${item.seatType}`)).size!==normalized.length) errors.fares='Duplicate fares for the same segment and seat type are not allowed.'
   if(Object.keys(errors).length) throw Object.assign(new Error('Please correct the fare configuration.'),{status:422,errors})
   const client=await pool.connect()
   try{
@@ -168,9 +192,13 @@ async function upsertTripFares({ tripId, operatorId, fares }) {
     if(invalid.length) throw Object.assign(new Error('Fare contains seat types not present on this bus.'),{status:422,errors:{seatTypes:invalid}})
     const stops=await client.query(`SELECT id FROM trip_stops WHERE trip_id=$1::uuid ORDER BY stop_order`,[tripId])
     if(stops.rowCount<2) throw Object.assign(new Error('Trip requires an origin and destination stop before fares can be saved.'),{status:422})
-    const origin=stops.rows[0].id,destination=stops.rows[stops.rowCount-1].id
+    const stopOrder=new Map(stops.rows.map((stop,index)=>[String(stop.id),index+1]))
+    const defaultOrigin=stops.rows[0].id,defaultDestination=stops.rows[stops.rowCount-1].id
     const saved=[]
     for(const item of normalized){
+      const origin=item.originStopId||defaultOrigin,destination=item.destinationStopId||defaultDestination
+      if(!stopOrder.has(String(origin))||!stopOrder.has(String(destination))||stopOrder.get(String(origin))>=stopOrder.get(String(destination)))
+        throw Object.assign(new Error('Each fare requires a valid forward route segment.'),{status:422})
       const result=await client.query(`INSERT INTO trip_fares(trip_id,origin_stop_id,destination_stop_id,seat_type,fare,currency)
         VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6)
         ON CONFLICT(trip_id,origin_stop_id,destination_stop_id,seat_type)
@@ -359,6 +387,74 @@ async function transitionTrip({operatorId,tripId,status,auth={}}){
     AND (NOT $5::boolean OR EXISTS(SELECT 1 FROM trip_staff_assignments tsa JOIN operator_staff os ON os.id=tsa.staff_id WHERE tsa.trip_id=t.id AND os.identity_user_id=$6::uuid AND os.status='ACTIVE')) RETURNING t.*`,[tripId,operatorId,next,previous[next],crewOnly,auth.userId||null])
   if(!rows[0]) throw Object.assign(new Error('Trip cannot move to this status from its current state.'),{status:409});return rows[0]
 }
+
+async function createRecurringSchedule({operatorId,routeId,busId,serviceNumber,departureTime,baseFare,recurrenceType,selectedDays=[],startDate,endDate,exceptions=[]}){
+  const recurrence=String(recurrenceType||'').toUpperCase()
+  if(!['DAILY','WEEKDAYS','SELECTED_DAYS'].includes(recurrence)||!/^[0-9]{2}:[0-9]{2}$/.test(String(departureTime||''))||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(startDate||''))||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(endDate||'')))
+    throw Object.assign(new Error('Valid recurrence, departure time, start date and end date are required.'),{status:422})
+  const days=[...new Set(selectedDays.map(Number))]
+  if(recurrence==='SELECTED_DAYS' && (!days.length||days.some(day=>day<0||day>6))) throw Object.assign(new Error('Choose at least one valid service day.'),{status:422})
+  const route=(await pool.query(`SELECT * FROM routes WHERE id=$1::uuid AND operator_id=$2::uuid`,[routeId,operatorId])).rows[0]
+  if(!route) throw Object.assign(new Error('Route not found.'),{status:404})
+  const start=new Date(`${startDate}T00:00:00Z`),end=new Date(`${endDate}T00:00:00Z`)
+  if(Number.isNaN(start.getTime())||Number.isNaN(end.getTime())||end<start||((end-start)/86400000)>366) throw Object.assign(new Error('Schedule range must be between 1 and 367 days.'),{status:422})
+  const client=await pool.connect()
+  let schedule
+  try{
+    await client.query('BEGIN')
+    schedule=(await client.query(`INSERT INTO route_schedule_templates(operator_id,route_id,bus_id,service_number,departure_time,base_fare,recurrence_type,selected_days,starts_on,ends_on)
+      VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5::time,$6,$7,$8::smallint[],$9::date,$10::date) RETURNING *`,[operatorId,routeId,busId,String(serviceNumber||'').trim(),departureTime,baseFare,recurrence,days,startDate,endDate])).rows[0]
+    for(const exception of exceptions) await client.query(`INSERT INTO route_schedule_exceptions(schedule_id,exception_date,action,departure_time,bus_id,base_fare,reason)
+      VALUES($1::uuid,$2::date,$3,$4::time,$5::uuid,$6,$7) ON CONFLICT(schedule_id,exception_date) DO UPDATE SET action=EXCLUDED.action,departure_time=EXCLUDED.departure_time,bus_id=EXCLUDED.bus_id,base_fare=EXCLUDED.base_fare,reason=EXCLUDED.reason`,
+      [schedule.id,exception.date,String(exception.action||'CANCEL').toUpperCase(),exception.departureTime||null,exception.busId||null,exception.baseFare||null,exception.reason||null])
+    await client.query('COMMIT')
+  }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+  return materializeSchedule({operatorId,scheduleId:schedule.id})
+}
+
+async function materializeSchedule({operatorId,scheduleId}){
+  const schedule=(await pool.query(`SELECT s.*,r.estimated_duration_minutes FROM route_schedule_templates s JOIN routes r ON r.id=s.route_id WHERE s.id=$1::uuid AND s.operator_id=$2::uuid`,[scheduleId,operatorId])).rows[0]
+  if(!schedule) throw Object.assign(new Error('Schedule not found.'),{status:404})
+  const exceptions=(await pool.query(`SELECT * FROM route_schedule_exceptions WHERE schedule_id=$1::uuid`,[scheduleId])).rows
+  const exceptionByDate=new Map(exceptions.map(item=>[String(item.exception_date).slice(0,10),item]))
+  let created=0,skipped=0
+  for(let day=new Date(`${String(schedule.starts_on).slice(0,10)}T00:00:00Z`),last=new Date(`${String(schedule.ends_on).slice(0,10)}T00:00:00Z`);day<=last;day=new Date(day.getTime()+86400000)){
+    const date=day.toISOString().slice(0,10),weekday=day.getUTCDay()
+    const runs=schedule.recurrence_type==='DAILY'||(schedule.recurrence_type==='WEEKDAYS'&&weekday>=1&&weekday<=5)||(schedule.recurrence_type==='SELECTED_DAYS'&&(schedule.selected_days||[]).includes(weekday))
+    const exception=exceptionByDate.get(date)
+    if(!runs||exception?.action==='CANCEL'){skipped++;continue}
+    const departureTime=exception?.departure_time?String(exception.departure_time).slice(0,5):String(schedule.departure_time).slice(0,5)
+    const departure=new Date(`${date}T${departureTime}:00`)
+    if(departure<=new Date()){skipped++;continue}
+    const arrival=new Date(departure.getTime()+Number(schedule.estimated_duration_minutes||60)*60000)
+    try{
+      const trip=await createTrip({operatorId,busId:exception?.bus_id||schedule.bus_id,routeId:schedule.route_id,serviceNumber:schedule.service_number,travelDate:date,departureTime,arrivalTime:`${String(arrival.getHours()).padStart(2,'0')}:${String(arrival.getMinutes()).padStart(2,'0')}`,baseFare:exception?.base_fare||schedule.base_fare})
+      await pool.query(`UPDATE trips SET schedule_template_id=$2::uuid,service_date=$3::date WHERE id=$1::uuid AND schedule_template_id IS NULL`,[trip.id,scheduleId,date])
+      created++
+    }catch(error){if(error.code==='23505') skipped++;else throw error}
+  }
+  return {schedule,createdTrips:created,skippedDates:skipped}
+}
+
+async function listRecurringSchedules(operatorId){
+  const {rows}=await pool.query(`SELECT s.*,r.source_city,r.destination_city,b.name bus_name,
+    COALESCE((SELECT JSON_AGG(e ORDER BY e.exception_date) FROM route_schedule_exceptions e WHERE e.schedule_id=s.id),'[]') exceptions,
+    (SELECT COUNT(*)::int FROM trips t WHERE t.schedule_template_id=s.id) generated_trips
+    FROM route_schedule_templates s JOIN routes r ON r.id=s.route_id JOIN buses b ON b.id=s.bus_id
+    WHERE s.operator_id=$1::uuid ORDER BY s.created_at DESC`,[operatorId]);return rows
+}
+
+async function upsertScheduleException({operatorId,scheduleId,date,action,departureTime,busId,baseFare,reason}){
+  const normalized=String(action||'').toUpperCase()
+  if(!['CANCEL','CHANGE'].includes(normalized)) throw Object.assign(new Error('Exception action must be CANCEL or CHANGE.'),{status:422})
+  const {rows}=await pool.query(`INSERT INTO route_schedule_exceptions(schedule_id,exception_date,action,departure_time,bus_id,base_fare,reason)
+    SELECT s.id,$3::date,$4,$5::time,$6::uuid,$7,$8 FROM route_schedule_templates s WHERE s.id=$1::uuid AND s.operator_id=$2::uuid
+    ON CONFLICT(schedule_id,exception_date) DO UPDATE SET action=EXCLUDED.action,departure_time=EXCLUDED.departure_time,bus_id=EXCLUDED.bus_id,base_fare=EXCLUDED.base_fare,reason=EXCLUDED.reason RETURNING *`,
+    [scheduleId,operatorId,date,normalized,departureTime||null,busId||null,baseFare||null,reason||null])
+  if(!rows[0]) throw Object.assign(new Error('Schedule not found.'),{status:404})
+  if(normalized==='CANCEL') await pool.query(`UPDATE trips SET status='CANCELLED',updated_at=NOW() WHERE schedule_template_id=$1::uuid AND service_date=$2::date AND status IN('DRAFT','SCHEDULED')`,[scheduleId,date])
+  return rows[0]
+}
 module.exports.getTripOperations=getTripOperations
 module.exports.updateTripStops=updateTripStops
 module.exports.setSeatBlocks=setSeatBlocks
@@ -368,3 +464,7 @@ module.exports.updateRouteStops=updateRouteStops
 module.exports.verifyBoarding=verifyBoarding
 module.exports.operationalTrips=operationalTrips
 module.exports.transitionTrip=transitionTrip
+module.exports.createRecurringSchedule=createRecurringSchedule
+module.exports.materializeSchedule=materializeSchedule
+module.exports.listRecurringSchedules=listRecurringSchedules
+module.exports.upsertScheduleException=upsertScheduleException

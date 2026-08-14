@@ -293,6 +293,13 @@ export default function OperatorManagementPage({
     city: string;
     locationName: string;
     address: string;
+    landmark: string;
+    latitude: string;
+    longitude: string;
+    contactNumber: string;
+    instructions: string;
+    arrivalOffsetMinutes: number;
+    departureOffsetMinutes: number;
     isBoardingAllowed: boolean;
     isDroppingAllowed: boolean;
   };
@@ -320,12 +327,19 @@ export default function OperatorManagementPage({
             city: s.city || '',
             locationName: s.location_name || s.locationName || '',
             address: s.address || '',
+            landmark: s.landmark || '',
+            latitude: s.latitude == null ? '' : String(s.latitude),
+            longitude: s.longitude == null ? '' : String(s.longitude),
+            contactNumber: s.contact_number || s.contactNumber || '',
+            instructions: s.instructions || '',
+            arrivalOffsetMinutes: Number(s.arrival_offset_minutes || 0),
+            departureOffsetMinutes: Number(s.departure_offset_minutes || 0),
             isBoardingAllowed: s.is_boarding_allowed !== false,
             isDroppingAllowed: s.is_dropping_allowed !== false,
           }))
         : [
-            { city: route.source_city || '', locationName: route.source_city || '', address: '', isBoardingAllowed: true, isDroppingAllowed: false },
-            { city: route.destination_city || '', locationName: route.destination_city || '', address: '', isBoardingAllowed: false, isDroppingAllowed: true },
+            { city: route.source_city || '', locationName: route.source_city || '', address: '', landmark: '', latitude: '', longitude: '', contactNumber: '', instructions: '', arrivalOffsetMinutes: 0, departureOffsetMinutes: 0, isBoardingAllowed: true, isDroppingAllowed: false },
+            { city: route.destination_city || '', locationName: route.destination_city || '', address: '', landmark: '', latitude: '', longitude: '', contactNumber: '', instructions: '', arrivalOffsetMinutes: Number(route.estimated_duration_minutes || 0), departureOffsetMinutes: Number(route.estimated_duration_minutes || 0), isBoardingAllowed: false, isDroppingAllowed: true },
           ];
 
     setStopsRoute(route);
@@ -347,7 +361,7 @@ export default function OperatorManagementPage({
   function addStopRow() {
     setStopsForm((current) => [
       ...current,
-      { city: '', locationName: '', address: '', isBoardingAllowed: true, isDroppingAllowed: true },
+      { city: '', locationName: '', address: '', landmark: '', latitude: '', longitude: '', contactNumber: '', instructions: '', arrivalOffsetMinutes: current.at(-1)?.departureOffsetMinutes || 0, departureOffsetMinutes: current.at(-1)?.departureOffsetMinutes || 0, isBoardingAllowed: true, isDroppingAllowed: true },
     ]);
   }
 
@@ -373,6 +387,10 @@ export default function OperatorManagementPage({
     }
     if (!stopsForm.some((s) => s.isDroppingAllowed)) {
       setStopsError('At least one stop must allow dropping.');
+      return;
+    }
+    if (stopsForm.some((s, index) => s.arrivalOffsetMinutes < 0 || s.departureOffsetMinutes < s.arrivalOffsetMinutes || (index > 0 && s.arrivalOffsetMinutes < stopsForm[index - 1].departureOffsetMinutes))) {
+      setStopsError('Stop offsets must move forward, and departure must be after arrival.');
       return;
     }
 
@@ -1296,6 +1314,41 @@ export default function OperatorManagementPage({
                           value={stop.address}
                           onChange={(e) => updateStop(index, 'address', e.target.value)}
                         />
+                      </label>
+
+                      <label>
+                        Landmark
+                        <input value={stop.landmark} onChange={(e) => updateStop(index, 'landmark', e.target.value)} />
+                      </label>
+
+                      <label>
+                        Arrival offset (minutes)
+                        <input type="number" min="0" value={stop.arrivalOffsetMinutes} onChange={(e) => updateStop(index, 'arrivalOffsetMinutes', Number(e.target.value))} />
+                      </label>
+
+                      <label>
+                        Departure offset (minutes)
+                        <input type="number" min={stop.arrivalOffsetMinutes} value={stop.departureOffsetMinutes} onChange={(e) => updateStop(index, 'departureOffsetMinutes', Number(e.target.value))} />
+                      </label>
+
+                      <label>
+                        Latitude
+                        <input type="number" step="any" min="-90" max="90" value={stop.latitude} onChange={(e) => updateStop(index, 'latitude', e.target.value)} />
+                      </label>
+
+                      <label>
+                        Longitude
+                        <input type="number" step="any" min="-180" max="180" value={stop.longitude} onChange={(e) => updateStop(index, 'longitude', e.target.value)} />
+                      </label>
+
+                      <label>
+                        Stop contact
+                        <input value={stop.contactNumber} onChange={(e) => updateStop(index, 'contactNumber', e.target.value)} />
+                      </label>
+
+                      <label className="route-stops-wide-field">
+                        Driver instructions
+                        <input value={stop.instructions} onChange={(e) => updateStop(index, 'instructions', e.target.value)} />
                       </label>
 
                     </div>

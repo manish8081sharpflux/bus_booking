@@ -19,7 +19,7 @@ import {
   walletOutline,
 } from 'ionicons/icons';
 
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 
 import './BookingFlowPage..css';
 
@@ -689,6 +689,8 @@ export default function BookingFlowPage() {
   }>();
 
   const history = useHistory();
+  const location = useLocation();
+  const requestedSegment = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
   const [step, setStep] = useState(1);
 
@@ -741,23 +743,34 @@ export default function BookingFlowPage() {
       seats: Seat[];
       boardingPoints: StopPoint[];
       droppingPoints: StopPoint[];
-    }>(`/trips/${tripId}/seats`)
+    }>(`/trips/${tripId}/seats${location.search}`)
       .then((data) => {
         setTrip(data.trip);
 
         setSeats(data.seats);
         setBoardingPoints(data.boardingPoints || []);
         setDroppingPoints(data.droppingPoints || []);
-        setBoardingStopId(data.trip.origin_stop_id || data.boardingPoints?.[0]?.id || '');
+        setBoardingStopId(requestedSegment.get('originStopId') || data.trip.origin_stop_id || data.boardingPoints?.[0]?.id || '');
         setDroppingStopId(
-          data.trip.destination_stop_id ||
+          requestedSegment.get('destinationStopId') || data.trip.destination_stop_id ||
             data.droppingPoints?.[data.droppingPoints.length - 1]?.id ||
             '',
         );
       })
       .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
-  }, [tripId]);
+  }, [tripId, location.search]);
+
+  useEffect(() => {
+    if (!tripId || !trip || !boardingStopId || !droppingStopId) return;
+    api<{ seats: Seat[] }>(`/trips/${tripId}/seats?originStopId=${encodeURIComponent(boardingStopId)}&destinationStopId=${encodeURIComponent(droppingStopId)}`)
+      .then((data) => {
+        setSeats(data.seats || []);
+        const available = new Set((data.seats || []).filter((seat) => seat.status === 'AVAILABLE').map((seat) => seat.id));
+        setSelected((current) => current.filter((id) => available.has(id)));
+      })
+      .catch((error) => setMessage(error.message));
+  }, [tripId, trip, boardingStopId, droppingStopId]);
 
   /* =======================================================
      SELECTED SEATS
