@@ -412,6 +412,85 @@ class BookingService {
     } catch(e){await client.query('ROLLBACK');throw e} finally{client.release()}
   }
 
+
+  validateSavedTraveller(input = {}) {
+    const fullName=String(input.fullName||input.full_name||'').trim().replace(/\s{2,}/g,' ')
+    const age=Number(input.age)
+    const gender=String(input.gender||'').trim().toUpperCase()
+    const relation=String(input.relation||'').trim().slice(0,40)||null
+    if(!/^[\p{L}\p{M} .'-]{2,80}$/u.test(fullName))
+      throw fail('Enter a valid traveller name between 2 and 80 characters.',422)
+    if(!Number.isInteger(age)||age<1||age>120)
+      throw fail('Traveller age must be between 1 and 120.',422)
+    if(!['MALE','FEMALE','OTHER'].includes(gender))
+      throw fail('Traveller gender must be MALE, FEMALE or OTHER.',422)
+    return {fullName,age,gender,relation}
+  }
+
+  async listSavedTravellers(authUserId) {
+    const customerId=await this.customerIdForAuth(authUserId)
+    if(!customerId) throw fail('Customer profile is not linked to this account.',403)
+    const {rows}=await pool.query(`SELECT id,full_name,age,gender,relation,is_default,created_at,updated_at
+      FROM customer_saved_travellers WHERE customer_id=$1::uuid
+      ORDER BY is_default DESC,created_at DESC`,[customerId])
+    return rows
+  }
+
+  async createSavedTraveller(authUserId,input={}) {
+    const customerId=await this.customerIdForAuth(authUserId)
+    if(!customerId) throw fail('Customer profile is not linked to this account.',403)
+    const value=this.validateSavedTraveller(input)
+    const client=await pool.connect()
+    try{
+      await client.query('BEGIN')
+      if(input.isDefault===true||input.is_default===true){
+        await client.query(`UPDATE customer_saved_travellers SET is_default=FALSE,updated_at=NOW() WHERE customer_id=$1::uuid`,[customerId])
+      }
+      const {rows}=await client.query(`INSERT INTO customer_saved_travellers(customer_id,full_name,age,gender,relation,is_default)
+        VALUES($1::uuid,$2,$3,$4,$5,$6)
+        ON CONFLICT(customer_id,LOWER(full_name),age,gender) DO UPDATE SET
+          relation=EXCLUDED.relation,is_default=EXCLUDED.is_default,updated_at=NOW()
+        RETURNING *`,[customerId,value.fullName,value.age,value.gender,value.relation,Boolean(input.isDefault||input.is_default)])
+      await client.query('COMMIT')
+      return rows[0]
+    }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+  }
+
+  async updateSavedTraveller(authUserId,travellerId,input={}) {
+    const customerId=await this.customerIdForAuth(authUserId)
+    if(!customerId) throw fail('Customer profile is not linked to this account.',403)
+    const existing=(await pool.query(`SELECT * FROM customer_saved_travellers WHERE id=$1::uuid AND customer_id=$2::uuid`,[travellerId,customerId])).rows[0]
+    if(!existing) throw fail('Saved traveller not found.',404)
+    const value=this.validateSavedTraveller({
+      fullName:input.fullName??input.full_name??existing.full_name,
+      age:input.age??existing.age,
+      gender:input.gender??existing.gender,
+      relation:input.relation??existing.relation,
+    })
+    const client=await pool.connect()
+    try{
+      await client.query('BEGIN')
+      const makeDefault=input.isDefault===true||input.is_default===true
+      if(makeDefault) await client.query(`UPDATE customer_saved_travellers SET is_default=FALSE,updated_at=NOW() WHERE customer_id=$1::uuid`,[customerId])
+      const {rows}=await client.query(`UPDATE customer_saved_travellers SET
+        full_name=$3,age=$4,gender=$5,relation=$6,
+        is_default=CASE WHEN $7::boolean THEN TRUE ELSE is_default END,
+        updated_at=NOW()
+        WHERE id=$1::uuid AND customer_id=$2::uuid RETURNING *`,
+        [travellerId,customerId,value.fullName,value.age,value.gender,value.relation,makeDefault])
+      await client.query('COMMIT')
+      return rows[0]
+    }catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}
+  }
+
+  async deleteSavedTraveller(authUserId,travellerId) {
+    const customerId=await this.customerIdForAuth(authUserId)
+    if(!customerId) throw fail('Customer profile is not linked to this account.',403)
+    const {rows}=await pool.query(`DELETE FROM customer_saved_travellers
+      WHERE id=$1::uuid AND customer_id=$2::uuid RETURNING id,full_name`,[travellerId,customerId])
+    if(!rows[0]) throw fail('Saved traveller not found.',404)
+    return {deleted:true,...rows[0]}
+  }
   async customerBookingsForAuth(authUserId) {
     const customerId=await this.customerIdForAuth(authUserId)
     if(!customerId) return []

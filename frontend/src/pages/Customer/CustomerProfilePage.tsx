@@ -530,7 +530,39 @@ export default function CustomerProfilePage() {
                   Home
                 </button>
 
-                <button
+                                <button
+                  type="button"
+                  onClick={() =>
+                    history.push(
+                      '/profile/travellers',
+                    )
+                  }
+                >
+                  <span className="profile-menu-icon">
+                    <IonIcon
+                      icon={
+                        personOutline
+                      }
+                    />
+                  </span>
+
+                  <div>
+                    <strong>
+                      Saved travellers
+                    </strong>
+
+                    <small>
+                      Manage passenger details for faster booking
+                    </small>
+                  </div>
+
+                  <IonIcon
+                    icon={
+                      chevronForwardOutline
+                    }
+                  />
+                </button>
+<button
                   type="button"
                   onClick={() =>
                     history.push(

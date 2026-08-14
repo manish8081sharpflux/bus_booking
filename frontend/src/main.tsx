@@ -50,6 +50,7 @@ import CustomerBookingsPage from './pages/Customer/CustomerBookingsPage'
 import CustomerLoginPage from './pages/Customer/CustomerLoginPage'
 import CustomerSignupPage from './pages/Customer/CustomerSignupPage'
 import CustomerProfilePage from './pages/Customer/CustomerProfilePage'
+import CustomerTravellersPage from './pages/Customer/CustomerTravellersPage'
 import CustomerEditProfilePage from './pages/Customer/CustomerEditProfilePage'
 import CustomerOffersPage from './pages/Customer/CustomerOffersPage'
 import CustomerReviewPage from './pages/Customer/CustomerReviewPage'
@@ -465,6 +466,12 @@ const CustomerApp: React.FC = () => {
             path="/profile"
           >
             <CustomerProfilePage />
+          </Route>
+          <Route
+            exact
+            path="/profile/travellers"
+          >
+            <CustomerTravellersPage />
           </Route>
           <Route
             exact

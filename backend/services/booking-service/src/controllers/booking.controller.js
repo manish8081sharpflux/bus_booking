@@ -34,3 +34,7 @@ exports.whatsappCustomerBookings=async(req,res,next)=>{try{res.json({success:tru
 exports.whatsappCancellationQuote=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.whatsappCancellationQuote(req.params.id,req.query.phone)})}catch(e){next(e)}};
 exports.whatsappCancelBooking=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.whatsappCancelBooking(req.params.id,req.body?.phone,req.body?.reason)})}catch(e){next(e)}};
 exports.whatsappSupport=async(req,res,next)=>{try{res.status(201).json({success:true,data:await bookingService.whatsappSupport(req.params.id,req.body?.phone,req.body?.reason)})}catch(e){next(e)}};
+exports.listSavedTravellers=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.listSavedTravellers(req.auth.userId)})}catch(e){next(e)}};
+exports.createSavedTraveller=async(req,res,next)=>{try{res.status(201).json({success:true,data:await bookingService.createSavedTraveller(req.auth.userId,req.body||{})})}catch(e){next(e)}};
+exports.updateSavedTraveller=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.updateSavedTraveller(req.auth.userId,req.params.travellerId,req.body||{})})}catch(e){next(e)}};
+exports.deleteSavedTraveller=async(req,res,next)=>{try{res.json({success:true,data:await bookingService.deleteSavedTraveller(req.auth.userId,req.params.travellerId)})}catch(e){next(e)}};
