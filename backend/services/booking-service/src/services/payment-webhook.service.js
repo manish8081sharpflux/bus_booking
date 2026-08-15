@@ -275,12 +275,18 @@ async function processRefundFailed(client, webhookEventId, entity, fullEvent) {
 
   const result = await client.query(
     `UPDATE refunds
-     SET status='FAILED',
-         failure_reason=$2,
+     SET status=CASE
+           WHEN status='REFUNDED' THEN status
+           ELSE 'FAILED'
+         END,
+         failure_reason=CASE
+           WHEN status='REFUNDED' THEN failure_reason
+           ELSE $2
+         END,
          provider_payload=provider_payload || $3::jsonb,
          updated_at=NOW()
      WHERE provider_refund_id=$1
-     RETURNING id,payment_id`,
+     RETURNING id,payment_id,status`,
     [providerRefundId, failureReason, JSON.stringify({ webhook: fullEvent, signatureVerified: true })]
   );
 
@@ -291,7 +297,16 @@ async function processRefundFailed(client, webhookEventId, entity, fullEvent) {
   }
 
   await markEvent(client, webhookEventId);
-  return { status: 'FAILED', refundId: result.rows[0].id, paymentId: result.rows[0].payment_id };
+  return {
+    status:
+      result.rows[0].status === 'REFUNDED'
+        ? 'ALREADY_REFUNDED'
+        : 'FAILED',
+    refundId:
+      result.rows[0].id,
+    paymentId:
+      result.rows[0].payment_id,
+  };
 }
 
 async function processRazorpayWebhook({ rawBody, signature, providerEventId = null }) {
