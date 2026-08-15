@@ -1213,7 +1213,55 @@ module.exports = {
   verifyOperatorDocument,
 }
 const operatorPolicyService = require('../services/operator.service');
-module.exports.getCancellationPolicy = async (req,res,next)=>{try{const operatorId=req.auth.roles.includes('SUPER_ADMIN')?req.params.id:req.auth.organizationId;res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(operatorId)})}catch(e){next(e)}};
+const resolvePolicyOperatorId = (
+  req,
+) => {
+  const isSuperAdmin =
+    req.auth?.roles?.includes(
+      'SUPER_ADMIN',
+    )
+
+  const operatorId =
+    isSuperAdmin
+      ? req.params.id
+      : req.auth?.organizationId
+
+  if (!operatorId) {
+    const error =
+      new Error(
+        'Operator context is required.',
+      )
+
+    error.status = 403
+    throw error
+  }
+
+  return operatorId
+}
+
+module.exports.getCancellationPolicy = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const operatorId =
+      resolvePolicyOperatorId(
+        req,
+      )
+
+    res.json({
+      success: true,
+      data:
+        await operatorPolicyService
+          .getCancellationPolicy(
+            operatorId,
+          ),
+    })
+  } catch(error) {
+    next(error)
+  }
+}
 const previewOperatorDocument = async (req,res,next) => {
   try {
     const document = await getOperatorDocumentForAdmin(
@@ -1247,5 +1295,28 @@ const previewOperatorDocument = async (req,res,next) => {
     next(error)
   }
 }
-module.exports.upsertCancellationPolicy = async (req,res,next)=>{try{res.json({success:true,data:await operatorPolicyService.upsertCancellationPolicy({...req.body,operatorId:req.auth.organizationId})})}catch(e){next(e)}};
+module.exports.upsertCancellationPolicy = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const operatorId =
+      resolvePolicyOperatorId(
+        req,
+      )
+
+    res.json({
+      success: true,
+      data:
+        await operatorPolicyService
+          .upsertCancellationPolicy({
+            ...req.body,
+            operatorId,
+          }),
+    })
+  } catch(error) {
+    next(error)
+  }
+}
 module.exports.previewOperatorDocument = previewOperatorDocument
