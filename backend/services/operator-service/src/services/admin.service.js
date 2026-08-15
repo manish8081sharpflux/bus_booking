@@ -495,7 +495,111 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
       return {status:'ACKNOWLEDGED',eventId:rows[0].id}
     }
 
-    throw reconciliationFail('Unsupported reconciliation action. Allowed: CONFIRM_BOOKING, MARK_FAILED, ACKNOWLEDGE.',422)
+    if(
+      normalizedKind==='DURABLE_PAYMENT_RECONCILIATION' &&
+      normalizedAction==='RESOLVE'
+    ){
+      if(cleanNote.length<8){
+        throw reconciliationFail(
+          'A resolution note of at least 8 characters is required.',
+          422,
+        )
+      }
+
+      if(cleanNote.length>1000){
+        throw reconciliationFail(
+          'Resolution note must be 1000 characters or fewer.',
+          422,
+        )
+      }
+
+      const existing=(await client.query(
+        `SELECT *
+         FROM payment_reconciliation_cases
+         WHERE id=$1::uuid
+         FOR UPDATE`,
+        [id],
+      )).rows[0]
+
+      if(!existing){
+        throw reconciliationFail(
+          'Durable payment reconciliation case not found.',
+          404,
+        )
+      }
+
+      if(existing.status==='RESOLVED'){
+        await client.query('COMMIT')
+        return {
+          status:'ALREADY_RESOLVED',
+          caseId:existing.id,
+          paymentId:existing.payment_id,
+          bookingId:existing.booking_id,
+        }
+      }
+
+      const resolved=(await client.query(
+        `UPDATE payment_reconciliation_cases
+         SET status='RESOLVED',
+             resolved_at=NOW(),
+             resolution_note=$2,
+             updated_at=NOW()
+         WHERE id=$1::uuid
+           AND status='OPEN'
+         RETURNING *`,
+        [id,cleanNote],
+      )).rows[0]
+
+      if(!resolved){
+        throw reconciliationFail(
+          'Only an OPEN reconciliation case can be resolved.',
+          409,
+        )
+      }
+
+      await client.query(
+        `INSERT INTO audit_logs(
+           actor_user_id,
+           entity_type,
+           entity_id,
+           action,
+           before_state,
+           after_state
+         )
+         VALUES(
+           $1::uuid,
+           'PAYMENT_RECONCILIATION_CASE',
+           $2,
+           'RESOLVE',
+           $3::jsonb,
+           $4::jsonb
+         )`,
+        [
+          actorUserId,
+          String(resolved.id),
+          JSON.stringify({
+            status:existing.status,
+            issueType:existing.issue_type,
+            occurrenceCount:existing.occurrence_count,
+          }),
+          JSON.stringify({
+            status:'RESOLVED',
+            resolutionNote:cleanNote,
+            paymentId:resolved.payment_id,
+            bookingId:resolved.booking_id,
+          }),
+        ],
+      )
+
+      await client.query('COMMIT')
+
+      return {
+        status:'RESOLVED',
+        action:'RESOLVE',
+        case:resolved,
+      }
+    }
+    throw reconciliationFail('Unsupported reconciliation action. Allowed: CONFIRM_BOOKING, MARK_FAILED, ACKNOWLEDGE, RESOLVE.',422)
   }catch(e){
     await client.query('ROLLBACK')
     throw e
