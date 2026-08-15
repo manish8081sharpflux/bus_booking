@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operators
- *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operator_bank_details
- *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operator_documents
  * =====================================================
  */
@@ -221,6 +221,72 @@ const createOperatorApplication = async (
 
     /*
      * -------------------------------------
+     * DOUBLE CHECK LEGAL / TAX IDENTITY
+     * -------------------------------------
+     */
+    const existingIdentity =
+      await client.query(
+        `
+          SELECT
+            id,
+            tax_identifier,
+            registration_number,
+            status
+          FROM operators
+          WHERE
+            UPPER(BTRIM(tax_identifier)) =
+              UPPER(BTRIM($1))
+            OR (
+              $2::text IS NOT NULL
+              AND UPPER(BTRIM(registration_number)) =
+                UPPER(BTRIM($2))
+            )
+          LIMIT 1
+          FOR UPDATE
+        `,
+        [
+          data.panNumber,
+          data.gstRegistered
+            ? data.gstin
+            : null,
+        ],
+      )
+
+    if (existingIdentity.rows[0]) {
+      const conflict =
+        existingIdentity.rows[0]
+
+      if (
+        String(
+          conflict.tax_identifier || '',
+        )
+          .trim()
+          .toUpperCase() ===
+        String(
+          data.panNumber || '',
+        )
+          .trim()
+          .toUpperCase()
+      ) {
+        const error =
+          new Error(
+            'An operator already exists with this PAN Number.',
+          )
+
+        error.status = 409
+        throw error
+      }
+
+      const error =
+        new Error(
+          'An operator already exists with this GSTIN.',
+        )
+
+      error.status = 409
+      throw error
+    }
+    /*
+     * -------------------------------------
      * OPERATOR
      * -------------------------------------
      */
@@ -262,7 +328,9 @@ const createOperatorApplication = async (
         ? data.gstin
         : null
 
-    const operatorResult =
+    let operatorResult
+
+    try {      operatorResult =
       await client.query(
         `
           INSERT INTO operators (
@@ -322,6 +390,27 @@ const createOperatorApplication = async (
         ],
       )
 
+    } catch (error) {
+      if (
+        error?.code === '23505' &&
+        (
+          error?.constraint ===
+            'operators_tax_identifier_unique_idx' ||
+          error?.constraint ===
+            'operators_registration_number_unique_idx'
+        )
+      ) {
+        const conflict =
+          new Error(
+            'Operator PAN or GSTIN is already registered.',
+          )
+
+        conflict.status = 409
+        throw conflict
+      }
+
+      throw error
+    }
     const operator =
       operatorResult.rows[0]
 
