@@ -1393,3 +1393,111 @@
     flex-direction: column;
   }
 }
+/* ============================================================
+   OPERATIONAL LIFECYCLE
+============================================================ */
+
+.manage-bus-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.manage-bus-lifecycle-button {
+  min-height: 48px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.manage-bus-lifecycle-button ion-icon {
+  font-size: 19px;
+}
+
+.manage-bus-lifecycle-button.activate {
+  border-color: #bbf7d0;
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.manage-bus-lifecycle-button.deactivate {
+  border-color: #fecdd3;
+  background: #fff1f3;
+  color: #be123c;
+}
+
+.manage-bus-lifecycle-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+}
+
+.manage-bus-lifecycle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.manage-bus-blocking-trips {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 22px;
+  padding: 17px 19px;
+  border: 1px solid #fed7aa;
+  border-radius: 16px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.manage-bus-blocking-trips strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.manage-bus-blocking-trips p {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.manage-bus-blocking-trips ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.manage-bus-blocking-trips li {
+  margin: 6px 0;
+}
+
+.manage-bus-blocking-trips li span:first-child {
+  font-weight: 750;
+}
+
+.manage-bus-blocking-trips li span:last-child {
+  margin-left: 8px;
+  color: #c2410c;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .manage-bus-hero-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .manage-bus-lifecycle-button,
+  .manage-bus-trip-button {
+    flex: 1 1 180px;
+  }
+}

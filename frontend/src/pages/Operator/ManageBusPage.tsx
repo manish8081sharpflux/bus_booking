@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  IonAlert,
   IonContent,
   IonIcon,
   IonPage,
+  IonToast,
 } from '@ionic/react';
 
 import {
@@ -13,6 +15,7 @@ import {
   checkmarkCircleOutline,
   documentTextOutline,
   gridOutline,
+  powerOutline,
   refreshOutline,
   shieldCheckmarkOutline,
 } from 'ionicons/icons';
@@ -88,6 +91,8 @@ interface BusData {
   registration_number?: string;
 
   status?: string;
+  operational_status?: string;
+  approval_status?: string;
 
   bus_type?: string;
   ac_type?: string;
@@ -209,6 +214,20 @@ export default function ManageBusPage() {
 
   const [error, setError] =
     useState('');
+  const [lifecycleBusy, setLifecycleBusy] =
+    useState(false);
+
+  const [confirmLifecycle, setConfirmLifecycle] =
+    useState(false);
+
+  const [toastMessage, setToastMessage] =
+    useState('');
+
+  const [toastColor, setToastColor] =
+    useState<'success' | 'danger'>('success');
+
+  const [blockingTrips, setBlockingTrips] =
+    useState<any[]>([]);
 
   /* ==========================================================
      LOAD BUS
@@ -271,6 +290,104 @@ export default function ManageBusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busId]);
 
+  const changeLifecycleStatus = async () => {
+    if (!bus || lifecycleBusy) return;
+
+    const currentStatus = String(
+      bus.operational_status ||
+        bus.status ||
+        'INACTIVE'
+    ).toUpperCase();
+
+    const nextStatus =
+      currentStatus === 'ACTIVE'
+        ? 'INACTIVE'
+        : 'ACTIVE';
+
+    try {
+      setLifecycleBusy(true);
+      setError('');
+      setBlockingTrips([]);
+
+      const response = await fetch(
+        `${API}/buses/${encodeURIComponent(
+          bus.id
+        )}/operational-status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {}),
+          },
+          body: JSON.stringify({
+            status: nextStatus,
+          }),
+        }
+      );
+
+      const text = await response.text();
+      let body: any = {};
+
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
+
+      if (!response.ok || body.success === false) {
+        if (
+          body.code === 'BUS_HAS_ACTIVE_TRIPS' &&
+          Array.isArray(body.blockingTrips)
+        ) {
+          setBlockingTrips(body.blockingTrips);
+        }
+
+        throw new Error(
+          body.message ||
+            'Unable to change bus status.'
+        );
+      }
+
+      setBus((current) =>
+        current
+          ? {
+              ...current,
+              ...body.bus,
+              status:
+                body.bus?.status ||
+                nextStatus,
+              operational_status:
+                body.bus?.operational_status ||
+                nextStatus,
+            }
+          : current
+      );
+
+      setToastColor('success');
+      setToastMessage(
+        body.message ||
+          (nextStatus === 'ACTIVE'
+            ? 'Bus activated successfully.'
+            : 'Bus deactivated successfully.')
+      );
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : 'Unable to change bus status.';
+
+      setError(message);
+      setToastColor('danger');
+      setToastMessage(message);
+    } finally {
+      setLifecycleBusy(false);
+      setConfirmLifecycle(false);
+    }
+  };
   /* ==========================================================
      DERIVED DATA
   ========================================================== */
@@ -320,13 +437,33 @@ export default function ManageBusPage() {
     bus?.bus_name ||
     'Manage bus';
 
+  const approvalStatus =
+    String(
+      bus?.approval_status ||
+        (bus?.status === 'PENDING' ||
+        bus?.status === 'REJECTED'
+          ? bus?.status
+          : 'APPROVED')
+    ).toUpperCase();
+
   const status =
     String(
-      bus?.status || 'PENDING'
+      bus?.operational_status ||
+        bus?.status ||
+        'INACTIVE'
     ).toUpperCase();
 
   const canCreateTrip =
+    approvalStatus === 'APPROVED' &&
     status === 'ACTIVE';
+
+  const canChangeLifecycle =
+    approvalStatus === 'APPROVED';
+
+  const nextLifecycleStatus =
+    status === 'ACTIVE'
+      ? 'INACTIVE'
+      : 'ACTIVE';
 
   /* ==========================================================
      RENDER
@@ -437,7 +574,34 @@ export default function ManageBusPage() {
               </div>
             )}
 
-            {/* ================= LOADING ================= */}
+                        {blockingTrips.length > 0 && (
+              <div className="manage-bus-blocking-trips">
+                <strong>
+                  Deactivation blocked by active trips
+                </strong>
+                <p>
+                  Reassign or cancel these trips first:
+                </p>
+                <ul>
+                  {blockingTrips.map((trip) => (
+                    <li key={trip.id}>
+                      <span>
+                        {trip.service_number ||
+                          'Scheduled trip'}
+                      </span>
+                      <span>
+                        {trip.departure_at
+                          ? new Date(
+                              trip.departure_at
+                            ).toLocaleString('en-IN')
+                          : label(trip.status)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+{/* ================= LOADING ================= */}
 
             {loading && !bus && (
               <ManageBusLoading />
@@ -521,6 +685,35 @@ export default function ManageBusPage() {
                   </div>
 
                   <div className="manage-bus-hero-actions">
+                    <button
+                      type="button"
+                      className={`manage-bus-lifecycle-button ${
+                        status === 'ACTIVE'
+                          ? 'deactivate'
+                          : 'activate'
+                      }`}
+                      disabled={
+                        lifecycleBusy ||
+                        !canChangeLifecycle
+                      }
+                      onClick={() =>
+                        setConfirmLifecycle(true)
+                      }
+                      title={
+                        !canChangeLifecycle
+                          ? 'Bus must be approved before changing operational status.'
+                          : undefined
+                      }
+                    >
+                      <IonIcon icon={powerOutline} />
+                      <span>
+                        {lifecycleBusy
+                          ? 'Updating...'
+                          : status === 'ACTIVE'
+                            ? 'Deactivate bus'
+                            : 'Activate bus'}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       className="manage-bus-trip-button"
@@ -1043,6 +1236,53 @@ export default function ManageBusPage() {
             )}
 
           </main>
+        <IonAlert
+          isOpen={confirmLifecycle}
+          onDidDismiss={() =>
+            setConfirmLifecycle(false)
+          }
+          header={
+            nextLifecycleStatus === 'ACTIVE'
+              ? 'Activate this bus?'
+              : 'Deactivate this bus?'
+          }
+          message={
+            nextLifecycleStatus === 'ACTIVE'
+              ? 'The bus will become available for eligible trip operations after all backend safety checks pass.'
+              : 'The bus will be removed from customer search. Deactivation will be blocked if it has scheduled or running trips.'
+          }
+          buttons={[
+            {
+              text: 'Cancel',
+              role: 'cancel',
+            },
+            {
+              text:
+                nextLifecycleStatus === 'ACTIVE'
+                  ? 'Activate'
+                  : 'Deactivate',
+              role:
+                nextLifecycleStatus === 'ACTIVE'
+                  ? undefined
+                  : 'destructive',
+              handler: () => {
+                void changeLifecycleStatus();
+                return false;
+              },
+            },
+          ]}
+        />
+
+        <IonToast
+          isOpen={Boolean(toastMessage)}
+          message={toastMessage}
+          color={toastColor}
+          duration={2800}
+          position="top"
+          onDidDismiss={() =>
+            setToastMessage('')
+          }
+        />
         </IonContent>
 
       </div>
