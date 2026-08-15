@@ -1745,12 +1745,46 @@ const editBusDetails = async (
       })
     }
 
+    const rawSeats =
+      parseJsonField(
+        req.body?.seats,
+        undefined,
+      )
+
+    let normalizedSeats
+
+    if (rawSeats !== undefined) {
+      const seatValidation =
+        validateSeats(
+          rawSeats,
+          data.totalSeats,
+          data.deckType,
+          data.seatingType,
+          data.seatLayout,
+        )
+
+      if (seatValidation.errors.length > 0) {
+        return res.status(422).json({
+          success: false,
+          message:
+            'Please correct the seat layout.',
+          errors: {
+            seats:
+              seatValidation.errors,
+          },
+        })
+      }
+
+      normalizedSeats =
+        seatValidation.seats
+    }
     const result =
       await updateBusDetails({
         busId: req.params.id,
         operatorId:
           req.operatorId,
         data,
+        seats: normalizedSeats,
       })
 
     return res.json({
@@ -1769,6 +1803,7 @@ const editBusDetails = async (
         'BUS_MUST_BE_INACTIVE_FOR_EDIT',
         'BUS_HAS_ACTIVE_TRIPS',
         'DUPLICATE_REGISTRATION',
+        'SEAT_LAYOUT_REQUIRED_FOR_STRUCTURAL_EDIT',
       ].includes(error?.code)
     ) {
       return res.status(

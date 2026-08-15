@@ -790,6 +790,12 @@ const setBusOperationalStatus = async ({
   }
 }
 
+const STRUCTURAL_EDIT_FIELDS = [
+  ['seat_capacity', 'totalSeats'],
+  ['deck_type', 'deckType'],
+  ['seating_type', 'seatingType'],
+  ['seat_layout', 'seatLayout'],
+]
 const EDIT_REVIEW_FIELDS = [
   ['registration_number', 'registrationNumber'],
   ['bus_type', 'busType'],
@@ -814,6 +820,7 @@ const updateBusDetails = async ({
   busId,
   operatorId,
   data,
+  seats,
 }) => {
   const client = await pool.connect()
 
@@ -838,6 +845,27 @@ const updateBusDetails = async ({
       )
     }
 
+    const structuralChanged =
+      STRUCTURAL_EDIT_FIELDS.some(
+        ([dbField, inputField]) =>
+          String(current[dbField] ?? '') !==
+          String(data[inputField] ?? ''),
+      )
+
+    if (
+      structuralChanged &&
+      !Array.isArray(seats)
+    ) {
+      throw Object.assign(
+        new Error(
+          'Seat layout is required when changing capacity, deck, seating type or seat layout.',
+        ),
+        {
+          status: 422,
+          code: 'SEAT_LAYOUT_REQUIRED_FOR_STRUCTURAL_EDIT',
+        },
+      )
+    }
     const reviewRequired =
       EDIT_REVIEW_FIELDS.some(
         ([dbField, inputField]) =>
@@ -995,6 +1023,50 @@ const updateBusDetails = async ({
       ],
     )
 
+    if (structuralChanged) {
+      await client.query(
+        `DELETE FROM bus_seats
+         WHERE bus_id = $1::uuid`,
+        [busId],
+      )
+
+      for (const seat of seats) {
+        await client.query(
+          `INSERT INTO bus_seats (
+             bus_id,
+             seat_number,
+             deck,
+             row_number,
+             column_number,
+             seat_type,
+             is_window,
+             is_female_reserved,
+             is_accessible,
+             berth_level,
+             side,
+             is_active
+           )
+           VALUES (
+             $1::uuid,$2,$3::smallint,$4::smallint,$5::smallint,
+             $6,$7,$8,$9,$10,$11,$12
+           )`,
+          [
+            busId,
+            seat.seatNumber,
+            seat.deck,
+            seat.row,
+            seat.column,
+            seat.seatType,
+            Boolean(seat.isWindow),
+            Boolean(seat.isFemaleReserved),
+            Boolean(seat.isAccessible),
+            seat.berthLevel || null,
+            seat.side || 'SIDE',
+            Boolean(seat.isActive),
+          ],
+        )
+      }
+    }
     await client.query('COMMIT')
 
     return {
