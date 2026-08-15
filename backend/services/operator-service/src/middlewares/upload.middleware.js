@@ -840,6 +840,56 @@ const validateUploadedOperatorSignatures = (
   )
 }
 
+const armOperatorUploadFailureCleanup = (
+  req,
+  res,
+) => {
+  const files =
+    getUploadedOperatorFiles(
+      req,
+    )
+
+  let cleaned =
+    false
+
+  const cleanupOnce = () => {
+    if (
+      cleaned
+    ) {
+      return
+    }
+
+    cleaned =
+      true
+
+    removeUploadedFiles(
+      files,
+    )
+  }
+
+  res.once(
+    'finish',
+    () => {
+      if (
+        res.statusCode < 200 ||
+        res.statusCode >= 300
+      ) {
+        cleanupOnce()
+      }
+    },
+  )
+
+  res.once(
+    'close',
+    () => {
+      if (
+        !res.writableFinished
+      ) {
+        cleanupOnce()
+      }
+    },
+  )
+}
 const operatorDocumentUpload = (
   req,
   res,
@@ -865,6 +915,11 @@ const operatorDocumentUpload = (
         )
         return
       }
+
+      armOperatorUploadFailureCleanup(
+        req,
+        res,
+      )
 
       validateUploadedOperatorSignatures(
         req,
