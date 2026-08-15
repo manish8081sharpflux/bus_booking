@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      â†“
+ *      Ã¢â€ â€œ
  * operators
- *      â†“
+ *      Ã¢â€ â€œ
  * operator_bank_details
- *      â†“
+ *      Ã¢â€ â€œ
  * operator_documents
  * =====================================================
  */
