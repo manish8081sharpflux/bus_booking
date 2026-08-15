@@ -43,6 +43,44 @@ const customerBookabilityWhere = (
     /\bb\./g,
     `${alias}.`,
   )
+const assertBookingStillBookable =
+  async (
+    client,
+    bookingId,
+  ) => {
+    const { rows } =
+      await client.query(
+        `SELECT
+           bk.id,
+           bk.status,
+           t.id AS trip_id,
+           t.status AS trip_status,
+           t.departure_at,
+           b.id AS bus_id
+         FROM bookings bk
+         JOIN trips t
+           ON t.id = bk.trip_id
+         JOIN buses b
+           ON b.id = t.bus_id
+         WHERE bk.id = $1::uuid
+           AND t.status = 'SCHEDULED'
+           AND t.departure_at > NOW()
+           AND ${customerBookabilityWhere('b')}
+         FOR SHARE OF t, b`,
+        [
+          bookingId,
+        ],
+      )
+
+    if (!rows[0]) {
+      throw fail(
+        'This trip or bus is no longer eligible for booking. Payment cannot be confirmed.',
+        409,
+      )
+    }
+
+    return rows[0]
+  }
 class BookingService {
   async searchTrips({ from, to, date }) {
     if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw fail('From, to and date are required.', 422)
@@ -182,7 +220,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is Ã¢â€šÂ¹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -404,6 +442,11 @@ class BookingService {
         return {...(captured.rows[0]||{}),ticket:await this.ticket(bookingId)}
       }
       if (!booking || booking.status!=='PENDING_PAYMENT' || new Date(booking.expires_at)<=new Date()) throw fail('Booking payment window has expired.',409)
+
+      await assertBookingStillBookable(
+        client,
+        bookingId,
+      )
       const payment = await client.query(`INSERT INTO payments(booking_id,provider,provider_payment_id,idempotency_key,amount,currency,status,method)
         VALUES($1::uuid,$2,$3,$4::uuid,$5,$6,'CAPTURED',$7) RETURNING *`, [bookingId,provider,providerPaymentId||crypto.randomUUID(),idempotencyKey,booking.total_amount,booking.currency,method])
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[bookingId])
@@ -442,6 +485,11 @@ class BookingService {
       if(!payment || payment.customer_id!==customerId) throw fail('Payment not found.',404)
       if(payment.status==='CAPTURED'){await client.query('COMMIT');return payment}
       if(payment.booking_status!=='PENDING_PAYMENT' || new Date(payment.expires_at)<=new Date()) throw fail('Booking payment window has expired.',409)
+
+      await assertBookingStillBookable(
+        client,
+        bookingId,
+      )
       if(!paymentProvider.verifyPaymentSignature({orderId:providerOrderId,paymentId:providerPaymentId,signature})) throw fail('Payment signature verification failed.',400)
       const updated=await client.query(`UPDATE payments SET provider_payment_id=$2,status='CAPTURED',method=$3,updated_at=NOW(),provider_payload=provider_payload||$4::jsonb WHERE id=$1::uuid RETURNING *`,[payment.id,providerPaymentId,method,JSON.stringify({signatureVerified:true})])
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[bookingId])
@@ -588,7 +636,7 @@ class BookingService {
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`Ã¢â€šÂ¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to Ã¢â€šÂ¹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -596,7 +644,7 @@ class BookingService {
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is Ã¢â€šÂ¹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}
@@ -718,6 +766,11 @@ class BookingService {
       if(!payment) throw fail('Payment order not found.',404)
       if(payment.status==='CAPTURED'){await client.query('COMMIT');return {payment,booking:info,alreadyPaid:true}}
       if(payment.booking_status!=='PENDING_PAYMENT'||new Date(payment.expires_at)<=new Date()) throw fail('Booking payment window has expired.',409)
+
+      await assertBookingStillBookable(
+        client,
+        info.booking_id,
+      )
       if(!paymentProvider.verifyPaymentSignature({orderId:providerOrderId,paymentId:providerPaymentId,signature})) throw fail('Payment signature verification failed.',400)
       const updated=(await client.query(`UPDATE payments SET provider_payment_id=$2,status='CAPTURED',method=$3,updated_at=NOW(),provider_payload=provider_payload||$4::jsonb WHERE id=$1::uuid RETURNING *`,[payment.id,providerPaymentId,method,JSON.stringify({signatureVerified:true,channel:'WHATSAPP'})])).rows[0]
       await client.query(`UPDATE bookings SET status='CONFIRMED',updated_at=NOW() WHERE id=$1::uuid`,[info.booking_id])

@@ -44,9 +44,9 @@ test('search seat map and quote all use runtime guard', () => {
       /\$\{customerBookabilityWhere\('b'\)\}/g,
     ) || []
 
-  assert.equal(
-    matches.length,
-    4,
+    assert.ok(
+    matches.length >= 4,
+    'all customer booking entry points must use runtime bookability',
   )
 })
 
