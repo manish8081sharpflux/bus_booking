@@ -639,6 +639,143 @@ const getOperatorDocuments =
  * =====================================================
  */
 
+const REQUIRED_OPERATOR_DOCUMENTS = [
+  'PAN_CARD',
+  'OWNER_ID_PROOF',
+  'BANK_PROOF',
+  'BUSINESS_REGISTRATION',
+]
+
+const getOperatorKycStatus = async (operatorId) => {
+  const operator = await findById(operatorId)
+
+  if (!operator) {
+    throw Object.assign(new Error('Operator not found.'), { status: 404 })
+  }
+
+  const documents = await getOperatorDocuments(operatorId)
+  const required = [...REQUIRED_OPERATOR_DOCUMENTS]
+
+  if (operator.registration_number) {
+    required.push('GST_CERTIFICATE')
+  }
+
+  const documentMap = new Map(
+    documents.map((document) => [document.document_type, document]),
+  )
+
+  const items = required.map((documentType) => {
+    const document = documentMap.get(documentType)
+
+    return {
+      documentType,
+      present: Boolean(document),
+      status: document?.verification_status || 'MISSING',
+      rejectionReason: document?.rejection_reason || null,
+      documentId: document?.id || null,
+    }
+  })
+
+  const missing = items
+    .filter((item) => !item.present)
+    .map((item) => item.documentType)
+
+  const rejected = items
+    .filter((item) => item.status === 'REJECTED')
+    .map((item) => item.documentType)
+
+  const pending = items
+    .filter(
+      (item) =>
+        item.present &&
+        !['APPROVED', 'REJECTED'].includes(item.status),
+    )
+    .map((item) => item.documentType)
+
+  return {
+    operatorId,
+    complete:
+      missing.length === 0 &&
+      rejected.length === 0 &&
+      pending.length === 0 &&
+      items.every((item) => item.status === 'APPROVED'),
+    required: items,
+    missing,
+    pending,
+    rejected,
+  }
+}
+
+const updateOperatorDocumentVerification = async ({
+  operatorId,
+  documentId,
+  decision,
+  reason = null,
+  verifiedBy = null,
+}) => {
+  const normalizedDecision = String(decision || '').trim().toUpperCase()
+
+  if (!['APPROVED', 'REJECTED'].includes(normalizedDecision)) {
+    throw Object.assign(
+      new Error('Document decision must be APPROVED or REJECTED.'),
+      { status: 422 },
+    )
+  }
+
+  const cleanReason = String(reason || '').trim() || null
+
+  if (
+    normalizedDecision === 'REJECTED' &&
+    (!cleanReason || cleanReason.length < 3)
+  ) {
+    throw Object.assign(
+      new Error('Document rejection reason is required.'),
+      { status: 422 },
+    )
+  }
+
+  const { rows } = await pool.query(
+    `UPDATE operator_documents
+     SET verification_status = $3,
+         rejection_reason = CASE
+           WHEN $3 = 'REJECTED' THEN $4
+           ELSE NULL
+         END,
+         verified_by = $5::uuid,
+         verified_at = NOW(),
+         updated_at = NOW()
+     WHERE id = $1::uuid
+       AND operator_id = $2::uuid
+     RETURNING
+       id,
+       operator_id,
+       document_type,
+       file_path,
+       original_file_name,
+       mime_type,
+       file_size,
+       verification_status,
+       rejection_reason,
+       verified_by,
+       verified_at,
+       created_at,
+       updated_at`,
+    [
+      documentId,
+      operatorId,
+      normalizedDecision,
+      cleanReason,
+      verifiedBy,
+    ],
+  )
+
+  if (!rows[0]) {
+    throw Object.assign(new Error('Operator document not found.'), { status: 404 })
+  }
+
+  return rows[0]
+}
+
 const updateOperatorStatus = async ({
   operatorId,
   status,
@@ -692,6 +829,24 @@ const updateOperatorStatus = async ({
       REJECTED: [],
     }
 
+    if (current.status === 'PENDING' && nextStatus === 'APPROVED') {
+      const kyc = await getOperatorKycStatus(operatorId)
+
+      if (!kyc.complete) {
+        const details = [
+          kyc.missing.length ? `missing: ${kyc.missing.join(', ')}` : '',
+          kyc.pending.length ? `pending: ${kyc.pending.join(', ')}` : '',
+          kyc.rejected.length ? `rejected: ${kyc.rejected.join(', ')}` : '',
+        ].filter(Boolean).join('; ')
+
+        throw Object.assign(
+          new Error(
+            `KYC verification must be completed before operator approval${details ? ` (${details})` : ''}.`,
+          ),
+          { status: 409 },
+        )
+      }
+    }
     if (!validTransitions[current.status]?.includes(nextStatus)) {
       throw Object.assign(
         new Error(`Operator cannot move from ${current.status} to ${nextStatus}.`),
@@ -826,6 +981,8 @@ module.exports = {
   findById,
 
   getOperatorDocuments,
+  getOperatorKycStatus,
+  updateOperatorDocumentVerification,
 
   updateOperatorStatus,
   getOperatorStatusHistory,

@@ -40,6 +40,20 @@ export interface OperatorDocument {
   updatedAt: string;
 }
 
+export interface OperatorKycStatus {
+  operatorId: string;
+  complete: boolean;
+  required: {
+    documentType: string;
+    present: boolean;
+    status: string;
+    rejectionReason: string | null;
+    documentId: string | null;
+  }[];
+  missing: string[];
+  pending: string[];
+  rejected: string[];
+}
 export interface OperatorItem {
   id: string;
 
@@ -521,6 +535,57 @@ export async function getOperatorById(
  * PATCH /operators/:id/approve
  * =====================================================
  */
+
+export async function getOperatorKycStatus(
+  id: string,
+): Promise<OperatorKycStatus> {
+  const response = await fetch(
+    `${OPERATOR_API_BASE_URL}/operators/${encodeURIComponent(id)}/kyc-status`,
+    {
+      headers: {
+        ...getAuthHeaders(),
+      },
+    },
+  );
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success || !json.kyc) {
+    throw new Error(json.message || 'Failed to fetch operator KYC status');
+  }
+
+  return json.kyc as OperatorKycStatus;
+}
+
+export async function verifyOperatorDocument(
+  operatorId: string,
+  documentId: string,
+  decision: 'APPROVED' | 'REJECTED',
+  reason = '',
+): Promise<OperatorKycStatus> {
+  const response = await fetch(
+    `${OPERATOR_API_BASE_URL}/operators/${encodeURIComponent(operatorId)}/documents/${encodeURIComponent(documentId)}/verification`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        decision,
+        reason: reason.trim() || undefined,
+      }),
+    },
+  );
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.message || 'Failed to verify operator document');
+  }
+
+  return json.kyc as OperatorKycStatus;
+}
 
 export async function approveOperator(
   id: string,

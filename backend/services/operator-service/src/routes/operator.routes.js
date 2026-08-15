@@ -11,6 +11,8 @@ const {
   suspendOperator,
   reactivateOperator,
   operatorStatusHistory,
+  operatorKycStatus,
+  verifyOperatorDocument,
 } = require('../controllers/operator.controller');
 
 const {
@@ -119,5 +121,25 @@ router.get(
   requireAuth,
   requireRoles('SUPER_ADMIN'),
   operatorStatusHistory,
+);
+
+/*
+ * Operator KYC status
+ */
+router.get(
+  '/:id/kyc-status',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  operatorKycStatus,
+);
+
+/*
+ * Approve/reject one KYC document
+ */
+router.patch(
+  '/:id/documents/:documentId/verification',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  verifyOperatorDocument,
 );
 module.exports = router;

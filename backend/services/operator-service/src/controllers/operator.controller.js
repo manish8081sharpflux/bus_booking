@@ -5,6 +5,8 @@ const {
   getAllOperators,
   findById,
   getOperatorDocuments,
+  getOperatorKycStatus,
+  updateOperatorDocumentVerification,
   updateOperatorStatus,
   getOperatorStatusHistory,
 } = require('../services/operator.service')
@@ -1124,6 +1126,44 @@ const operatorStatusHistory = async (req, res, next) => {
     next(error)
   }
 }
+const operatorKycStatus = async (req, res, next) => {
+  try {
+    return res.json({
+      success: true,
+      kyc: await getOperatorKycStatus(req.params.id),
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const verifyOperatorDocument = async (req, res, next) => {
+  try {
+    const document = await updateOperatorDocumentVerification({
+      operatorId: req.params.id,
+      documentId: req.params.documentId,
+      decision: req.body?.decision,
+      reason: req.body?.reason,
+      verifiedBy:
+        req.auth?.platformUserId ||
+        req.auth?.userId ||
+        null,
+    })
+
+    return res.json({
+      success: true,
+      message:
+        document.verification_status === 'APPROVED'
+          ? 'Operator document approved.'
+          : 'Operator document rejected.',
+      document,
+      kyc: await getOperatorKycStatus(req.params.id),
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   checkMobile,
 
@@ -1142,6 +1182,8 @@ module.exports = {
   suspendOperator,
   reactivateOperator,
   operatorStatusHistory,
+  operatorKycStatus,
+  verifyOperatorDocument,
 }
 const operatorPolicyService = require('../services/operator.service');
 module.exports.getCancellationPolicy = async (req,res,next)=>{try{const operatorId=req.auth.roles.includes('SUPER_ADMIN')?req.params.id:req.auth.organizationId;res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(operatorId)})}catch(e){next(e)}};
