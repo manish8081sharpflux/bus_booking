@@ -92,10 +92,12 @@ import {
 import {
   approveOperator,
   getOperatorById,
+  getOperatorKycStatus,
   listOperators,
   OperatorItem,
   OperatorStatus,
   rejectOperator,
+  verifyOperatorDocument,
 } from '../services/operator-api';
 
 /*
@@ -370,6 +372,14 @@ export function OperatorsTable() {
         await listOperators(
           currentSearch,
         );
+  const [kycStatus, setKycStatus] =
+    useState<OperatorKycStatus | null>(null);
+
+  const [documentToReject, setDocumentToReject] =
+    useState<string | null>(null);
+
+  const [documentRejectReason, setDocumentRejectReason] =
+    useState('');
 
       setItems(
         result.items || [],
@@ -423,14 +433,14 @@ export function OperatorsTable() {
         true,
       );
 
-      const operator =
-        await getOperatorById(
-          id,
-        );
+      const [operator, kyc] =
+        await Promise.all([
+          getOperatorById(id),
+          getOperatorKycStatus(id),
+        ]);
 
-      setSelectedOperator(
-        operator,
-      );
+      setSelectedOperator(operator);
+      setKycStatus(kyc);
     } catch (err) {
       setError(
         err instanceof Error
@@ -571,12 +581,58 @@ export function OperatorsTable() {
     }
   }
 
+  async function reviewDocument(
+    documentId: string,
+    decision: 'APPROVED' | 'REJECTED',
+    reason = '',
+  ) {
+    if (!selectedOperatorId) {
+      return;
+    }
+
+    try {
+      setIsActionLoading(true);
+      setError(null);
+
+      const kyc =
+        await verifyOperatorDocument(
+          selectedOperatorId,
+          documentId,
+          decision,
+          reason,
+        );
+
+      const operator =
+        await getOperatorById(
+          selectedOperatorId,
+        );
+
+      setSelectedOperator(operator);
+      setKycStatus(kyc);
+      setDocumentToReject(null);
+      setDocumentRejectReason('');
+
+      setSuccessMessage(
+        decision === 'APPROVED'
+          ? 'Document approved successfully.'
+          : 'Document rejected successfully.',
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to verify document.',
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  }
+
   /*
    * =====================================================
    * EMPTY STATE
    * =====================================================
    */
-
   const emptyStateMessage =
     useMemo(() => {
       if (search.trim()) {
@@ -1348,6 +1404,38 @@ export function OperatorsTable() {
                     </div>
                   </section>
 
+                  {/* KYC SUMMARY */}
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <ShieldCheck className="size-5" />
+                      <h3 className="font-semibold">KYC Verification</h3>
+                    </div>
+
+                    <div className="rounded-lg border border-border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">
+                            {kycStatus?.complete
+                              ? 'KYC Complete'
+                              : 'KYC Review Required'}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {kycStatus?.complete
+                              ? 'All required documents are approved.'
+                              : `${kycStatus?.missing.length || 0} missing, ${kycStatus?.pending.length || 0} pending, ${kycStatus?.rejected.length || 0} rejected`}
+                          </p>
+                        </div>
+
+                        <Badge
+                          variant={kycStatus?.complete ? 'success' : 'warning'}
+                          appearance="light"
+                        >
+                          {kycStatus?.complete ? 'VERIFIED' : 'INCOMPLETE'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </section>
                   {/* DOCUMENTS */}
 
                   <section>
@@ -1481,7 +1569,46 @@ export function OperatorsTable() {
                                     document.verificationStatus
                                   }
                                 </Badge>
-                              </div>
+
+                              {document.rejectionReason && (
+                                <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+                                  Reason: {document.rejectionReason}
+                                </p>
+                              )}
+
+                              {selectedOperator.status === 'PENDING' && (
+                                <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3">
+                                  <Button
+                                    size="sm"
+                                    disabled={
+                                      isActionLoading ||
+                                      document.verificationStatus === 'APPROVED'
+                                    }
+                                    onClick={() =>
+                                      void reviewDocument(
+                                        document.id,
+                                        'APPROVED',
+                                      )
+                                    }
+                                  >
+                                    <Check className="size-4" />
+                                    Approve Document
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={isActionLoading}
+                                    onClick={() => {
+                                      setDocumentToReject(document.id);
+                                      setDocumentRejectReason('');
+                                    }}
+                                  >
+                                    <XCircle className="size-4" />
+                                    Reject Document
+                                  </Button>
+                                </div>
+                              )}                            </div>
                             </div>
                           ),
                         )
@@ -1616,6 +1743,16 @@ export function OperatorsTable() {
                     </Button>
 
                     <Button
+                      disabled={
+                        !kycStatus?.complete ||
+                        isActionLoading
+                      }
+
+                      title={
+                        !kycStatus?.complete
+                          ? 'Approve all required KYC documents first'
+                          : undefined
+                      }
                       onClick={() =>
                         setIsApproveOpen(
                           true,
@@ -1704,6 +1841,68 @@ export function OperatorsTable() {
           </AlertDialogContent>
         </AlertDialog>
 
+        <Dialog
+          open={Boolean(documentToReject)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDocumentToReject(null);
+              setDocumentRejectReason('');
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Reject KYC Document
+              </DialogTitle>
+              <DialogDescription>
+                Enter a clear reason so the operator knows what must be corrected.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogBody>
+              <Textarea
+                value={documentRejectReason}
+                onChange={(event) =>
+                  setDocumentRejectReason(event.target.value)
+                }
+                placeholder="Enter document rejection reason..."
+                rows={4}
+              />
+            </DialogBody>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDocumentToReject(null);
+                  setDocumentRejectReason('');
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                disabled={
+                  isActionLoading ||
+                  documentRejectReason.trim().length < 3
+                }
+                onClick={() => {
+                  if (documentToReject) {
+                    void reviewDocument(
+                      documentToReject,
+                      'REJECTED',
+                      documentRejectReason,
+                    );
+                  }
+                }}
+              >
+                {isActionLoading ? 'Rejecting...' : 'Reject Document'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {/* =================================================
             REJECT DIALOG
         ================================================= */}
