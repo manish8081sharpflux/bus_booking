@@ -22,6 +22,17 @@ const { randomUUID } = require('crypto')
  * =====================================================
  */
 
+const allowDevelopmentOperatorToken = () =>
+  process.env.NODE_ENV !==
+    'production' &&
+  String(
+    process.env
+      .ALLOW_DEV_OPERATOR_LOGIN ||
+      '',
+  )
+    .trim()
+    .toLowerCase() ===
+    'true'
 const checkMobile = async (
   req,
   res,
@@ -74,15 +85,20 @@ const checkMobile = async (
         operator.support_mobile,
 
       token:
-        process.env.NODE_ENV !== 'production'
+        allowDevelopmentOperatorToken()
           ? generateAccessToken({
-              userId: operator.owner_user_id || operator.id,
-              organizationId: operator.id,
-              roleCodes: ['OPERATOR_ADMIN'],
-              sessionId: randomUUID(),
+              userId:
+                operator.owner_user_id ||
+                operator.id,
+              organizationId:
+                operator.id,
+              roleCodes: [
+                'OPERATOR_ADMIN',
+              ],
+              sessionId:
+                randomUUID(),
             })
           : undefined,
-
       operator: {
         id:
           operator.id,
