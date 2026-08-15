@@ -18,5 +18,5 @@ export const OPERATOR_API_BASE_URL = (() => {
       : `${normalizedGatewayBase}/api`;
   }
 
-  return 'http://localhost:4000/api';
+  return 'http://localhost:4600';
 })();
