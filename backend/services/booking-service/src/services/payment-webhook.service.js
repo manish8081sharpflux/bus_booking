@@ -5,6 +5,62 @@ const paymentProvider = require('../integrations/payment.provider');
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
+const WEBHOOK_BUS_BOOKABILITY_SQL = `
+  b.status = 'ACTIVE'
+  AND b.operational_status = 'ACTIVE'
+  AND b.approval_status = 'APPROVED'
+  AND EXISTS (
+    SELECT 1
+    FROM bus_compliance bc
+    WHERE bc.bus_id = b.id
+      AND bc.verification_status = 'VERIFIED'
+      AND bc.insurance_expiry >= CURRENT_DATE
+      AND bc.permit_expiry >= CURRENT_DATE
+      AND bc.fitness_expiry >= CURRENT_DATE
+      AND (
+        bc.puc_expiry IS NULL
+        OR bc.puc_expiry >= CURRENT_DATE
+      )
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id = b.id
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id = b.id
+      AND bd.verification_status <> 'VERIFIED'
+  )
+`;
+
+async function assertWebhookBookingStillBookable(
+  client,
+  bookingId,
+) {
+  const result =
+    await client.query(
+      `SELECT
+         t.id AS trip_id,
+         b.id AS bus_id
+       FROM bookings bk
+       JOIN trips t
+         ON t.id = bk.trip_id
+       JOIN buses b
+         ON b.id = t.bus_id
+       WHERE bk.id = $1::uuid
+         AND t.status = 'SCHEDULED'
+         AND t.departure_at > NOW()
+         AND ${WEBHOOK_BUS_BOOKABILITY_SQL}
+       FOR SHARE OF t,b`,
+      [bookingId],
+    );
+
+  return Boolean(
+    result.rows[0],
+  );
+}
 function rupeesFromPaise(value) {
   return Math.round((Number(value || 0) / 100) * 100) / 100;
 }
@@ -109,6 +165,36 @@ async function processPaymentCaptured(client, webhookEventId, entity, fullEvent)
     return { status: 'RECONCILIATION_REQUIRED', bookingId: row.booking_id, paymentId: row.id, reason: message };
   }
 
+  const stillBookable =
+    await assertWebhookBookingStillBookable(
+      client,
+      row.booking_id,
+    );
+
+  if (!stillBookable) {
+    const message =
+      'Payment was captured after the trip or bus became ineligible. Automatic confirmation was not performed; manual reconciliation/refund is required.';
+
+    await markEvent(
+      client,
+      webhookEventId,
+      {
+        error:
+          message,
+      },
+    );
+
+    return {
+      status:
+        'RECONCILIATION_REQUIRED',
+      bookingId:
+        row.booking_id,
+      paymentId:
+        row.id,
+      reason:
+        message,
+    };
+  }
   const allocationCheck = await client.query(
     `SELECT
        (SELECT COUNT(*)::int FROM booking_passengers WHERE booking_id=$1::uuid) passenger_count,
