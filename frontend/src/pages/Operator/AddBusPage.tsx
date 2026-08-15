@@ -180,6 +180,46 @@ const deriveBusType = (acType: string, seatingType: string) => {
   return `${prefix}_SEATER`;
 };
 
+const STANDARD_REGISTRATION =
+  /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/;
+
+const BH_REGISTRATION =
+  /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+
+const isValidRegistrationPrefix = (
+  value: string,
+) => {
+  if (!value) return true;
+
+  const standardPrefixes = [
+    /^[A-Z]{0,2}$/,
+    /^[A-Z]{2}[0-9]{0,2}$/,
+    /^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}$/,
+    /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{0,4}$/,
+  ];
+
+  const bhPrefixes = [
+    /^[0-9]{0,2}$/,
+    /^[0-9]{2}B?$/,
+    /^[0-9]{2}BH$/,
+    /^[0-9]{2}BH[0-9]{0,4}$/,
+    /^[0-9]{2}BH[0-9]{4}[A-Z]{0,2}$/,
+  ];
+
+  return [
+    ...standardPrefixes,
+    ...bhPrefixes,
+  ].some((pattern) =>
+    pattern.test(value)
+  );
+};
+
+const normalizeSpacesWhileTyping = (
+  value: string,
+) =>
+  value
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\s+/, '');
 const BUS_CREATION_STEPS = [
   'Bus Details',
   'Seat Layout',
@@ -321,7 +361,7 @@ const FloatingSelectField = ({
         </label>
 
         <span className="add-bus-select-arrow">
-          ▼
+          â–¼
         </span>
       </div>
 
@@ -393,7 +433,7 @@ const BusCreationSteps = ({
                 {label}
 
                 {completed
-                  ? ' ✓'
+                  ? ' âœ“'
                   : ''}
               </p>
             </div>
@@ -606,15 +646,17 @@ React.FC = () => {
     value: string,
   ) => {
     const cleaned =
-      value
-        .replace(
-          /[^A-Za-z0-9 .&'()-]/g,
-          '',
-        )
-        .slice(
-          0,
-          60,
-        );
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&'()-]/g,
+            '',
+          )
+          .slice(
+            0,
+            60,
+          ),
+      );
 
     updateField(
       'busName',
@@ -625,7 +667,7 @@ React.FC = () => {
   const handleRegistrationChange = (
     value: string,
   ) => {
-    const cleaned =
+    const candidate =
       value
         .toUpperCase()
         .replace(
@@ -637,25 +679,33 @@ React.FC = () => {
           11,
         );
 
-    updateField(
-      'registrationNumber',
-      cleaned,
-    );
+    if (
+      isValidRegistrationPrefix(
+        candidate,
+      )
+    ) {
+      updateField(
+        'registrationNumber',
+        candidate,
+      );
+    }
   };
 
   const handleManufacturerChange = (
     value: string,
   ) => {
     const cleaned =
-      value
-        .replace(
-          /[^A-Za-z0-9 .&()-]/g,
-          '',
-        )
-        .slice(
-          0,
-          50,
-        );
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&()-]/g,
+            '',
+          )
+          .slice(
+            0,
+            50,
+          ),
+      );
 
     updateField(
       'manufacturer',
@@ -667,15 +717,17 @@ React.FC = () => {
     value: string,
   ) => {
     const cleaned =
-      value
-        .replace(
-          /[^A-Za-z0-9 .&()/_-]/g,
-          '',
-        )
-        .slice(
-          0,
-          50,
-        );
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&()/_-]/g,
+            '',
+          )
+          .slice(
+            0,
+            50,
+          ),
+      );
 
     updateField(
       'model',
@@ -697,10 +749,38 @@ React.FC = () => {
           4,
         );
 
-    updateField(
-      'manufacturingYear',
-      cleaned,
-    );
+    if (!cleaned) {
+      updateField(
+        'manufacturingYear',
+        '',
+      );
+      return;
+    }
+
+    if (cleaned.length < 4) {
+      updateField(
+        'manufacturingYear',
+        cleaned,
+      );
+      return;
+    }
+
+    const year =
+      Number(cleaned);
+
+    const currentYear =
+      new Date()
+        .getFullYear();
+
+    if (
+      year >= 1990 &&
+      year <= currentYear
+    ) {
+      updateField(
+        'manufacturingYear',
+        cleaned,
+      );
+    }
   };
 
   const handleSeatChange = (
@@ -717,11 +797,26 @@ React.FC = () => {
           2,
         );
 
+    if (!cleaned) {
+      updateField(
+        'totalSeats',
+        '',
+      );
+      return;
+    }
+
+    const seats =
+      Number(cleaned);
+
+    const liveMax =
+      form.seatingType ===
+        'SLEEPER'
+        ? 60
+        : 80;
+
     if (
-      cleaned === '' ||
-      Number(
-        cleaned,
-      ) <= 80
+      seats >= 1 &&
+      seats <= liveMax
     ) {
       updateField(
         'totalSeats',
@@ -816,17 +911,13 @@ React.FC = () => {
       newErrors.registrationNumber =
         'Registration number is required.';
     } else {
-      const standardRegistrationRegex =
-        /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/;
 
-      const bharatSeriesRegex =
-        /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
 
       if (
-        !standardRegistrationRegex.test(
+        !STANDARD_REGISTRATION.test(
           registrationNumber,
         ) &&
-        !bharatSeriesRegex.test(
+        !BH_REGISTRATION.test(
           registrationNumber,
         )
       ) {
