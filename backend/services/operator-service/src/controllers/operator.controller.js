@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const {
   findByMobile,
   createOperatorApplication,
@@ -5,6 +7,7 @@ const {
   getAllOperators,
   findById,
   getOperatorDocuments,
+  getOperatorDocumentForAdmin,
   getOperatorKycStatus,
   updateOperatorDocumentVerification,
   updateOperatorStatus,
@@ -854,6 +857,18 @@ const getOperator =
     try {
       const id =
         req.params.id
+      const isSuperAdmin =
+        req.auth?.roles?.includes('SUPER_ADMIN')
+
+      if (
+        !isSuperAdmin &&
+        String(req.auth?.organizationId || '') !== String(id)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only access your own operator profile.',
+        })
+      }
 
       const operator =
         await findById(id)
@@ -873,6 +888,18 @@ const getOperator =
         await getOperatorDocuments(
           id,
         )
+      const safeDocuments = documents.map((document) => ({
+        id: document.id,
+        operatorId: document.operator_id,
+        documentType: document.document_type,
+        originalFileName: document.original_file_name,
+        mimeType: document.mime_type,
+        fileSize: document.file_size,
+        verificationStatus: document.verification_status,
+        rejectionReason: document.rejection_reason,
+        createdAt: document.created_at,
+        updatedAt: document.updated_at,
+      }))
 
       /*
        * Account number masked before
@@ -952,7 +979,7 @@ const getOperator =
               operator.branch_name,
           },
 
-          documents,
+          documents: safeDocuments,
 
           createdAt:
             operator.created_at,
@@ -1187,4 +1214,38 @@ module.exports = {
 }
 const operatorPolicyService = require('../services/operator.service');
 module.exports.getCancellationPolicy = async (req,res,next)=>{try{const operatorId=req.auth.roles.includes('SUPER_ADMIN')?req.params.id:req.auth.organizationId;res.json({success:true,data:await operatorPolicyService.getCancellationPolicy(operatorId)})}catch(e){next(e)}};
+const previewOperatorDocument = async (req,res,next) => {
+  try {
+    const document = await getOperatorDocumentForAdmin(
+      req.params.id,
+      req.params.documentId,
+    )
+
+    if (!document) {
+      return res.status(404).json({ success:false, message:'Operator document not found.' })
+    }
+
+    const uploadsRoot = path.resolve(process.cwd(),'uploads','operators')
+    const candidate = path.resolve(String(document.file_path || ''))
+
+    if (
+      !candidate.startsWith(uploadsRoot + path.sep) ||
+      !fs.existsSync(candidate)
+    ) {
+      return res.status(404).json({ success:false, message:'Operator document file not found.' })
+    }
+
+    const safeName = String(document.original_file_name || 'document')
+      .replace(/["\r\n]/g,'')
+
+    res.setHeader('Content-Type',document.mime_type || 'application/octet-stream')
+    res.setHeader('Content-Disposition',`inline; filename="${safeName}"`)
+    res.setHeader('Cache-Control','private, no-store')
+    res.setHeader('X-Content-Type-Options','nosniff')
+    return res.sendFile(candidate)
+  } catch(error) {
+    next(error)
+  }
+}
 module.exports.upsertCancellationPolicy = async (req,res,next)=>{try{res.json({success:true,data:await operatorPolicyService.upsertCancellationPolicy({...req.body,operatorId:req.auth.organizationId})})}catch(e){next(e)}};
+module.exports.previewOperatorDocument = previewOperatorDocument

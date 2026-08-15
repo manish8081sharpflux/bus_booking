@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      ↓
+ *      â†“
  * operators
- *      ↓
+ *      â†“
  * operator_bank_details
- *      ↓
+ *      â†“
  * operator_documents
  * =====================================================
  */
@@ -639,6 +639,29 @@ const getOperatorDocuments =
  * =====================================================
  */
 
+const getOperatorDocumentForAdmin = async (
+  operatorId,
+  documentId,
+) => {
+  const { rows } = await pool.query(
+    `SELECT
+       id,
+       operator_id,
+       document_type,
+       file_path,
+       original_file_name,
+       mime_type,
+       file_size,
+       verification_status
+     FROM operator_documents
+     WHERE id=$1::uuid
+       AND operator_id=$2::uuid
+     LIMIT 1`,
+    [documentId, operatorId],
+  )
+
+  return rows[0] || null
+}
 const REQUIRED_OPERATOR_DOCUMENTS = [
   'PAN_CARD',
   'OWNER_ID_PROOF',
@@ -989,3 +1012,4 @@ module.exports = {
   getCancellationPolicy,
   upsertCancellationPolicy,
 }
+module.exports.getOperatorDocumentForAdmin = getOperatorDocumentForAdmin

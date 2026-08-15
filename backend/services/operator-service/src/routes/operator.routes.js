@@ -13,6 +13,7 @@ const {
   operatorStatusHistory,
   operatorKycStatus,
   verifyOperatorDocument,
+  previewOperatorDocument,
 } = require('../controllers/operator.controller');
 
 const {
@@ -133,6 +134,13 @@ router.get(
   operatorKycStatus,
 );
 
+/* Preview one KYC document - SUPER_ADMIN only */
+router.get(
+  '/:id/documents/:documentId/preview',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  previewOperatorDocument,
+)
 /*
  * Approve/reject one KYC document
  */
@@ -141,5 +149,6 @@ router.patch(
   requireAuth,
   requireRoles('SUPER_ADMIN'),
   verifyOperatorDocument,
+  previewOperatorDocument,
 );
 module.exports = router;
