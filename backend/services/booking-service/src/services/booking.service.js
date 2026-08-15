@@ -6,6 +6,43 @@ const { evaluateFare, roundMoney } = require('./pricing.engine')
 const fail = (message, status = 400) => Object.assign(new Error(message), { status })
 const reference = () => `BUS${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`
 
+const BUS_BOOKABILITY_SQL = `
+  b.status = 'ACTIVE'
+  AND b.operational_status = 'ACTIVE'
+  AND b.approval_status = 'APPROVED'
+  AND EXISTS (
+    SELECT 1
+    FROM bus_compliance bc
+    WHERE bc.bus_id = b.id
+      AND bc.verification_status = 'VERIFIED'
+      AND bc.insurance_expiry >= CURRENT_DATE
+      AND bc.permit_expiry >= CURRENT_DATE
+      AND bc.fitness_expiry >= CURRENT_DATE
+      AND (
+        bc.puc_expiry IS NULL
+        OR bc.puc_expiry >= CURRENT_DATE
+      )
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id = b.id
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id = b.id
+      AND bd.verification_status <> 'VERIFIED'
+  )
+`
+
+const customerBookabilityWhere = (
+  alias = 'b',
+) =>
+  BUS_BOOKABILITY_SQL.replace(
+    /\bb\./g,
+    `${alias}.`,
+  )
 class BookingService {
   async searchTrips({ from, to, date }) {
     if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw fail('From, to and date are required.', 422)
@@ -31,7 +68,7 @@ class BookingService {
       JOIN trip_stops destination ON destination.trip_id=t.id AND destination.is_dropping_allowed AND destination.stop_order>origin.stop_order
         AND (LOWER(destination.city)=LOWER($2) OR LOWER(destination.location_name)=LOWER($2))
       LEFT JOIN trip_seat_inventory i ON i.trip_id=t.id
-      WHERE t.status='SCHEDULED' AND b.status='ACTIVE' AND COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at)::date=$3::date
+      WHERE t.status='SCHEDULED' AND ${customerBookabilityWhere('b')} AND COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at)::date=$3::date
       GROUP BY t.id,o.display_name,b.name,b.bus_type,b.amenities,origin.id,destination.id
       HAVING COUNT(i.bus_seat_id) FILTER(WHERE NOT EXISTS(SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=t.id AND a.bus_seat_id=i.bus_seat_id AND a.segment_range && int4range(origin.stop_order,destination.stop_order,'[)')))>0
       ORDER BY departure_at`, [from.trim(),to.trim(),date])
@@ -52,7 +89,7 @@ class BookingService {
       (SELECT id FROM trip_stops WHERE trip_id=t.id ORDER BY stop_order DESC LIMIT 1) destination_stop_id,
       (SELECT location_name FROM trip_stops WHERE trip_id=t.id ORDER BY stop_order DESC LIMIT 1) dropping_point
       FROM trips t JOIN operators o ON o.id=t.operator_id JOIN buses b ON b.id=t.bus_id JOIN routes r ON r.id=t.route_id
-      WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND b.status='ACTIVE' AND t.departure_at>NOW()`,[tripId])
+      WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND ${customerBookabilityWhere('b')} AND t.departure_at>NOW()`,[tripId])
     if(!tripResult.rows[0]) throw fail('This trip is not available for booking.',404)
     originStopId=originStopId||tripResult.rows[0].origin_stop_id
     destinationStopId=destinationStopId||tripResult.rows[0].destination_stop_id
@@ -94,9 +131,10 @@ class BookingService {
       await client.query('BEGIN')
       const trip=(await client.query(`SELECT t.*,s1.stop_order origin_order,s2.stop_order destination_order
         FROM trips t
+        JOIN buses b ON b.id=t.bus_id
         JOIN trip_stops s1 ON s1.id=$2::uuid AND s1.trip_id=t.id
         JOIN trip_stops s2 ON s2.id=$3::uuid AND s2.trip_id=t.id
-        WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND t.departure_at>NOW()`,[tripId,originStopId,destinationStopId])).rows[0]
+        WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND ${customerBookabilityWhere('b')} AND t.departure_at>NOW()`,[tripId,originStopId,destinationStopId])).rows[0]
       if(!trip || trip.origin_order>=trip.destination_order) throw fail('Invalid published trip or stop selection.',422)
 
       const inv=await client.query(`SELECT i.bus_seat_id,bs.seat_number,bs.seat_type,
@@ -144,7 +182,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ₹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is â‚¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -261,6 +299,7 @@ class BookingService {
 
       const trip=(await client.query(`SELECT t.*,s1.stop_order origin_order,s2.stop_order destination_order
         FROM trips t
+        JOIN buses b ON b.id=t.bus_id
         JOIN trip_stops s1 ON s1.id=$2::uuid AND s1.trip_id=t.id
         JOIN trip_stops s2 ON s2.id=$3::uuid AND s2.trip_id=t.id
         WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND t.departure_at>NOW()
@@ -549,7 +588,7 @@ class BookingService {
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`₹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ₹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`â‚¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to â‚¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -557,7 +596,7 @@ class BookingService {
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ₹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is â‚¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}
