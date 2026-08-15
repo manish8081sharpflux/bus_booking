@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
+ *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
  * operators
- *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
+ *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
  * operator_bank_details
- *      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
+ *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
  * operator_documents
  * =====================================================
  */
@@ -1036,6 +1036,221 @@ const updateOperatorStatus = async ({
   }
 }
 
+const RESUBMIT_DOCUMENT_TYPE_BY_FIELD = {
+  panCard: 'PAN_CARD',
+  ownerIdProof: 'OWNER_ID_PROOF',
+  bankProof: 'BANK_PROOF',
+  businessRegistration:
+    'BUSINESS_REGISTRATION',
+  gstCertificate: 'GST_CERTIFICATE',
+}
+
+const resubmitRejectedOperator = async ({
+  operatorId,
+  correctionNote,
+  files = {},
+}) => {
+  const note =
+    String(
+      correctionNote || '',
+    ).trim()
+
+  if (note.length < 5) {
+    throw Object.assign(
+      new Error(
+        'Correction note must be at least 5 characters.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  const replacements =
+    Object.entries(
+      RESUBMIT_DOCUMENT_TYPE_BY_FIELD,
+    )
+      .map(
+        ([field, documentType]) => ({
+          field,
+          documentType,
+          file: files[field]?.[0] || null,
+        }),
+      )
+      .filter(
+        (item) =>
+          Boolean(item.file),
+      )
+
+  if (!replacements.length) {
+    throw Object.assign(
+      new Error(
+        'Replace at least one rejected KYC document before resubmitting.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  const client =
+    await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const current = (
+      await client.query(
+        `SELECT
+           id,
+           status,
+           rejection_reason
+         FROM operators
+         WHERE id = $1::uuid
+         FOR UPDATE`,
+        [operatorId],
+      )
+    ).rows[0]
+
+    if (!current) {
+      throw Object.assign(
+        new Error(
+          'Operator not found.',
+        ),
+        { status: 404 },
+      )
+    }
+
+    if (current.status !== 'REJECTED') {
+      throw Object.assign(
+        new Error(
+          'Only a rejected operator application can be resubmitted.',
+        ),
+        { status: 409 },
+      )
+    }
+
+    for (const replacement of replacements) {
+      const latest = (
+        await client.query(
+          `SELECT
+             id,
+             verification_status
+           FROM operator_documents
+           WHERE operator_id = $1::uuid
+             AND document_type = $2
+           ORDER BY created_at DESC
+           LIMIT 1
+           FOR UPDATE`,
+          [
+            operatorId,
+            replacement.documentType,
+          ],
+        )
+      ).rows[0]
+
+      if (
+        !latest ||
+        latest.verification_status !==
+          'REJECTED'
+      ) {
+        throw Object.assign(
+          new Error(
+            `${replacement.documentType} is not currently rejected and cannot be replaced in this resubmission.`,
+          ),
+          { status: 409 },
+        )
+      }
+
+      await client.query(
+        `INSERT INTO operator_documents (
+           operator_id,
+           document_type,
+           file_path,
+           original_file_name,
+           mime_type,
+           file_size,
+           verification_status,
+           rejection_reason
+         )
+         VALUES (
+           $1::uuid,
+           $2,
+           $3,
+           $4,
+           $5,
+           $6,
+           'PENDING',
+           NULL
+         )`,
+        [
+          operatorId,
+          replacement.documentType,
+          replacement.file.path,
+          replacement.file.originalname,
+          replacement.file.mimetype,
+          replacement.file.size,
+        ],
+      )
+    }
+
+    const updated = (
+      await client.query(
+        `UPDATE operators
+         SET status = 'PENDING'::operator_status,
+             rejection_reason = NULL,
+             rejected_at = NULL,
+             status_changed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1::uuid
+           AND status = 'REJECTED'::operator_status
+         RETURNING *`,
+        [operatorId],
+      )
+    ).rows[0]
+
+    if (!updated) {
+      throw Object.assign(
+        new Error(
+          'Operator application could not be resubmitted.',
+        ),
+        { status: 409 },
+      )
+    }
+
+    await client.query(
+      `INSERT INTO operator_status_history (
+         operator_id,
+         from_status,
+         to_status,
+         reason,
+         changed_by
+       )
+       VALUES (
+         $1::uuid,
+         'REJECTED'::operator_status,
+         'PENDING'::operator_status,
+         $2,
+         NULL
+       )`,
+      [
+        operatorId,
+        `Operator resubmission: ${note}`,
+      ],
+    )
+
+    await client.query('COMMIT')
+
+    return {
+      operator: updated,
+      replacedDocumentTypes:
+        replacements.map(
+          (item) => item.documentType,
+        ),
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
 async function getOperatorStatusHistory(operatorId) {
   const { rows } = await pool.query(
     `SELECT
@@ -1102,6 +1317,7 @@ module.exports = {
   updateOperatorDocumentVerification,
 
   updateOperatorStatus,
+  resubmitRejectedOperator,
   getOperatorStatusHistory,
   getCancellationPolicy,
   upsertCancellationPolicy,

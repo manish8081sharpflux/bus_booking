@@ -11,6 +11,7 @@ const {
   getOperatorKycStatus,
   updateOperatorDocumentVerification,
   updateOperatorStatus,
+  resubmitRejectedOperator,
   getOperatorStatusHistory,
 } = require('../services/operator.service')
 const { generateAccessToken } = require('../../../shared/auth/jwt')
@@ -1142,6 +1143,12 @@ const getOperator =
           status:
             operator.status,
 
+          rejectionReason:
+            operator.rejection_reason,
+
+          rejectedAt:
+            operator.rejected_at,
+
           approvedBy:
             operator.approved_by,
 
@@ -1332,6 +1339,49 @@ const reactivateOperator = async (req, res, next) => {
   }
 }
 
+const resubmitOperator = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const operatorId =
+      req.params.id
+
+    if (
+      String(
+        req.auth?.organizationId || '',
+      ) !== String(operatorId)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          'You can only resubmit your own operator application.',
+      })
+    }
+
+    const result =
+      await resubmitRejectedOperator({
+        operatorId,
+        correctionNote:
+          req.body?.correctionNote,
+        files:
+          req.files || {},
+      })
+
+    return res.json({
+      success: true,
+      message:
+        'Operator application resubmitted for review.',
+      status:
+        result.operator.status,
+      replacedDocumentTypes:
+        result.replacedDocumentTypes,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 const operatorStatusHistory = async (req, res, next) => {
   try {
     return res.json({
@@ -1509,3 +1559,5 @@ module.exports.upsertCancellationPolicy = async (
   }
 }
 module.exports.previewOperatorDocument = previewOperatorDocument
+
+module.exports.resubmitOperator = resubmitOperator

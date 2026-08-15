@@ -8,6 +8,7 @@ const {
   getOperator,
   approveOperator,
   rejectOperator,
+  resubmitOperator,
   suspendOperator,
   reactivateOperator,
   operatorStatusHistory,
@@ -68,6 +69,16 @@ router.get(
 router.get('/:id/cancellation-policy', requireAuth, requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','SUPER_ADMIN'), policyController.getCancellationPolicy);
 router.put('/:id/cancellation-policy', requireAuth, requireRoles('OPERATOR_ADMIN','SUPER_ADMIN'), policyController.upsertCancellationPolicy);
 
+/*
+ * Resubmit rejected operator KYC corrections
+ */
+router.post(
+  '/:id/resubmit',
+  requireAuth,
+  requireRoles('OPERATOR_ADMIN'),
+  operatorDocumentUpload,
+  resubmitOperator,
+);
 /*
  * Single operator
  */
