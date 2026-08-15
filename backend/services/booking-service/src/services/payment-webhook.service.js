@@ -298,6 +298,23 @@ async function processRefundProcessed(client, webhookEventId, entity, fullEvent)
     return { status: 'RECONCILIATION_REQUIRED', reason: message };
   }
 
+  const existingRefund = (
+    await client.query(
+      `SELECT
+         id,
+         status
+       FROM refunds
+       WHERE provider_refund_id=$1
+       FOR UPDATE`,
+      [
+        providerRefundId,
+      ],
+    )
+  ).rows[0];
+
+  const shouldNotifyRefundCompleted =
+    !existingRefund ||
+    existingRefund.status !== 'REFUNDED';
   const refund = (
     await client.query(
       `INSERT INTO refunds(
@@ -332,7 +349,7 @@ async function processRefundProcessed(client, webhookEventId, entity, fullEvent)
     [payment.id, paymentStatus]
   );
 
-  if (payment.customer_id) {
+  if (payment.customer_id && shouldNotifyRefundCompleted) {
     const payload = JSON.stringify({
       bookingReference: payment.booking_reference,
       amount,
