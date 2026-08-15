@@ -220,7 +220,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -615,8 +615,17 @@ class BookingService {
       await client.query('BEGIN')
       const {rows}=await client.query(`SELECT * FROM bookings WHERE id=$1::uuid AND customer_id=$2::uuid FOR UPDATE`,[id,customerId])
       const booking=rows[0]; if(!booking || !['PENDING_PAYMENT','CONFIRMED'].includes(booking.status)) throw fail('Cancellable booking not found.',404)
-      const tripInfo=await client.query(`SELECT t.departure_at FROM bookings b JOIN trips t ON t.id=b.trip_id WHERE b.id=$1::uuid`,[id])
-      const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/3600000
+      const tripInfo=await client.query(`SELECT t.departure_at
+        FROM bookings b
+        JOIN trips t ON t.id=b.trip_id
+        WHERE b.id=$1::uuid
+          AND t.departure_at>NOW()
+        FOR SHARE OF t`,[id])
+            if(!tripInfo.rows[0]) throw fail(
+        'This booking can no longer be cancelled because the trip has departed.',
+        409,
+      )
+const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/3600000
       const policy=await this.cancellationPolicy(booking.operator_id); const refundPercent=Math.max(0,Math.min(100,Number(this.refundRule(policy,hours).refundPercent)||0))
       const {rows: payRows}=await client.query(`SELECT * FROM payments WHERE booking_id=$1::uuid AND status='CAPTURED' ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,[id])
       let refundRow=null
@@ -636,7 +645,7 @@ class BookingService {
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -644,7 +653,7 @@ class BookingService {
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}
@@ -663,7 +672,7 @@ class BookingService {
 
   async cancellationQuote(id, authUserId) {
     const customerId=await this.customerIdForAuth(authUserId)
-    const {rows}=await pool.query(`SELECT b.id,b.status,b.total_amount,b.operator_id,t.departure_at FROM bookings b JOIN trips t ON t.id=b.trip_id WHERE b.id=$1::uuid AND b.customer_id=$2::uuid`,[id,customerId])
+    const {rows}=await pool.query(`SELECT b.id,b.status,b.total_amount,b.operator_id,t.departure_at FROM bookings b JOIN trips t ON t.id=b.trip_id WHERE b.id=$1::uuid AND b.customer_id=$2::uuid AND t.departure_at>NOW()`,[id,customerId])
     const b=rows[0]; if(!b || !['PENDING_PAYMENT','CONFIRMED'].includes(b.status)) throw fail('Cancellable booking not found.',404)
     const hours=(new Date(b.departure_at).getTime()-Date.now())/3600000
     const policy=await this.cancellationPolicy(b.operator_id); const rule=this.refundRule(policy,hours)
