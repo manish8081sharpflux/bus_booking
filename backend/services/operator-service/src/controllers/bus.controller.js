@@ -81,6 +81,44 @@ const ALLOWED_SEAT_TYPES = [
  * =====================================================
  */
 
+const getRequestUploadedBusFiles = (
+  req,
+) =>
+  Object
+    .values(
+      req?.files || {},
+    )
+    .flat()
+    .filter(Boolean)
+
+const cleanupUploadedBusFiles = (
+  req,
+) => {
+  for (
+    const file of
+    getRequestUploadedBusFiles(
+      req,
+    )
+  ) {
+    try {
+      if (
+        file?.path &&
+        fs.existsSync(
+          file.path,
+        )
+      ) {
+        fs.unlinkSync(
+          file.path,
+        )
+      }
+    } catch {
+      /*
+       * Cleanup is best-effort.
+       * Preserve the original controller/service error.
+       */
+    }
+  }
+}
 const normalizeRegistrationNumber =
   (
     value,
@@ -1662,7 +1700,9 @@ const addBus =
           })
       }
 
-      next(error)
+            cleanupUploadedBusFiles(req)
+
+next(error)
     }
   }
 
@@ -2243,7 +2283,9 @@ const changeOperationalStatus = async (
       })
     }
 
-    next(error)
+        cleanupUploadedBusFiles(req)
+
+next(error)
   }
 }
 
