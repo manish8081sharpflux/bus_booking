@@ -60,6 +60,81 @@ const emptyFiles: FilesState = {
 const toDateInput = (value?: string | null) =>
   value ? String(value).slice(0, 10) : '';
 
+const todayString = () =>
+  new Date()
+    .toISOString()
+    .slice(
+      0,
+      10,
+    );
+
+const cleanDocumentNumber = (
+  value: string,
+) =>
+  value
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9/._-]/g,
+      '',
+    )
+    .replace(
+      /^[/._-]+/,
+      '',
+    )
+    .replace(
+      /([/._-])\1+/g,
+      '$1',
+    )
+    .slice(
+      0,
+      40,
+    );
+
+const getExtension = (
+  fileName: string,
+) =>
+  fileName
+    .split('.')
+    .pop()
+    ?.toLowerCase() ||
+  '';
+
+const expectedExtensions:
+  Record<string, string[]> = {
+    'application/pdf': [
+      'pdf',
+    ],
+    'image/jpeg': [
+      'jpg',
+      'jpeg',
+    ],
+    'image/png': [
+      'png',
+    ],
+  };
+
+const isSamePhysicalFile = (
+  first: File | null,
+  second: File | null,
+) => {
+  if (
+    !first ||
+    !second
+  ) {
+    return false;
+  }
+
+  return (
+    first.name ===
+      second.name &&
+    first.size ===
+      second.size &&
+    first.type ===
+      second.type &&
+    first.lastModified ===
+      second.lastModified
+  );
+};
 export default function BusComplianceRenewalPage() {
   const history = useHistory();
   const { busId } = useParams<{ busId: string }>();
@@ -117,23 +192,167 @@ export default function BusComplianceRenewalPage() {
     setError('');
   };
 
-  const chooseFile = (field: keyof FilesState, file: File | null) => {
-    if (!file) {
-      setFiles((current) => ({ ...current, [field]: null }));
-      return;
-    }
-    if (!ALLOWED.includes(file.type)) {
-      setError('Only PDF, JPG and PNG files are allowed.');
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      setError('Each document must be 5 MB or smaller.');
-      return;
-    }
-    setFiles((current) => ({ ...current, [field]: file }));
-    setError('');
+  const updateDocumentNumber = (
+    field:
+      | 'insuranceNumber'
+      | 'permitNumber'
+      | 'fitnessCertificateNumber'
+      | 'pucNumber',
+    value: string,
+  ) => {
+    update(
+      field,
+      cleanDocumentNumber(
+        value,
+      ),
+    );
   };
 
+  const updateDate = (
+    field:
+      | 'registrationDate'
+      | 'insuranceExpiry'
+      | 'permitExpiry'
+      | 'fitnessExpiry'
+      | 'pucExpiry',
+    value: string,
+  ) => {
+    if (!value) {
+      update(
+        field,
+        '',
+      );
+      return;
+    }
+
+    const today =
+      todayString();
+
+    if (
+      field ===
+        'registrationDate'
+    ) {
+      if (
+        value <= today
+      ) {
+        update(
+          field,
+          value,
+        );
+      }
+
+      return;
+    }
+
+    if (
+      value >= today
+    ) {
+      update(
+        field,
+        value,
+      );
+    }
+  };
+  const chooseFile = (
+    field: keyof FilesState,
+    file: File | null,
+  ) => {
+    if (!file) {
+      setFiles(
+        (current) => ({
+          ...current,
+          [field]: null,
+        }),
+      );
+      setError('');
+      return;
+    }
+
+    if (
+      file.size <= 0
+    ) {
+      setError(
+        'Empty files are not allowed.',
+      );
+      return;
+    }
+
+    if (
+      file.size >
+      MAX_FILE_SIZE
+    ) {
+      setError(
+        'Each document must be 5 MB or smaller.',
+      );
+      return;
+    }
+
+    if (
+      !ALLOWED.includes(
+        file.type,
+      )
+    ) {
+      setError(
+        'Only PDF, JPG and PNG files are allowed.',
+      );
+      return;
+    }
+
+    const extension =
+      getExtension(
+        file.name,
+      );
+
+    const expected =
+      expectedExtensions[
+        file.type
+      ];
+
+    if (
+      !extension ||
+      !expected ||
+      !expected.includes(
+        extension,
+      )
+    ) {
+      setError(
+        'File extension does not match the selected file type.',
+      );
+      return;
+    }
+
+    const duplicate =
+      Object.entries(
+        files,
+      ).some(
+        ([
+          existingField,
+          existingFile,
+        ]) =>
+          existingField !==
+            field &&
+          isSamePhysicalFile(
+            existingFile,
+            file,
+          ),
+      );
+
+    if (duplicate) {
+      setError(
+        'This file is already selected for another compliance document.',
+      );
+      return;
+    }
+
+    setFiles(
+      (current) => ({
+        ...current,
+        [field]: file,
+      }),
+    );
+
+    setError('');
+  };
   const submit = async () => {
     if (!form || saving) return;
     if (!inactive) {
@@ -145,6 +364,43 @@ export default function BusComplianceRenewalPage() {
       return;
     }
 
+    const requiredNumbersValid =
+      Boolean(
+        form.insuranceNumber &&
+        form.permitNumber &&
+        form.fitnessCertificateNumber,
+      );
+
+    const requiredDatesValid =
+      Boolean(
+        form.insuranceExpiry &&
+        form.permitExpiry &&
+        form.fitnessExpiry,
+      );
+
+    if (
+      !requiredNumbersValid ||
+      !requiredDatesValid
+    ) {
+      setError(
+        'Complete all required compliance details before submitting.',
+      );
+      return;
+    }
+
+    if (
+      Boolean(
+        form.pucNumber,
+      ) !==
+      Boolean(
+        form.pucExpiry,
+      )
+    ) {
+      setError(
+        'PUC number and PUC expiry must be provided together.',
+      );
+      return;
+    }
     try {
       setSaving(true);
       setError('');
@@ -236,15 +492,15 @@ export default function BusComplianceRenewalPage() {
                     <h2>Compliance details</h2>
                   </div>
                   <div className="renew-bus-grid">
-                    <label>Registration date<input type="date" value={form.registrationDate} onChange={(e) => update('registrationDate', e.target.value)} /></label>
-                    <label>Insurance number<input value={form.insuranceNumber} onChange={(e) => update('insuranceNumber', e.target.value.toUpperCase())} /></label>
-                    <label>Insurance expiry<input type="date" value={form.insuranceExpiry} onChange={(e) => update('insuranceExpiry', e.target.value)} /></label>
-                    <label>Permit number<input value={form.permitNumber} onChange={(e) => update('permitNumber', e.target.value.toUpperCase())} /></label>
-                    <label>Permit expiry<input type="date" value={form.permitExpiry} onChange={(e) => update('permitExpiry', e.target.value)} /></label>
-                    <label>Fitness certificate number<input value={form.fitnessCertificateNumber} onChange={(e) => update('fitnessCertificateNumber', e.target.value.toUpperCase())} /></label>
-                    <label>Fitness expiry<input type="date" value={form.fitnessExpiry} onChange={(e) => update('fitnessExpiry', e.target.value)} /></label>
-                    <label>PUC number<input value={form.pucNumber} onChange={(e) => update('pucNumber', e.target.value.toUpperCase())} /></label>
-                    <label>PUC expiry<input type="date" value={form.pucExpiry} onChange={(e) => update('pucExpiry', e.target.value)} /></label>
+                    <label>Registration date<input type="date" max={todayString()} value={form.registrationDate} onChange={(e) => updateDate('registrationDate', e.target.value)} /></label>
+                    <label>Insurance number<input maxLength={40} value={form.insuranceNumber} onChange={(e) => updateDocumentNumber('insuranceNumber', e.target.value)} /></label>
+                    <label>Insurance expiry<input type="date" min={todayString()} value={form.insuranceExpiry} onChange={(e) => updateDate('insuranceExpiry', e.target.value)} /></label>
+                    <label>Permit number<input maxLength={40} value={form.permitNumber} onChange={(e) => updateDocumentNumber('permitNumber', e.target.value)} /></label>
+                    <label>Permit expiry<input type="date" min={todayString()} value={form.permitExpiry} onChange={(e) => updateDate('permitExpiry', e.target.value)} /></label>
+                    <label>Fitness certificate number<input maxLength={40} value={form.fitnessCertificateNumber} onChange={(e) => updateDocumentNumber('fitnessCertificateNumber', e.target.value)} /></label>
+                    <label>Fitness expiry<input type="date" min={todayString()} value={form.fitnessExpiry} onChange={(e) => updateDate('fitnessExpiry', e.target.value)} /></label>
+                    <label>PUC number<input maxLength={40} value={form.pucNumber} onChange={(e) => updateDocumentNumber('pucNumber', e.target.value)} /></label>
+                    <label>PUC expiry<input type="date" min={todayString()} value={form.pucExpiry} onChange={(e) => updateDate('pucExpiry', e.target.value)} /></label>
                   </div>
                 </section>
 
