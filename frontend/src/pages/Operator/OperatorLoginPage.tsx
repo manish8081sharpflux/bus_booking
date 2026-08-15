@@ -365,12 +365,44 @@ const OperatorLoginPage: React.FC = () => {
             )
           }
 
+          const status =
+            result.operator?.status
+
+          if (
+            status === 'PENDING' ||
+            status === 'REJECTED'
+          ) {
+            localStorage.setItem(
+              'operator_registration_status',
+              status,
+            )
+
+            if (
+              result.operator?.id
+            ) {
+              localStorage.setItem(
+                'operator_application_id',
+                result.operator.id,
+              )
+            }
+
+            sessionStorage.setItem(
+              'operator_verified_mobile',
+              normalizedMobile,
+            )
+
+            history.replace(
+              '/operator/application-status',
+            )
+
+            return
+          }
+
           history.replace(
             '/operator/dashboard',
           )
 
-          return
-        }
+          return        }
 
         /*
          * NEW
@@ -477,17 +509,17 @@ const OperatorLoginPage: React.FC = () => {
               <div className="operator-feature-list">
 
                 <div className="operator-feature">
-                  <span>✓</span>
+                  <span>âœ“</span>
                   Manage buses and routes
                 </div>
 
                 <div className="operator-feature">
-                  <span>✓</span>
+                  <span>âœ“</span>
                   Track customer bookings
                 </div>
 
                 <div className="operator-feature">
-                  <span>✓</span>
+                  <span>âœ“</span>
                   View trip performance
                 </div>
 
@@ -543,7 +575,7 @@ const OperatorLoginPage: React.FC = () => {
                       <div className="operator-mobile-input-shell">
 
                         <div className="operator-mobile-prefix">
-                          🇮🇳 +91
+                          ðŸ‡®ðŸ‡³ +91
                         </div>
 
                         <IonInput
@@ -623,7 +655,7 @@ const OperatorLoginPage: React.FC = () => {
                       <div className="operator-security-note">
 
                         <span>
-                          🛠️
+                          ðŸ› ï¸
                         </span>
 
                         <p>
@@ -639,7 +671,7 @@ const OperatorLoginPage: React.FC = () => {
                       <div className="operator-security-note">
 
                         <span>
-                          🔒
+                          ðŸ”’
                         </span>
 
                         <p>
@@ -767,7 +799,7 @@ const OperatorLoginPage: React.FC = () => {
                       </button>
 
                       <span>
-                        •
+                        â€¢
                       </span>
 
                       <button
@@ -787,7 +819,7 @@ const OperatorLoginPage: React.FC = () => {
               </div>
 
               <p className="operator-login-footer">
-                © 2026 BusGo ·
+                Â© 2026 BusGo Â·
                 Operator Portal
               </p>
 
