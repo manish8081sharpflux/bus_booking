@@ -544,7 +544,7 @@ const App: React.FC = () => {
             }
           />
 
-                                        <OperatorRoute
+          <OperatorRoute
             exact
             path="/operator/buses/:busId/compliance-renewal"
             component={BusComplianceRenewalPage}
@@ -579,7 +579,49 @@ const App: React.FC = () => {
             roles={['MANAGER','OPERATOR_STAFF']}
           />
 
-          <OperatorRoute exact path="/operator/buses/:busId" component={ManageBusPage} roles={['MANAGER','OPERATOR_STAFF']} />
+                    {/* ADD BUS WIZARD - keep before /operator/buses/:busId */}
+          <OperatorRoute
+            exact
+            path="/operator/buses/add"
+            component={AddBusPage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+
+          <OperatorRoute
+            exact
+            path="/operator/buses/add/seats"
+            component={AddBusSeatLayoutPage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+
+          <OperatorRoute
+            exact
+            path="/operator/buses/add/amenities"
+            component={AddBusAmenitiesPage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+
+          <OperatorRoute
+            exact
+            path="/operator/buses/add/compliance"
+            component={AddBusCompliancePage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+
+          <OperatorRoute
+            exact
+            path="/operator/buses/add/documents"
+            component={AddBusDocumentsPage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+
+          <OperatorRoute
+            exact
+            path="/operator/buses/add/review"
+            component={AddBusReviewPage}
+            roles={['MANAGER','OPERATOR_STAFF']}
+          />
+<OperatorRoute exact path="/operator/buses/:busId" component={ManageBusPage} roles={['MANAGER','OPERATOR_STAFF']} />
 
           <OperatorRoute exact path="/operator/routes" component={() => <OperatorManagementPage section="routes" />} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
           <OperatorRoute exact path="/operator/trips" component={() => <OperatorManagementPage section="trips" />} roles={['MANAGER','ROUTE_MANAGER','OPERATOR_STAFF']} />
@@ -654,42 +696,6 @@ const App: React.FC = () => {
             component={
               CustomerApp
             }
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add"
-            component={AddBusPage}
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add/seats"
-            component={AddBusSeatLayoutPage}
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add/amenities"
-            component={AddBusAmenitiesPage}
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add/review"
-            component={AddBusReviewPage}
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add/compliance"
-            component={AddBusCompliancePage}
-          />
-
-          <Route
-            exact
-            path="/operator/buses/add/documents"
-            component={AddBusDocumentsPage}
           />
 
         </IonRouterOutlet>
