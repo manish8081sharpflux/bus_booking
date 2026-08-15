@@ -429,9 +429,10 @@ async function assertAdminReconciliationBookable(client,bookingId){
 
   return rows[0]
 }
-async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUserId=null}) {
+async function resolvePaymentReconciliation({kind,id,action,note='',outcome='',actorAuthUserId=null}) {
   const normalizedKind=String(kind||'').trim().toUpperCase()
   const normalizedAction=String(action||'').trim().toUpperCase()
+  const normalizedOutcome=String(outcome||'').trim().toUpperCase()
   const cleanNote=String(note||'').trim()
   const client=await pool.connect()
   try{
@@ -513,11 +514,28 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
         )
       }
 
+      if(
+        ![
+          'BOOKING_CONFIRMED',
+          'FULLY_REFUNDED',
+        ].includes(normalizedOutcome)
+      ){
+        throw reconciliationFail(
+          'outcome must be BOOKING_CONFIRMED or FULLY_REFUNDED.',
+          422,
+        )
+      }
+
       const existing=(await client.query(
-        `SELECT *
-         FROM payment_reconciliation_cases
-         WHERE id=$1::uuid
-         FOR UPDATE`,
+        `SELECT
+           c.*,
+           p.status payment_status,
+           b.status booking_status
+         FROM payment_reconciliation_cases c
+         JOIN payments p ON p.id=c.payment_id
+         JOIN bookings b ON b.id=c.booking_id
+         WHERE c.id=$1::uuid
+         FOR UPDATE OF c,p,b`,
         [id],
       )).rows[0]
 
@@ -535,7 +553,34 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
           caseId:existing.id,
           paymentId:existing.payment_id,
           bookingId:existing.booking_id,
+          outcome:existing.resolution_outcome,
         }
+      }
+
+      if(
+        normalizedOutcome==='BOOKING_CONFIRMED' &&
+        !(
+          existing.booking_status==='CONFIRMED' &&
+          [
+            'CAPTURED',
+            'PARTIALLY_REFUNDED',
+          ].includes(existing.payment_status)
+        )
+      ){
+        throw reconciliationFail(
+          'Cannot resolve as BOOKING_CONFIRMED until the booking is confirmed and the payment is captured.',
+          409,
+        )
+      }
+
+      if(
+        normalizedOutcome==='FULLY_REFUNDED' &&
+        existing.payment_status!=='REFUNDED'
+      ){
+        throw reconciliationFail(
+          'Cannot resolve as FULLY_REFUNDED until the payment status is REFUNDED.',
+          409,
+        )
       }
 
       const resolved=(await client.query(
@@ -543,11 +588,16 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
          SET status='RESOLVED',
              resolved_at=NOW(),
              resolution_note=$2,
+             resolution_outcome=$3,
              updated_at=NOW()
          WHERE id=$1::uuid
            AND status='OPEN'
          RETURNING *`,
-        [id,cleanNote],
+        [
+          id,
+          cleanNote,
+          normalizedOutcome,
+        ],
       )).rows[0]
 
       if(!resolved){
@@ -581,10 +631,13 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
             status:existing.status,
             issueType:existing.issue_type,
             occurrenceCount:existing.occurrence_count,
+            paymentStatus:existing.payment_status,
+            bookingStatus:existing.booking_status,
           }),
           JSON.stringify({
             status:'RESOLVED',
             resolutionNote:cleanNote,
+            resolutionOutcome:normalizedOutcome,
             paymentId:resolved.payment_id,
             bookingId:resolved.booking_id,
           }),
@@ -596,6 +649,7 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
       return {
         status:'RESOLVED',
         action:'RESOLVE',
+        outcome:normalizedOutcome,
         case:resolved,
       }
     }

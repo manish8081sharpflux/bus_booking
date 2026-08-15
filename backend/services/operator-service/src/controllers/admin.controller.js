@@ -13,7 +13,7 @@ exports.listPayments = async (_req, res, next) => {
   try { res.json({ success: true, data: await service.listPaymentsAndRefunds() }) } catch (error) { next(error) }
 }
 exports.listPaymentReconciliation=async(req,res,next)=>{try{res.json({success:true,data:await service.listPaymentReconciliation({limit:req.query.limit})})}catch(e){next(e)}}
-exports.resolvePaymentReconciliation=async(req,res,next)=>{try{res.json({success:true,data:await service.resolvePaymentReconciliation({kind:req.params.kind,id:req.params.id,action:req.body?.action,note:req.body?.note,actorAuthUserId:req.auth?.userId||null})})}catch(e){next(e)}}
+exports.resolvePaymentReconciliation=async(req,res,next)=>{try{res.json({success:true,data:await service.resolvePaymentReconciliation({kind:req.params.kind,id:req.params.id,action:req.body?.action,note:req.body?.note,outcome:req.body?.outcome,actorAuthUserId:req.auth?.userId||null})})}catch(e){next(e)}}
 exports.listLiveTrips = async (_req, res, next) => { try { res.json({ success: true, data: await service.listLiveTrips() }) } catch (error) { next(error) } }
 exports.listSettlements = async (_req, res, next) => { try { res.json({ success: true, data: await service.listSettlements() }) } catch (error) { next(error) } }
 exports.listSupportIssues = async (_req, res, next) => { try { res.json({ success: true, data: await service.listSupportIssues() }) } catch (error) { next(error) } }
