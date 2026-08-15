@@ -21,6 +21,7 @@
     "@formatjs/intl-pluralrules": "^5.4.4",
     "@formatjs/intl-relativetimeformat": "^11.4.11",
     "@hookform/resolvers": "^5.2.1",
+    "@react-leaflet/core": "^3.0.0",
     "@remixicon/react": "^4.6.0",
     "@supabase/supabase-js": "^2.56.0",
     "@tailwindcss/vite": "^4.1.17",
