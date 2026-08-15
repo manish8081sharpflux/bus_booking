@@ -1848,10 +1848,108 @@ module.exports = {
   },
 
   resubmitBus: async ({ busId, operatorId }) => {
-    const { rows } = await pool.query(`UPDATE buses SET status = 'PENDING_APPROVAL', approval_status = 'PENDING_APPROVAL', operational_status = 'INACTIVE',
-      rejection_reason = NULL, reviewed_by = NULL, reviewed_at = NULL, updated_at = NOW()
-      WHERE id = $1::uuid AND operator_id = $2::uuid AND status = 'REJECTED' RETURNING *`, [busId, operatorId])
-    if (!rows[0]) throw Object.assign(new Error('Rejected bus not found for this operator.'), { status: 404 })
-    return rows[0]
+    const client = await pool.connect()
+
+    try {
+      await client.query('BEGIN')
+
+      const current = (
+        await client.query(
+          `SELECT
+             id,
+             status,
+             approval_status,
+             operational_status,
+             rejection_reason,
+             reviewed_at,
+             updated_at
+           FROM buses
+           WHERE id = $1::uuid
+             AND operator_id = $2::uuid
+           FOR UPDATE`,
+          [busId, operatorId],
+        )
+      ).rows[0]
+
+      if (!current) {
+        throw Object.assign(
+          new Error('Bus not found for this operator.'),
+          { status: 404 },
+        )
+      }
+
+      if (
+        current.status !== 'REJECTED' &&
+        current.approval_status !== 'REJECTED'
+      ) {
+        throw Object.assign(
+          new Error('Only rejected buses can be resubmitted.'),
+          {
+            status: 409,
+            code: 'BUS_NOT_REJECTED',
+          },
+        )
+      }
+
+      const reviewedAt = current.reviewed_at
+        ? new Date(current.reviewed_at).getTime()
+        : 0
+      const busUpdatedAt = current.updated_at
+        ? new Date(current.updated_at).getTime()
+        : 0
+
+      const related = (
+        await client.query(
+          `SELECT GREATEST(
+             COALESCE((SELECT MAX(updated_at) FROM bus_compliance WHERE bus_id = $1::uuid), to_timestamp(0)),
+             COALESCE((SELECT MAX(updated_at) FROM bus_documents WHERE bus_id = $1::uuid), to_timestamp(0)),
+             COALESCE((SELECT MAX(updated_at) FROM bus_seats WHERE bus_id = $1::uuid), to_timestamp(0))
+           ) AS last_related_update`,
+          [busId],
+        )
+      ).rows[0]
+
+      const relatedUpdatedAt = related?.last_related_update
+        ? new Date(related.last_related_update).getTime()
+        : 0
+
+      if (
+        reviewedAt > 0 &&
+        Math.max(busUpdatedAt, relatedUpdatedAt) <= reviewedAt
+      ) {
+        throw Object.assign(
+          new Error(
+            'Make the required correction before resubmitting this bus.',
+          ),
+          {
+            status: 409,
+            code: 'BUS_RESUBMIT_NO_CHANGES',
+          },
+        )
+      }
+
+      const { rows } = await client.query(
+        `UPDATE buses
+         SET status = 'PENDING_APPROVAL',
+             approval_status = 'PENDING_APPROVAL',
+             operational_status = 'INACTIVE',
+             rejection_reason = NULL,
+             reviewed_by = NULL,
+             reviewed_at = NULL,
+             updated_at = NOW()
+         WHERE id = $1::uuid
+           AND operator_id = $2::uuid
+         RETURNING *`,
+        [busId, operatorId],
+      )
+
+      await client.query('COMMIT')
+      return rows[0]
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
   },
 }

@@ -217,6 +217,8 @@ export default function ManageBusPage() {
 
   const [error, setError] =
     useState('');
+  const [resubmitBusy, setResubmitBusy] =
+    useState(false);
   const [lifecycleBusy, setLifecycleBusy] =
     useState(false);
 
@@ -293,6 +295,66 @@ export default function ManageBusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busId]);
 
+  const resubmitBusForReview = async () => {
+    if (!bus || resubmitBusy) return;
+
+    try {
+      setResubmitBusy(true);
+      setError('');
+
+      const response = await fetch(
+        `${API}/buses/${encodeURIComponent(bus.id)}/resubmit`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const text = await response.text();
+      let body: any = {};
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = {};
+      }
+
+      if (!response.ok || body.success === false) {
+        throw new Error(
+          body.message || 'Unable to resubmit this bus.'
+        );
+      }
+
+      setBus((current) =>
+        current
+          ? {
+              ...current,
+              ...body.bus,
+              status: 'PENDING_APPROVAL',
+              approval_status: 'PENDING_APPROVAL',
+              operational_status: 'INACTIVE',
+              rejection_reason: undefined,
+            }
+          : current
+      );
+
+      setToastColor('success');
+      setToastMessage(
+        body.message || 'Bus resubmitted for administrator verification.'
+      );
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : 'Unable to resubmit this bus.';
+      setError(message);
+      setToastColor('danger');
+      setToastMessage(message);
+    } finally {
+      setResubmitBusy(false);
+    }
+  };
   const previewDocument = async (documentId: string) => {
     try {
       setError('');
@@ -717,6 +779,18 @@ export default function ManageBusPage() {
                   </div>
 
                   <div className="manage-bus-hero-actions">
+                    {approvalStatus === 'REJECTED' && (
+                      <button
+                        type="button"
+                        className="manage-bus-resubmit-button"
+                        disabled={resubmitBusy}
+                        onClick={() => void resubmitBusForReview()}
+                      >
+                        {resubmitBusy
+                          ? 'Resubmitting...'
+                          : 'Resubmit for review'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="manage-bus-renew-button"

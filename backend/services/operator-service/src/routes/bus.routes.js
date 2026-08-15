@@ -31,7 +31,7 @@ const { resolveOperator } = require('../middlewares/operator-context.middleware'
 
 router.get('/verification/pending', requireAuth, requireRoles('SUPER_ADMIN'), listPending)
 router.patch('/:id/review', requireAuth, requireRoles('SUPER_ADMIN'), review)
-router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN'), resolveOperator, resubmit)
+router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN','MANAGER'), resolveOperator, resubmit)
 
 /*
  * =====================================================

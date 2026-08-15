@@ -2,7 +2,7 @@
     "scripts":  {
                     "dev":  "nodemon src/server.js",
                     "start":  "node src/server.js",
-                    "test":  "node --test test/bus.validation.test.js test/bus.lifecycle.test.js test/bus.edit.test.js test/bus.edit-structure.test.js test/bus.compliance-renewal.test.js test/bus.admin-verification.test.js test/bus.document-preview.test.js test/bus.operator-document-preview.test.js"
+                    "test":  "node --test test/bus.validation.test.js test/bus.lifecycle.test.js test/bus.edit.test.js test/bus.edit-structure.test.js test/bus.compliance-renewal.test.js test/bus.admin-verification.test.js test/bus.document-preview.test.js test/bus.operator-document-preview.test.js test/bus.resubmit.test.js"
                 },
     "dependencies":  {
                          "cors":  "^2.8.6",
