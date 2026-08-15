@@ -31,3 +31,16 @@ exports.updatePromotionStatus=async(req,res,next)=>{try{res.json({success:true,d
 exports.cancelTrip=async(req,res,next)=>{try{res.json({success:true,data:await service.cancelTripAdmin({tripId:req.params.id,reason:req.body.reason,actorUserId:req.user?.sub||null})})}catch(e){next(e)}}
 exports.listSupportTickets=async(_req,res,next)=>{try{res.json({success:true,data:await service.listSupportTickets()})}catch(e){next(e)}}
 exports.updateSupportTicket=async(req,res,next)=>{try{res.json({success:true,data:await service.updateSupportTicket({id:req.params.id,status:req.body.status,resolution:req.body.resolution,actorUserId:req.user?.sub||null})})}catch(e){next(e)}}
+exports.retryFailedRefund=async(req,res,next)=>{
+  try{
+    res.json({
+      success:true,
+      data:await service.retryFailedRefundAdmin({
+        id:req.params.id,
+        actorAuthUserId:req.auth?.userId||null,
+      }),
+    })
+  }catch(e){
+    next(e)
+  }
+}

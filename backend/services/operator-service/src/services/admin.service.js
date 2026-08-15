@@ -117,20 +117,67 @@ async function listSettlements() {
 async function listSupportIssues() {
   const { rows } = await pool.query(`
     SELECT * FROM (
-      SELECT 'CANCELLED_BOOKING' issue_type,b.id entity_id,b.booking_reference reference,
-        u.full_name customer_name,u.mobile customer_mobile,o.display_name operator_name,
-        'Booking cancelled' summary,b.cancelled_at occurred_at,'MEDIUM' priority
-      FROM bookings b JOIN platform_users u ON u.id=b.customer_id JOIN operators o ON o.id=b.operator_id
+      SELECT
+        'CANCELLED_BOOKING' issue_type,
+        b.id entity_id,
+        b.booking_reference reference,
+        u.full_name customer_name,
+        u.mobile customer_mobile,
+        o.display_name operator_name,
+        'Booking cancelled' summary,
+        b.cancelled_at occurred_at,
+        'MEDIUM' priority
+      FROM bookings b
+      JOIN platform_users u ON u.id=b.customer_id
+      JOIN operators o ON o.id=b.operator_id
       WHERE b.status='CANCELLED'
+
       UNION ALL
-      SELECT 'FAILED_PAYMENT',p.id,b.booking_reference,u.full_name,u.mobile,o.display_name,
-        COALESCE(p.failure_message,'Payment failed'),p.created_at,'HIGH'
-      FROM payments p JOIN bookings b ON b.id=p.booking_id JOIN platform_users u ON u.id=b.customer_id JOIN operators o ON o.id=b.operator_id
+
+      SELECT
+        'FAILED_PAYMENT',
+        p.id,
+        b.booking_reference,
+        u.full_name,
+        u.mobile,
+        o.display_name,
+        COALESCE(p.failure_message,'Payment failed'),
+        p.created_at,
+        'HIGH'
+      FROM payments p
+      JOIN bookings b ON b.id=p.booking_id
+      JOIN platform_users u ON u.id=b.customer_id
+      JOIN operators o ON o.id=b.operator_id
       WHERE p.status='FAILED'
-    ) issues ORDER BY occurred_at DESC LIMIT 250`)
+
+      UNION ALL
+
+      SELECT
+        'FAILED_REFUND',
+        r.id,
+        b.booking_reference,
+        u.full_name,
+        u.mobile,
+        o.display_name,
+        COALESCE(
+          r.failure_message,
+          'Refund failed after automatic retries.'
+        ),
+        COALESCE(r.last_attempt_at,r.updated_at,r.created_at),
+        'CRITICAL'
+      FROM refunds r
+      JOIN payments p ON p.id=r.payment_id
+      JOIN bookings b ON b.id=p.booking_id
+      JOIN platform_users u ON u.id=b.customer_id
+      JOIN operators o ON o.id=b.operator_id
+      WHERE r.status='FAILED'
+    ) issues
+    ORDER BY occurred_at DESC
+    LIMIT 250
+  `)
+
   return rows
 }
-
 async function listAuditLogs() {
   const { rows } = await pool.query(`SELECT a.id,a.entity_type,a.entity_id,a.action,a.before_state,a.after_state,a.created_at,
     u.full_name actor_name,u.mobile actor_mobile FROM audit_logs a LEFT JOIN platform_users u ON u.id=a.actor_user_id
@@ -662,3 +709,125 @@ async function resolvePaymentReconciliation({kind,id,action,note='',outcome='',a
 
 module.exports.listPaymentReconciliation=listPaymentReconciliation
 module.exports.resolvePaymentReconciliation=resolvePaymentReconciliation
+async function retryFailedRefundAdmin({
+  id,
+  actorAuthUserId,
+}) {
+  const actor=
+    await settlementActor(
+      actorAuthUserId,
+    )
+
+  const client=
+    await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const existing=(
+      await client.query(
+        `SELECT
+           r.*,
+           p.status payment_status,
+           p.provider_payment_id
+         FROM refunds r
+         JOIN payments p ON p.id=r.payment_id
+         WHERE r.id=$1::uuid
+         FOR UPDATE OF r,p`,
+        [id],
+      )
+    ).rows[0]
+
+    if(!existing){
+      throw settlementFail(
+        'Refund not found.',
+        404,
+      )
+    }
+
+    if(existing.status!=='FAILED'){
+      throw settlementFail(
+        'Only FAILED refunds can be retried manually.',
+        409,
+      )
+    }
+
+    if(
+      ![
+        'CAPTURED',
+        'PARTIALLY_REFUNDED',
+      ].includes(existing.payment_status)
+    ){
+      throw settlementFail(
+        'Refund cannot be retried because the parent payment is no longer in a refundable captured state.',
+        409,
+      )
+    }
+
+    if(!existing.provider_payment_id){
+      throw settlementFail(
+        'Refund cannot be retried because the provider payment id is missing.',
+        409,
+      )
+    }
+
+    const retried=(
+      await client.query(
+        `UPDATE refunds
+         SET status='PENDING',
+             retry_count=0,
+             next_retry_at=NOW(),
+             failure_message=NULL,
+             updated_at=NOW()
+         WHERE id=$1::uuid
+           AND status='FAILED'
+         RETURNING *`,
+        [id],
+      )
+    ).rows[0]
+
+    await client.query(
+      `INSERT INTO audit_logs(
+         actor_user_id,
+         entity_type,
+         entity_id,
+         action,
+         before_state,
+         after_state
+       )
+       VALUES(
+         $1::uuid,
+         'REFUND',
+         $2,
+         'RETRY_FAILED_REFUND',
+         $3::jsonb,
+         $4::jsonb
+       )`,
+      [
+        actor,
+        String(id),
+        JSON.stringify({
+          status:existing.status,
+          retryCount:existing.retry_count,
+          failureMessage:existing.failure_message,
+        }),
+        JSON.stringify({
+          status:'PENDING',
+          retryCount:0,
+          nextRetryAt:'NOW',
+        }),
+      ],
+    )
+
+    await client.query('COMMIT')
+
+    return retried
+  } catch(error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+module.exports.retryFailedRefundAdmin=retryFailedRefundAdmin
