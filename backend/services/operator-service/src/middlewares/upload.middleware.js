@@ -243,11 +243,80 @@ const busPhotoMimeTypes = [
   'image/webp',
 ]
 
+const getNormalizedExtension = (
+  fileName,
+) =>
+  path
+    .extname(
+      String(
+        fileName || '',
+      ),
+    )
+    .replace(
+      /^\./,
+      '',
+    )
+    .toLowerCase()
+
+const allowedExtensionsByMime = {
+  'application/pdf': [
+    'pdf',
+  ],
+  'image/jpeg': [
+    'jpg',
+    'jpeg',
+  ],
+  'image/png': [
+    'png',
+  ],
+  'image/webp': [
+    'webp',
+  ],
+}
+
+const hasMatchingMimeAndExtension = (
+  file,
+) => {
+  const extension =
+    getNormalizedExtension(
+      file.originalname,
+    )
+
+  const allowedExtensions =
+    allowedExtensionsByMime[
+      file.mimetype
+    ]
+
+  return Boolean(
+    extension &&
+    Array.isArray(
+      allowedExtensions,
+    ) &&
+    allowedExtensions.includes(
+      extension,
+    ),
+  )
+}
 const busFileFilter = (
   req,
   file,
   callback,
 ) => {
+  const extension =
+    getNormalizedExtension(
+      file.originalname,
+    )
+
+  if (!extension) {
+    callback(
+      new Error(
+        `${file.fieldname}: file extension is required.`,
+      ),
+    )
+
+    return
+  }
+
   /*
    * Compliance documents
    */
@@ -257,22 +326,36 @@ const busFileFilter = (
     )
   ) {
     if (
-      busDocumentMimeTypes.includes(
+      !busDocumentMimeTypes.includes(
         file.mimetype,
       )
     ) {
       callback(
-        null,
-        true,
+        new Error(
+          `${file.fieldname}: only PDF, JPG and PNG files are allowed.`,
+        ),
+      )
+
+      return
+    }
+
+    if (
+      !hasMatchingMimeAndExtension(
+        file,
+      )
+    ) {
+      callback(
+        new Error(
+          `${file.fieldname}: file extension does not match its MIME type.`,
+        ),
       )
 
       return
     }
 
     callback(
-      new Error(
-        `${file.fieldname}: only PDF, JPG and PNG files are allowed.`,
-      ),
+      null,
+      true,
     )
 
     return
@@ -287,37 +370,47 @@ const busFileFilter = (
     )
   ) {
     if (
-      busPhotoMimeTypes.includes(
+      !busPhotoMimeTypes.includes(
         file.mimetype,
       )
     ) {
       callback(
-        null,
-        true,
+        new Error(
+          `${file.fieldname}: only JPG, PNG and WEBP files are allowed.`,
+        ),
+      )
+
+      return
+    }
+
+    if (
+      !hasMatchingMimeAndExtension(
+        file,
+      )
+    ) {
+      callback(
+        new Error(
+          `${file.fieldname}: file extension does not match its MIME type.`,
+        ),
       )
 
       return
     }
 
     callback(
-      new Error(
-        `${file.fieldname}: only JPG, PNG and WEBP files are allowed.`,
-      ),
+      null,
+      true,
     )
 
     return
   }
 
-  /*
-   * Unknown field
-   */
   callback(
     new Error(
       `Unexpected upload field: ${file.fieldname}`,
     ),
   )
 }
-
 const busUpload =
   multer({
     storage:
