@@ -338,6 +338,34 @@ async function listPaymentReconciliation({limit=200}={}) {
     ...pendingRefunds.rows,
     ...webhooks.rows,
   ].sort((a,b)=>new Date(b.occurred_at)-new Date(a.occurred_at)).slice(0,safeLimit)
+  const durableCases=(await pool.query(`
+    SELECT
+      'DURABLE_PAYMENT_RECONCILIATION' kind,
+      c.id,
+      c.payment_id,
+      c.booking_id,
+      c.issue_type,
+      c.reason description,
+      c.status,
+      c.occurrence_count,
+      c.first_seen_at,
+      c.last_seen_at occurred_at,
+      'CRITICAL' severity,
+      b.booking_reference,
+      p.provider,
+      p.provider_payment_id,
+      p.amount,
+      p.currency
+    FROM payment_reconciliation_cases c
+    JOIN payments p ON p.id=c.payment_id
+    JOIN bookings b ON b.id=c.booking_id
+    WHERE c.status='OPEN'
+    ORDER BY c.last_seen_at DESC
+    LIMIT $1`,[safeLimit])).rows
+
+  items.push(...durableCases)
+  items.sort((a,b)=>new Date(b.occurred_at)-new Date(a.occurred_at))
+  if(items.length>safeLimit)items.length=safeLimit
   const summary=items.reduce((acc,x)=>{acc.total++;acc[x.severity]=(acc[x.severity]||0)+1;acc.byKind[x.kind]=(acc.byKind[x.kind]||0)+1;return acc},{total:0,CRITICAL:0,HIGH:0,MEDIUM:0,byKind:{}})
   return {summary,items}
 }
@@ -348,6 +376,59 @@ async function actorUserIdFromAuth(authUserId,client=pool) {
   return rows[0]?.id||null
 }
 
+const ADMIN_RECONCILIATION_BOOKABILITY_SQL = `
+  b.status='ACTIVE'
+  AND b.operational_status='ACTIVE'
+  AND b.approval_status='APPROVED'
+  AND EXISTS (
+    SELECT 1
+    FROM bus_compliance bc
+    WHERE bc.bus_id=b.id
+      AND bc.verification_status='VERIFIED'
+      AND bc.insurance_expiry>=CURRENT_DATE
+      AND bc.permit_expiry>=CURRENT_DATE
+      AND bc.fitness_expiry>=CURRENT_DATE
+      AND (
+        bc.puc_expiry IS NULL
+        OR bc.puc_expiry>=CURRENT_DATE
+      )
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id=b.id
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM bus_documents bd
+    WHERE bd.bus_id=b.id
+      AND bd.verification_status<>'VERIFIED'
+  )
+`
+
+async function assertAdminReconciliationBookable(client,bookingId){
+  const {rows}=await client.query(
+    `SELECT bk.id booking_id,t.id trip_id,b.id bus_id
+     FROM bookings bk
+     JOIN trips t ON t.id=bk.trip_id
+     JOIN buses b ON b.id=t.bus_id
+     WHERE bk.id=$1::uuid
+       AND t.status='SCHEDULED'
+       AND t.departure_at>NOW()
+       AND ${ADMIN_RECONCILIATION_BOOKABILITY_SQL}
+     FOR SHARE OF t,b`,
+    [bookingId],
+  )
+
+  if(!rows[0]){
+    throw reconciliationFail(
+      'Cannot confirm this booking because the trip or bus is no longer eligible for customer booking. Refund/manual handling is required.',
+      409,
+    )
+  }
+
+  return rows[0]
+}
 async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUserId=null}) {
   const normalizedKind=String(kind||'').trim().toUpperCase()
   const normalizedAction=String(action||'').trim().toUpperCase()
@@ -364,6 +445,8 @@ async function resolvePaymentReconciliation({kind,id,action,note='',actorAuthUse
       const row=rows[0]
       if(!row)throw reconciliationFail('Captured payment mismatch not found.',404)
       if(row.booking_status==='CONFIRMED'){await client.query('COMMIT');return {status:'ALREADY_RESOLVED',bookingId:row.booking_id}}
+
+      await assertAdminReconciliationBookable(client,row.booking_id)
 
       const counts=(await client.query(`SELECT
         (SELECT COUNT(*)::int FROM booking_passengers WHERE booking_id=$1::uuid) passenger_count,

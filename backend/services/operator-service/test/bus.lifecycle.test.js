@@ -29,14 +29,14 @@ const bookingSource = fs.readFileSync(
 test('customer trip search filters inactive buses', () => {
   assert.match(
     bookingSource,
-    /WHERE t\.status='SCHEDULED' AND b\.status='ACTIVE'/,
+    /WHERE t\.status='SCHEDULED' AND \$\{customerBookabilityWhere\('b'\)\}/,
   )
 })
 
 test('seat map also filters inactive buses', () => {
   assert.match(
     bookingSource,
-    /t\.status='SCHEDULED' AND b\.status='ACTIVE'/,
+    /t\.status='SCHEDULED' AND \$\{customerBookabilityWhere\('b'\)\}/,
   )
 })
 
