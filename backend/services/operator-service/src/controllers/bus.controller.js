@@ -81,6 +81,90 @@ const ALLOWED_SEAT_TYPES = [
  * =====================================================
  */
 
+const renewalUploadFieldToDocumentType = {
+  rcDocument: 'RC',
+  insuranceDocument: 'INSURANCE',
+  permitDocument: 'PERMIT',
+  fitnessDocument: 'FITNESS',
+  pucDocument: 'PUC',
+}
+
+const getRenewedDocumentTypes = (
+  req,
+) =>
+  new Set(
+    Object
+      .keys(
+        req?.files || {},
+      )
+      .map(
+        (
+          fieldName,
+        ) =>
+          renewalUploadFieldToDocumentType[
+            fieldName
+          ],
+      )
+      .filter(Boolean),
+  )
+
+const cleanupReplacedBusDocumentFiles = (
+  previousDocuments,
+  renewedDocumentTypes,
+) => {
+  for (
+    const document of
+    previousDocuments || []
+  ) {
+    if (
+      !renewedDocumentTypes.has(
+        document.document_type,
+      )
+    ) {
+      continue
+    }
+
+    try {
+      const candidate =
+        path.resolve(
+          String(
+            document.file_path || '',
+          ),
+        )
+
+      const uploadsRoot =
+        path.resolve(
+          process.cwd(),
+          'uploads',
+          'buses',
+        )
+
+      if (
+        !candidate.startsWith(
+          uploadsRoot +
+          path.sep,
+        )
+      ) {
+        continue
+      }
+
+      if (
+        fs.existsSync(
+          candidate,
+        )
+      ) {
+        fs.unlinkSync(
+          candidate,
+        )
+      }
+    } catch {
+      /*
+       * Post-commit cleanup is best-effort.
+       * Renewal has already succeeded at this point.
+       */
+    }
+  }
+}
 const getRequestUploadedBusFiles = (
   req,
 ) =>
@@ -2088,6 +2172,15 @@ const renewCompliance = async (
       })
     }
 
+    const previousDocumentsForCleanup =
+      await getBusDocuments(
+        req.params.id,
+      )
+
+    const renewedDocumentTypes =
+      getRenewedDocumentTypes(
+        req,
+      )
     const result =
       await renewBusCompliance({
         busId: req.params.id,
@@ -2095,6 +2188,10 @@ const renewCompliance = async (
         compliance,
         documents,
       })
+    cleanupReplacedBusDocumentFiles(
+      previousDocumentsForCleanup,
+      renewedDocumentTypes,
+    )
 
     return res.json({
       success: true,
