@@ -361,7 +361,7 @@ const FloatingSelectField = ({
         </label>
 
         <span className="add-bus-select-arrow">
-          â–¼
+          Ã¢â€“Â¼
         </span>
       </div>
 
@@ -433,7 +433,7 @@ const BusCreationSteps = ({
                 {label}
 
                 {completed
-                  ? ' âœ“'
+                  ? ' Ã¢Å“â€œ'
                   : ''}
               </p>
             </div>
