@@ -148,6 +148,44 @@ const parseJsonField = (
  * =====================================================
  */
 
+const validateClassificationConsistency = (body, errors) => {
+  const busType = String(body.busType || '').trim().toUpperCase()
+  const acType = String(body.acType || '').trim().toUpperCase()
+  const seatingType = String(body.seatingType || '').trim().toUpperCase()
+  const seatLayout = String(body.seatLayout || '').trim().toUpperCase()
+
+  if (busType.startsWith('AC_') && acType !== 'AC') {
+    errors.acType = 'AC bus type must use AC classification.'
+  }
+  if (busType.startsWith('NON_AC_') && acType !== 'NON_AC') {
+    errors.acType = 'Non-AC bus type must use NON_AC classification.'
+  }
+
+  const expectedSeating = {
+    AC_SEATER: 'SEATER',
+    NON_AC_SEATER: 'SEATER',
+    AC_SLEEPER: 'SLEEPER',
+    NON_AC_SLEEPER: 'SLEEPER',
+    AC_SEATER_SLEEPER: 'SEATER_SLEEPER',
+    NON_AC_SEATER_SLEEPER: 'SEATER_SLEEPER',
+    AC_SEMI_SLEEPER: 'SEMI_SLEEPER',
+    NON_AC_SEMI_SLEEPER: 'SEMI_SLEEPER',
+  }[busType]
+
+  if (expectedSeating && seatingType !== expectedSeating) {
+    errors.seatingType = `Bus type ${busType} requires ${expectedSeating} seating.`
+  }
+
+  const sleeperLayouts = ['2X1_SLEEPER', '1X1']
+  const seaterLayouts = ['2X2', '2X1', '2X1_SEATER', '2X3']
+
+  if (seatingType === 'SLEEPER' && seaterLayouts.includes(seatLayout)) {
+    errors.seatLayout = 'Sleeper buses must use a sleeper-compatible layout.'
+  }
+  if (['SEATER', 'SEMI_SLEEPER'].includes(seatingType) && sleeperLayouts.includes(seatLayout)) {
+    errors.seatLayout = 'Seater buses must use a seater-compatible layout.'
+  }
+}
 const validateBus =
   (
     body,
@@ -282,6 +320,8 @@ const validateBus =
         errors[field] = `Invalid or missing ${field}.`
       }
     })
+
+    validateClassificationConsistency(body, errors)
 
     /*
      * MANUFACTURER
@@ -462,6 +502,7 @@ const validateSeats =
     totalSeats,
     deckType,
     seatingType,
+    seatLayout,
   ) => {
     const errors = []
 
@@ -631,6 +672,14 @@ const validateSeats =
             )
           }
 
+          if (
+            seatType === 'SLEEPER' &&
+            !['LOWER', 'UPPER'].includes(String(seat.berthLevel || '').toUpperCase())
+          ) {
+            errors.push(
+              `Sleeper seat ${seatNumber || index + 1} must have LOWER or UPPER berth level.`,
+            )
+          }
           return {
             seatNumber,
 
@@ -695,6 +744,41 @@ const validateSeats =
       )
     }
 
+    const positionKeys = seats
+      .filter((seat) =>
+        Number.isInteger(seat.deck) &&
+        Number.isInteger(seat.row) &&
+        Number.isInteger(seat.column))
+      .map((seat) => `${seat.deck}:${seat.row}:${seat.column}`)
+
+    if (new Set(positionKeys).size !== positionKeys.length) {
+      errors.push('Seat positions must be unique within each deck.')
+    }
+
+    if (deckType === 'DOUBLE') {
+      const lowerCount = seats.filter((seat) => seat.deck === 1).length
+      const upperCount = seats.filter((seat) => seat.deck === 2).length
+      if (lowerCount === 0 || upperCount === 0) {
+        errors.push('A double-deck bus must contain seats on both lower and upper decks.')
+      }
+    }
+
+    const maxColumnsByLayout = {
+      '1X1': 2,
+      '2X1': 3,
+      '2X1_SEATER': 3,
+      '2X1_SLEEPER': 3,
+      '2X2': 4,
+      '2X3': 5,
+    }
+    const allowedColumns = maxColumnsByLayout[String(seatLayout || '').toUpperCase()]
+    if (allowedColumns) {
+      for (const seat of seats) {
+        if (Number.isInteger(seat.column) && seat.column > allowedColumns) {
+          errors.push(`Seat ${seat.seatNumber || ''} exceeds the ${seatLayout} layout width.`)
+        }
+      }
+    }
     const seaterCount = seats.filter((seat) => seat.seatType === 'SEATER').length
     const sleeperCount = seats.filter((seat) => seat.seatType === 'SLEEPER').length
     if (seatingType === 'SEATER_SLEEPER' && (seaterCount === 0 || sleeperCount === 0)) {
@@ -1172,6 +1256,7 @@ const addBus =
           data.totalSeats,
           data.deckType,
           data.seatingType,
+          data.seatLayout,
         )
 
       if (
@@ -1646,10 +1731,12 @@ module.exports = {
     try {
       const approved = req.body.decision === 'APPROVE'
       if (!approved && req.body.decision !== 'REJECT') return res.status(422).json({ success: false, message: 'Decision must be APPROVE or REJECT.' })
-      const bus = await reviewBus({ busId: req.params.id, approved, reason: req.body.reason, reviewerId: req.body.reviewerId })
+      const bus = await reviewBus({ busId: req.params.id, approved, reason: req.body.reason, reviewerId: req.auth?.platformUserId || req.auth?.userId || null })
       res.json({ success: true, message: approved ? 'Bus approved.' : 'Bus rejected.', bus })
     } catch (error) { next(error) }
   },
+  __test: { validateBus, validateSeats, normalizeRegistrationNumber },
+
   resubmit: async (req, res, next) => {
     try { res.json({ success: true, bus: await resubmitBus({ busId: req.params.id, operatorId: req.operatorId }) }) } catch (error) { next(error) }
   },
