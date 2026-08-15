@@ -78,6 +78,40 @@ const AMENITIES = [
 const label = (value: string) =>
   value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+const isValidRegistrationPrefix = (
+  value: string,
+) => {
+  if (!value) return true;
+
+  const standardPrefixes = [
+    /^[A-Z]{0,2}$/,
+    /^[A-Z]{2}[0-9]{0,2}$/,
+    /^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}$/,
+    /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{0,4}$/,
+  ];
+
+  const bharatPrefixes = [
+    /^[0-9]{0,2}$/,
+    /^[0-9]{2}B?$/,
+    /^[0-9]{2}BH$/,
+    /^[0-9]{2}BH[0-9]{0,4}$/,
+    /^[0-9]{2}BH[0-9]{4}[A-Z]{0,2}$/,
+  ];
+
+  return [
+    ...standardPrefixes,
+    ...bharatPrefixes,
+  ].some((pattern) =>
+    pattern.test(value)
+  );
+};
+
+const normalizeSpacesWhileTyping = (
+  value: string,
+) =>
+  value
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\s+/, '');
 const deriveBusType = (acType: string, seatingType: string) => {
   const prefix = acType === 'AC' ? 'AC' : 'NON_AC';
   if (seatingType === 'SLEEPER') return `${prefix}_SLEEPER`;
@@ -195,6 +229,200 @@ export default function EditBusPage() {
     setError('');
   };
 
+  const updateRegistration = (
+    value: string,
+  ) => {
+    const candidate =
+      value
+        .toUpperCase()
+        .replace(
+          /[^A-Z0-9]/g,
+          '',
+        )
+        .slice(
+          0,
+          11,
+        );
+
+    if (
+      isValidRegistrationPrefix(
+        candidate,
+      )
+    ) {
+      update(
+        'registrationNumber',
+        candidate,
+      );
+    }
+  };
+
+  const updateBusName = (
+    value: string,
+  ) => {
+    update(
+      'busName',
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&'()-]/g,
+            '',
+          )
+          .slice(
+            0,
+            60,
+          ),
+      ),
+    );
+  };
+
+  const updateManufacturer = (
+    value: string,
+  ) => {
+    update(
+      'manufacturer',
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&()-]/g,
+            '',
+          )
+          .slice(
+            0,
+            50,
+          ),
+      ),
+    );
+  };
+
+  const updateModel = (
+    value: string,
+  ) => {
+    update(
+      'model',
+      normalizeSpacesWhileTyping(
+        value
+          .replace(
+            /[^A-Za-z0-9 .&()/_-]/g,
+            '',
+          )
+          .slice(
+            0,
+            50,
+          ),
+      ),
+    );
+  };
+
+  const updateManufacturingYear = (
+    value: string,
+  ) => {
+    const cleaned =
+      value
+        .replace(
+          /\D/g,
+          '',
+        )
+        .slice(
+          0,
+          4,
+        );
+
+    if (!cleaned) {
+      update(
+        'manufacturingYear',
+        '',
+      );
+      return;
+    }
+
+    if (
+      cleaned.length <
+      4
+    ) {
+      update(
+        'manufacturingYear',
+        cleaned,
+      );
+      return;
+    }
+
+    const year =
+      Number(cleaned);
+
+    const currentYear =
+      new Date()
+        .getFullYear();
+
+    if (
+      year >= 1990 &&
+      year <= currentYear
+    ) {
+      update(
+        'manufacturingYear',
+        cleaned,
+      );
+    }
+  };
+
+  const updateTotalSeats = (
+    value: string,
+  ) => {
+    if (!form) {
+      return;
+    }
+
+    const cleaned =
+      value
+        .replace(
+          /\D/g,
+          '',
+        )
+        .slice(
+          0,
+          2,
+        );
+
+    if (!cleaned) {
+      const next = {
+        ...form,
+        totalSeats: '',
+      };
+
+      setForm(next);
+      setError('');
+      return;
+    }
+
+    const seats =
+      Number(cleaned);
+
+    const maxSeats =
+      form.seatingType ===
+        'SLEEPER'
+        ? 60
+        : 80;
+
+    if (
+      seats < 1 ||
+      seats > maxSeats
+    ) {
+      return;
+    }
+
+    const next = {
+      ...form,
+      totalSeats:
+        cleaned,
+    };
+
+    setForm(next);
+    setError('');
+
+    resizeSeats(
+      seats,
+      next,
+    );
+  };
   const resizeSeats = (count: number, nextForm: Form) => {
     setSeats((current) => {
       const copy = current.slice(0, count);
@@ -282,12 +510,12 @@ export default function EditBusPage() {
                 <section className="edit-bus-card">
                   <div className="edit-bus-card-title"><IonIcon icon={busOutline} /><h2>Bus details</h2></div>
                   <div className="edit-bus-grid">
-                    <label>Bus name<input value={form.busName} onChange={(e) => update('busName', e.target.value)} /></label>
-                    <label>Registration<input disabled={!inactive} value={form.registrationNumber} onChange={(e) => update('registrationNumber', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} /></label>
-                    <label>Manufacturer<input disabled={!inactive} value={form.manufacturer} onChange={(e) => update('manufacturer', e.target.value)} /></label>
-                    <label>Model<input disabled={!inactive} value={form.model} onChange={(e) => update('model', e.target.value)} /></label>
-                    <label>Manufacturing year<input disabled={!inactive} inputMode="numeric" value={form.manufacturingYear} onChange={(e) => update('manufacturingYear', e.target.value.replace(/\D/g, '').slice(0,4))} /></label>
-                    <label>Total seats<input disabled={!inactive} inputMode="numeric" value={form.totalSeats} onChange={(e) => { const value=e.target.value.replace(/\D/g,'').slice(0,2); const next={...form,totalSeats:value}; setForm(next); if(value) resizeSeats(Math.min(80, Number(value)), next); }} /></label>
+                    <label>Bus name<input maxLength={60} value={form.busName} onChange={(e) => updateBusName(e.target.value)} /></label>
+                    <label>Registration<input disabled={!inactive} maxLength={11} value={form.registrationNumber} onChange={(e) => updateRegistration(e.target.value)} /></label>
+                    <label>Manufacturer<input disabled={!inactive} maxLength={50} value={form.manufacturer} onChange={(e) => updateManufacturer(e.target.value)} /></label>
+                    <label>Model<input disabled={!inactive} maxLength={50} value={form.model} onChange={(e) => updateModel(e.target.value)} /></label>
+                    <label>Manufacturing year<input disabled={!inactive} inputMode="numeric" maxLength={4} value={form.manufacturingYear} onChange={(e) => updateManufacturingYear(e.target.value)} /></label>
+                    <label>Total seats<input disabled={!inactive} inputMode="numeric" maxLength={2} value={form.totalSeats} onChange={(e) => updateTotalSeats(e.target.value)} /></label>
                     {(Object.keys(options) as Array<keyof typeof options>).map((key) => (
                       <label key={key}>{label(key)}
                         <select disabled={!inactive} value={form[key]} onChange={(e) => update(key as keyof Form, e.target.value)}>
