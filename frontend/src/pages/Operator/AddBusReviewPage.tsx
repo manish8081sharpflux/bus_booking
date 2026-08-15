@@ -133,8 +133,8 @@ interface ComplianceDraft {
  */
 
 const OPERATOR_API =
-  'http://localhost:4600';
-
+  import.meta.env.VITE_OPERATOR_API_URL ||
+  'http://localhost:4000/api';
 const BUS_CREATION_STEPS = [
   'Bus Details',
   'Seat Layout',
@@ -1184,48 +1184,252 @@ React.FC = () => {
     ],
   );
 
-  /*
-   * =====================================================
-   * OPERATOR ID
-   * =====================================================
-   */
+  const validateReviewDraft = () => {
+    if (
+      !bus ||
+      !seatLayout ||
+      !compliance
+    ) {
+      return 'Bus setup information is incomplete.';
+    }
 
-  const operatorId =
-    useMemo(
-      () => {
-        try {
-          const raw =
-            localStorage.getItem(
-              'operator',
-            );
+    const standardRegistration =
+      /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/;
 
-          if (!raw) {
-            return null;
-          }
+    const bharatRegistration =
+      /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
 
-          const operator =
-            JSON.parse(
-              raw,
-            );
+    if (
+      !standardRegistration.test(
+        bus.registrationNumber,
+      ) &&
+      !bharatRegistration.test(
+        bus.registrationNumber,
+      )
+    ) {
+      return 'Registration number is invalid. Return to Bus Details.';
+    }
 
-          return (
-            operator?.id ??
-            operator?.operatorId ??
-            null
-          );
-        } catch {
-          return null;
-        }
-      },
-      [],
+    if (
+      !bus.busName?.trim() ||
+      !/[A-Za-z]/.test(
+        bus.busName,
+      )
+    ) {
+      return 'Bus name is invalid. Return to Bus Details.';
+    }
+
+    if (
+      !Number.isInteger(
+        bus.totalSeats,
+      ) ||
+      bus.totalSeats < 1 ||
+      bus.totalSeats > 80
+    ) {
+      return 'Total seats are invalid. Return to Bus Details.';
+    }
+
+    const currentYear =
+      new Date().getFullYear();
+
+    if (
+      bus.manufacturingYear !==
+        null &&
+      (
+        !Number.isInteger(
+          bus.manufacturingYear,
+        ) ||
+        bus.manufacturingYear <
+          1990 ||
+        bus.manufacturingYear >
+          currentYear
+      )
+    ) {
+      return 'Manufacturing year is invalid. Return to Bus Details.';
+    }
+
+    const requiredClassifications = [
+      bus.fuelType,
+      bus.ownershipType,
+      bus.acType,
+      bus.seatingType,
+      bus.seatLayout,
+      bus.busCategory,
+      bus.axleType,
+      bus.transmissionType,
+      bus.suspensionType,
+      bus.serviceType,
+    ];
+
+    if (
+      requiredClassifications.some(
+        (value) =>
+          !String(
+            value || '',
+          ).trim(),
+      )
+    ) {
+      return 'Bus classification is incomplete. Return to Bus Details.';
+    }
+
+    if (
+      !Array.isArray(
+        seatLayout.seats,
+      ) ||
+      seatLayout.seats.length ===
+        0
+    ) {
+      return 'Seat layout is missing. Return to Seat Layout.';
+    }
+
+    const enabledSeats =
+      seatLayout.seats.filter(
+        (seat) =>
+          seat.isEnabled !==
+          false,
+      );
+
+    if (
+      enabledSeats.length !==
+      bus.totalSeats
+    ) {
+      return `Enabled seat count must be exactly ${bus.totalSeats}.`;
+    }
+
+    const seatNumbers =
+      enabledSeats.map(
+        (seat) =>
+          String(
+            seat.seatNumber || '',
+          ).trim().toUpperCase(),
+      );
+
+    if (
+      seatNumbers.some(
+        (value) =>
+          !value,
+      ) ||
+      new Set(
+        seatNumbers,
+      ).size !==
+        seatNumbers.length
+    ) {
+      return 'Seat numbers are missing or duplicated. Return to Seat Layout.';
+    }
+
+    const today =
+      new Date();
+
+    today.setHours(
+      0,
+      0,
+      0,
+      0,
     );
 
-  /*
-   * =====================================================
-   * VALIDATE FILES
-   * =====================================================
-   */
+    const validFutureOrToday = (
+      value:
+        string | null,
+    ) => {
+      if (!value) {
+        return false;
+      }
 
+      const date =
+        new Date(
+          `${value}T00:00:00`,
+        );
+
+      return (
+        !Number.isNaN(
+          date.getTime(),
+        ) &&
+        date.getTime() >=
+          today.getTime()
+      );
+    };
+
+    if (
+      !compliance.insuranceNumber?.trim() ||
+      !validFutureOrToday(
+        compliance.insuranceExpiry,
+      )
+    ) {
+      return 'Insurance details are invalid or expired. Return to Compliance.';
+    }
+
+    if (
+      !compliance.permitNumber?.trim() ||
+      !validFutureOrToday(
+        compliance.permitExpiry,
+      )
+    ) {
+      return 'Permit details are invalid or expired. Return to Compliance.';
+    }
+
+    if (
+      !compliance.fitnessCertificateNumber?.trim() ||
+      !validFutureOrToday(
+        compliance.fitnessExpiry,
+      )
+    ) {
+      return 'Fitness certificate details are invalid or expired. Return to Compliance.';
+    }
+
+    if (
+      compliance.pucNumber &&
+      !validFutureOrToday(
+        compliance.pucExpiry,
+      )
+    ) {
+      return 'PUC details are invalid or expired. Return to Compliance.';
+    }
+
+    return null;
+  };
+
+  const validateReviewFile = (
+    file:
+      File | null,
+    kind:
+      | 'document'
+      | 'image',
+  ) => {
+    if (!file) {
+      return null;
+    }
+
+    if (
+      file.size <= 0 ||
+      file.size >
+        5 * 1024 * 1024
+    ) {
+      return 'One or more uploaded files have an invalid size.';
+    }
+
+    const allowed =
+      kind === 'image'
+        ? [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+          ]
+        : [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+          ];
+
+    if (
+      !allowed.includes(
+        file.type,
+      )
+    ) {
+      return 'One or more uploaded files have an invalid type.';
+    }
+
+    return null;
+  };
   const validateFiles =
     () => {
       if (!files) {
@@ -1317,6 +1521,53 @@ React.FC = () => {
         return false;
       }
 
+      const fileChecks = [
+        validateReviewFile(
+          files.rcDocument,
+          'document',
+        ),
+        validateReviewFile(
+          files.insuranceDocument,
+          'document',
+        ),
+        validateReviewFile(
+          files.permitDocument,
+          'document',
+        ),
+        validateReviewFile(
+          files.fitnessDocument,
+          'document',
+        ),
+        validateReviewFile(
+          files.pucDocument,
+          'document',
+        ),
+        validateReviewFile(
+          files.frontPhoto,
+          'image',
+        ),
+        validateReviewFile(
+          files.sidePhoto,
+          'image',
+        ),
+        validateReviewFile(
+          files.interiorPhoto,
+          'image',
+        ),
+      ].filter(Boolean);
+
+      if (
+        fileChecks.length >
+        0
+      ) {
+        setError(
+          String(
+            fileChecks[0],
+          ),
+        );
+
+        return false;
+      }
       return true;
     };
 
@@ -1328,6 +1579,20 @@ React.FC = () => {
 
   const handleSubmit =
     async () => {
+      if (submitting) {
+        return;
+      }
+
+      const draftError =
+        validateReviewDraft();
+
+      if (draftError) {
+        setError(
+          draftError,
+        );
+
+        return;
+      }
       if (
         !bus ||
         !seatLayout ||
@@ -1335,16 +1600,6 @@ React.FC = () => {
       ) {
         setError(
           'Bus setup information is incomplete.',
-        );
-
-        return;
-      }
-
-      if (
-        !operatorId
-      ) {
-        setError(
-          'Operator ID was not found. Please log in again.',
         );
 
         return;
@@ -1393,11 +1648,6 @@ React.FC = () => {
         /*
          * BUS DETAILS
          */
-
-        formData.append(
-          'operatorId',
-          operatorId,
-        );
 
         formData.append(
           'busName',
@@ -1903,7 +2153,7 @@ React.FC = () => {
                         seatLayout.template
                       }
                     </strong>
-                    {' • '}
+                    {' â€¢ '}
                     {
                       seatLayout.seats.filter(
                         (
