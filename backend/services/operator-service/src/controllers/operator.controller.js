@@ -758,37 +758,9 @@ const applicationStatus =
 
       return res.json({
         success: true,
-
         status:
           operator.status,
-
-        operator: {
-          id:
-            operator.id,
-
-          mobile:
-            operator.support_mobile,
-
-          operatorName:
-            operator.display_name,
-
-          legalName:
-            operator.legal_name,
-
-          status:
-            operator.status,
-
-          approvedAt:
-            operator.approved_at,
-
-          createdAt:
-            operator.created_at,
-
-          updatedAt:
-            operator.updated_at,
-        },
-      })
-    } catch (error) {
+      })    } catch (error) {
       next(error)
     }
   }
