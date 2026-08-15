@@ -42,3 +42,16 @@ test('KYC preview is no-store and nosniff',()=>{
 test('bank account stays masked in operator detail',()=>{
   assert.match(controller,/maskedAccountNumber/)
 })
+test('verification route does not chain preview handler',()=>{
+  const start=routes.indexOf("'/:id/documents/:documentId/verification'")
+  const end=routes.indexOf(');',start)
+  const block=routes.slice(start,end)
+  assert.ok(start>=0 && end>start)
+  assert.match(block,/verifyOperatorDocument/)
+  assert.doesNotMatch(block,/previewOperatorDocument/)
+})
+
+test('preview and verification remain separate HTTP routes',()=>{
+  assert.match(routes,/router\.get\([\s\S]*\/:id\/documents\/:documentId\/preview/)
+  assert.match(routes,/router\.patch\([\s\S]*\/:id\/documents\/:documentId\/verification/)
+})

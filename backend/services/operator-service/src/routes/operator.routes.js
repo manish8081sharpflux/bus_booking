@@ -149,6 +149,5 @@ router.patch(
   requireAuth,
   requireRoles('SUPER_ADMIN'),
   verifyOperatorDocument,
-  previewOperatorDocument,
 );
 module.exports = router;
