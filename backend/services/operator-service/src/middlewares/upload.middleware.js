@@ -100,26 +100,76 @@ const operatorFileFilter = (
   file,
   callback,
 ) => {
+  const extension =
+    path
+      .extname(
+        String(
+          file.originalname || '',
+        ),
+      )
+      .replace(
+        /^\./,
+        '',
+      )
+      .toLowerCase()
+
   if (
-    operatorAllowedMimeTypes.includes(
+    !extension
+  ) {
+    callback(
+      new Error(
+        `${file.fieldname}: file extension is required.`,
+      ),
+    )
+    return
+  }
+
+  if (
+    !operatorAllowedMimeTypes.includes(
       file.mimetype,
     )
   ) {
     callback(
-      null,
-      true,
+      new Error(
+        `${file.fieldname}: only PDF, JPG and PNG files are allowed.`,
+      ),
     )
+    return
+  }
 
+  const operatorAllowedExtensionsByMime = {
+    'application/pdf': [
+      'pdf',
+    ],
+    'image/jpeg': [
+      'jpg',
+      'jpeg',
+    ],
+    'image/png': [
+      'png',
+    ],
+  }
+
+  if (
+    !operatorAllowedExtensionsByMime[
+      file.mimetype
+    ]?.includes(
+      extension,
+    )
+  ) {
+    callback(
+      new Error(
+        `${file.fieldname}: file extension does not match its MIME type.`,
+      ),
+    )
     return
   }
 
   callback(
-    new Error(
-      'Only PDF, JPG and PNG files are allowed.',
-    ),
+    null,
+    true,
   )
 }
-
 const operatorUpload =
   multer({
     storage:
@@ -136,7 +186,7 @@ const operatorUpload =
       operatorFileFilter,
   })
 
-const operatorDocumentUpload =
+const operatorDocumentUploadBase =
   operatorUpload.fields([
     {
       name:
@@ -730,6 +780,93 @@ const busDocumentUpload = (
       }
 
       validateUploadedBusSignatures(
+        req,
+        res,
+        next,
+      )
+    },
+  )
+}
+const getUploadedOperatorFiles = (
+  req,
+) =>
+  Object
+    .values(
+      req.files || {},
+    )
+    .flat()
+    .filter(Boolean)
+
+const validateUploadedOperatorSignatures = (
+  req,
+  res,
+  next,
+) => {
+  const files =
+    getUploadedOperatorFiles(
+      req,
+    )
+
+  const invalidFile =
+    files.find(
+      (
+        file,
+      ) =>
+        !hasExpectedFileSignature(
+          file,
+        ),
+    )
+
+  if (
+    !invalidFile
+  ) {
+    next()
+    return
+  }
+
+  removeUploadedFiles(
+    files,
+  )
+
+  const error =
+    new Error(
+      `${invalidFile.fieldname}: uploaded file content does not match the declared file type.`,
+    )
+
+  error.status = 422
+
+  next(
+    error,
+  )
+}
+
+const operatorDocumentUpload = (
+  req,
+  res,
+  next,
+) => {
+  operatorDocumentUploadBase(
+    req,
+    res,
+    (
+      error,
+    ) => {
+      if (
+        error
+      ) {
+        removeUploadedFiles(
+          getUploadedOperatorFiles(
+            req,
+          ),
+        )
+
+        next(
+          error,
+        )
+        return
+      }
+
+      validateUploadedOperatorSignatures(
         req,
         res,
         next,
