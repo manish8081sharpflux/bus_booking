@@ -12,6 +12,7 @@ const {
   resubmitBus,
   setBusOperationalStatus,
   updateBusDetails,
+  renewBusCompliance,
 } = require(
   '../services/bus.service',
 )
@@ -1716,6 +1717,96 @@ const getBus =
     }
   }
 
+const renewCompliance = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const parsedCompliance =
+      parseJsonField(
+        req.body?.compliance,
+        req.body?.compliance,
+      )
+
+    const {
+      errors,
+      compliance,
+    } = validateCompliance(
+      parsedCompliance,
+    )
+
+    if (Object.keys(errors).length > 0) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Please correct the compliance details.',
+        errors,
+      })
+    }
+
+    const fileMap = [
+      ['rcDocument', 'RC'],
+      ['insuranceDocument', 'INSURANCE'],
+      ['permitDocument', 'PERMIT'],
+      ['fitnessDocument', 'FITNESS'],
+      ['pucDocument', 'PUC'],
+    ]
+
+    const documents =
+      fileMap
+        .map(([field, type]) =>
+          createDocumentRecord(
+            getUploadedFile(
+              req.files,
+              field,
+            ),
+            type,
+          ),
+        )
+        .filter(Boolean)
+
+    if (documents.length === 0) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Upload at least one renewed compliance document.',
+      })
+    }
+
+    const result =
+      await renewBusCompliance({
+        busId: req.params.id,
+        operatorId: req.operatorId,
+        compliance,
+        documents,
+      })
+
+    return res.json({
+      success: true,
+      message:
+        'Compliance details updated and sent for administrator verification.',
+      ...result,
+    })
+  } catch (error) {
+    if (
+      error?.code ===
+      'BUS_COMPLIANCE_RENEWAL_BLOCKED'
+    ) {
+      return res.status(
+        error.status || 409,
+      ).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        blockingTrips:
+          error.blockingTrips || [],
+      })
+    }
+
+    next(error)
+  }
+}
 const editBusDetails = async (
   req,
   res,
@@ -1889,6 +1980,7 @@ const changeOperationalStatus = async (
  */
 
 module.exports = {
+  renewCompliance,
   editBusDetails,
   changeOperationalStatus,
   addBus,

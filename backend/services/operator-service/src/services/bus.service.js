@@ -1081,6 +1081,235 @@ const updateBusDetails = async ({
   }
 }
 
+const renewBusCompliance = async ({
+  busId,
+  operatorId,
+  compliance,
+  documents = [],
+}) => {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const bus = (
+      await client.query(
+        `SELECT id, operator_id, operational_status
+         FROM buses
+         WHERE id = $1::uuid
+           AND operator_id = $2::uuid
+         FOR UPDATE`,
+        [busId, operatorId],
+      )
+    ).rows[0]
+
+    if (!bus) {
+      throw Object.assign(
+        new Error('Bus not found for this operator.'),
+        { status: 404 },
+      )
+    }
+
+    const blockingTrips =
+      await getBlockingTripsForBus(
+        busId,
+        client,
+      )
+
+    if (
+      String(bus.operational_status || '').toUpperCase() === 'ACTIVE' ||
+      blockingTrips.length > 0
+    ) {
+      throw Object.assign(
+        new Error(
+          'Deactivate this bus and clear scheduled/running trips before renewing compliance documents.',
+        ),
+        {
+          status: 409,
+          code: 'BUS_COMPLIANCE_RENEWAL_BLOCKED',
+          blockingTrips,
+        },
+      )
+    }
+
+    const existingCompliance = (
+      await client.query(
+        `SELECT id
+         FROM bus_compliance
+         WHERE bus_id = $1::uuid
+         LIMIT 1`,
+        [busId],
+      )
+    ).rows[0]
+
+    let complianceRow
+
+    if (existingCompliance) {
+      complianceRow = (
+        await client.query(
+          `UPDATE bus_compliance
+           SET registration_date = $2::date,
+               insurance_number = $3,
+               insurance_expiry = $4::date,
+               permit_number = $5,
+               permit_expiry = $6::date,
+               fitness_certificate_number = $7,
+               fitness_expiry = $8::date,
+               puc_number = $9,
+               puc_expiry = $10::date,
+               verification_status = 'PENDING',
+               verified_by = NULL,
+               verified_at = NULL,
+               rejection_reason = NULL,
+               updated_at = NOW()
+           WHERE bus_id = $1::uuid
+           RETURNING *`,
+          [
+            busId,
+            compliance.registrationDate || null,
+            compliance.insuranceNumber,
+            compliance.insuranceExpiry,
+            compliance.permitNumber,
+            compliance.permitExpiry,
+            compliance.fitnessCertificateNumber,
+            compliance.fitnessExpiry,
+            compliance.pucNumber || null,
+            compliance.pucExpiry || null,
+          ],
+        )
+      ).rows[0]
+    } else {
+      complianceRow = (
+        await client.query(
+          `INSERT INTO bus_compliance (
+             bus_id,
+             registration_date,
+             insurance_number,
+             insurance_expiry,
+             permit_number,
+             permit_expiry,
+             fitness_certificate_number,
+             fitness_expiry,
+             puc_number,
+             puc_expiry,
+             verification_status
+           ) VALUES (
+             $1::uuid,$2::date,$3,$4::date,$5,$6::date,$7,$8::date,$9,$10::date,'PENDING'
+           ) RETURNING *`,
+          [
+            busId,
+            compliance.registrationDate || null,
+            compliance.insuranceNumber,
+            compliance.insuranceExpiry,
+            compliance.permitNumber,
+            compliance.permitExpiry,
+            compliance.fitnessCertificateNumber,
+            compliance.fitnessExpiry,
+            compliance.pucNumber || null,
+            compliance.pucExpiry || null,
+          ],
+        )
+      ).rows[0]
+    }
+
+    const replaced = []
+
+    for (const document of documents) {
+      if (!document || !document.documentType || !document.filePath) continue
+
+      const existing = (
+        await client.query(
+          `SELECT id
+           FROM bus_documents
+           WHERE bus_id = $1::uuid
+             AND document_type = $2
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [busId, document.documentType],
+        )
+      ).rows[0]
+
+      let row
+
+      if (existing) {
+        row = (
+          await client.query(
+            `UPDATE bus_documents
+             SET file_path = $3,
+                 original_file_name = $4,
+                 mime_type = $5,
+                 file_size = $6::bigint,
+                 verification_status = 'PENDING',
+                 rejection_reason = NULL,
+                 updated_at = NOW()
+             WHERE id = $1::uuid
+               AND bus_id = $2::uuid
+             RETURNING *`,
+            [
+              existing.id,
+              busId,
+              document.filePath,
+              document.originalFileName,
+              document.mimeType,
+              document.fileSize,
+            ],
+          )
+        ).rows[0]
+      } else {
+        row = (
+          await client.query(
+            `INSERT INTO bus_documents (
+               bus_id,
+               document_type,
+               file_path,
+               original_file_name,
+               mime_type,
+               file_size,
+               verification_status
+             ) VALUES ($1::uuid,$2,$3,$4,$5,$6::bigint,'PENDING')
+             RETURNING *`,
+            [
+              busId,
+              document.documentType,
+              document.filePath,
+              document.originalFileName,
+              document.mimeType,
+              document.fileSize,
+            ],
+          )
+        ).rows[0]
+      }
+
+      replaced.push(row)
+    }
+
+    await client.query(
+      `UPDATE buses
+       SET approval_status = 'PENDING_APPROVAL',
+           operational_status = 'INACTIVE',
+           status = 'PENDING_APPROVAL',
+           rejection_reason = NULL,
+           reviewed_by = NULL,
+           reviewed_at = NULL,
+           updated_at = NOW()
+       WHERE id = $1::uuid
+         AND operator_id = $2::uuid`,
+      [busId, operatorId],
+    )
+
+    await client.query('COMMIT')
+
+    return {
+      compliance: complianceRow,
+      documents: replaced,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
 /*
  * =====================================================
  * GET ALL BUSES FOR OPERATOR
@@ -1413,6 +1642,7 @@ module.exports = {
   getBlockingTripsForBus,
   setBusOperationalStatus,
   updateBusDetails,
+  renewBusCompliance,
 
   listPendingBuses: async () => {
     const { rows } = await pool.query(`

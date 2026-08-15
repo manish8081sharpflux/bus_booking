@@ -10,6 +10,7 @@ const {
   resubmit,
   changeOperationalStatus,
   editBusDetails,
+  renewCompliance,
 } = require(
   '../controllers/bus.controller',
 )
@@ -77,6 +78,17 @@ router.get(
  * =====================================================
  */
 
+router.patch(
+  '/:id/compliance-renewal',
+  requireAuth,
+  requireRoles(
+    'OPERATOR_ADMIN',
+    'MANAGER',
+  ),
+  resolveOperator,
+  busDocumentUpload,
+  renewCompliance,
+)
 router.patch(
   '/:id/details',
   requireAuth,
