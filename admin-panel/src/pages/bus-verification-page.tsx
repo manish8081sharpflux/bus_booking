@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronRight,
   FileCheck2,
+  Eye,
   RefreshCw,
   ShieldCheck,
   Wifi,
@@ -108,6 +109,43 @@ export function BusVerificationPage() {
     }
   }
 
+  async function previewDocument(documentId: string) {
+    if (!selected) return;
+
+    try {
+      setMessage('');
+      const token = authHelper.getAuth()?.access_token;
+      const response = await fetch(
+        `${API}/buses/${selected.id}/documents/${documentId}/file`,
+        {
+          headers: token
+            ? { Authorization: `Bearer ${token}` }
+            : {},
+        },
+      );
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        const body = contentType.includes('application/json')
+          ? await response.json()
+          : { message: await response.text() };
+        throw new Error(body.message || 'Unable to open document.');
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+
+      if (!opened) {
+        URL.revokeObjectURL(objectUrl);
+        throw new Error('Popup was blocked. Allow popups to preview this document.');
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (error) {
+      setMessage((error as Error).message);
+    }
+  }
   async function review(decision: 'APPROVE' | 'REJECT') {
     if (!selected) return;
     if (decision === 'REJECT' && !reason.trim()) {
@@ -160,9 +198,9 @@ export function BusVerificationPage() {
 
       <section className="verification-summary-grid">
         <SummaryCard icon={<ShieldCheck />} label="Pending verification" value={items.length} helper="Buses waiting for review" />
-        <SummaryCard icon={<BusFront />} label="Selected bus" value={selected ? selected.name : 'â€”'} helper={selected?.registration_number || 'Choose a bus from the queue'} />
-        <SummaryCard icon={<Armchair />} label="Seat configuration" value={selected ? `${configuredSeats}/${selected.seat_capacity}` : 'â€”'} helper={selected ? `${seatPercentage}% configured` : 'No bus selected'} />
-        <SummaryCard icon={<FileCheck2 />} label="Documents" value={selected ? documentCount : 'â€”'} helper={selected ? 'Uploaded documents' : 'No bus selected'} />
+        <SummaryCard icon={<BusFront />} label="Selected bus" value={selected ? selected.name : 'Ã¢â‚¬â€'} helper={selected?.registration_number || 'Choose a bus from the queue'} />
+        <SummaryCard icon={<Armchair />} label="Seat configuration" value={selected ? `${configuredSeats}/${selected.seat_capacity}` : 'Ã¢â‚¬â€'} helper={selected ? `${seatPercentage}% configured` : 'No bus selected'} />
+        <SummaryCard icon={<FileCheck2 />} label="Documents" value={selected ? documentCount : 'Ã¢â‚¬â€'} helper={selected ? 'Uploaded documents' : 'No bus selected'} />
       </section>
 
       <div className="verification-workspace">
@@ -174,7 +212,7 @@ export function BusVerificationPage() {
 
           <div className="verification-queue-list">
             {loading && items.length === 0 ? (
-              <div className="verification-empty">Loading pending busesâ€¦</div>
+              <div className="verification-empty">Loading pending busesÃ¢â‚¬Â¦</div>
             ) : items.length === 0 ? (
               <div className="verification-empty">
                 <CheckCircle2 />
@@ -191,8 +229,8 @@ export function BusVerificationPage() {
                 <span className="verification-bus-icon"><BusFront /></span>
                 <span className="verification-bus-copy">
                   <span className="verification-bus-title-line"><strong>{bus.name}</strong><em>Pending</em></span>
-                  <span>{bus.registration_number} Â· {bus.operator_name}</span>
-                  <small>{bus.bus_type} Â· {bus.configured_seats}/{bus.seat_capacity} seats</small>
+                  <span>{bus.registration_number} Ã‚Â· {bus.operator_name}</span>
+                  <small>{bus.bus_type} Ã‚Â· {bus.configured_seats}/{bus.seat_capacity} seats</small>
                 </span>
                 <ChevronRight />
               </button>
@@ -212,7 +250,7 @@ export function BusVerificationPage() {
               <div className="verification-review-heading">
                 <div>
                   <div className="verification-review-title"><h2>{selected.name}</h2><span>Pending verification</span></div>
-                  <p>{selected.registration_number} Â· {selected.operator_name}</p>
+                  <p>{selected.registration_number} Ã‚Â· {selected.operator_name}</p>
                 </div>
               </div>
 
@@ -260,6 +298,15 @@ export function BusVerificationPage() {
                       <span className="verification-doc-icon"><FileCheck2 /></span>
                       <span className="verification-doc-copy"><strong>{humanize(doc.document_type)}</strong><small>{doc.original_file_name}</small></span>
                       <span className={`verification-doc-status status-${doc.verification_status?.toLowerCase()}`}>{doc.verification_status}</span>
+                      <button
+                        type="button"
+                        className="verification-doc-preview"
+                        onClick={() => void previewDocument(doc.id)}
+                        title="Preview document"
+                      >
+                        <Eye />
+                        Preview
+                      </button>
                     </div>
                   )) : <p className="verification-muted">No documents uploaded.</p>}
                 </div>
@@ -271,7 +318,7 @@ export function BusVerificationPage() {
                   id="verification-reason"
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
-                  placeholder="Explain why the bus should be rejectedâ€¦"
+                  placeholder="Explain why the bus should be rejectedÃ¢â‚¬Â¦"
                   className="verification-reason"
                 />
               </ReviewSection>
@@ -305,7 +352,7 @@ export function BusVerificationPage() {
                 if (confirmDecision) void review(confirmDecision);
               }}
             >
-              {reviewing ? 'Processingâ€¦' : confirmDecision === 'APPROVE' ? 'Approve bus' : 'Reject bus'}
+              {reviewing ? 'ProcessingÃ¢â‚¬Â¦' : confirmDecision === 'APPROVE' ? 'Approve bus' : 'Reject bus'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -323,7 +370,7 @@ function ReviewSection({ title, trailing, children }: { title: string; trailing?
 }
 
 function Info({ label, value }: { label: string; value?: React.ReactNode }) {
-  return <div className="verification-info"><span>{label}</span><strong>{value ?? 'â€”'}</strong></div>;
+  return <div className="verification-info"><span>{label}</span><strong>{value ?? 'Ã¢â‚¬â€'}</strong></div>;
 }
 
 function humanize(value: string) {
@@ -331,7 +378,7 @@ function humanize(value: string) {
 }
 
 function formatValue(value: unknown) {
-  if (value === null || value === undefined || value === '') return 'â€”';
+  if (value === null || value === undefined || value === '') return 'Ã¢â‚¬â€';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);

@@ -600,6 +600,40 @@ const createBusWithSeats =
     }
   }
 
+const getBusDocumentForAdmin = async ({
+  busId,
+  documentId,
+}) => {
+  const { rows } = await pool.query(
+    `SELECT
+       d.id,
+       d.bus_id,
+       d.document_type,
+       d.file_path,
+       d.original_file_name,
+       d.mime_type,
+       d.file_size,
+       d.verification_status,
+       b.registration_number,
+       b.name AS bus_name
+     FROM bus_documents d
+     JOIN buses b
+       ON b.id = d.bus_id
+     WHERE d.id = $1::uuid
+       AND d.bus_id = $2::uuid
+     LIMIT 1`,
+    [documentId, busId],
+  )
+
+  if (!rows[0]) {
+    throw Object.assign(
+      new Error('Bus document not found.'),
+      { status: 404 },
+    )
+  }
+
+  return rows[0]
+}
 const getBlockingTripsForBus = async (
   busId,
   client = pool,
@@ -1639,6 +1673,7 @@ module.exports = {
   getBusDocuments,
 
   getCompleteBusById,
+  getBusDocumentForAdmin,
   getBlockingTripsForBus,
   setBusOperationalStatus,
   updateBusDetails,

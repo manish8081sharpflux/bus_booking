@@ -1,3 +1,6 @@
+const path = require('path')
+const fs = require('fs')
+
 const {
   findBusByRegistrationNumber,
   findOperatorById,
@@ -13,6 +16,7 @@ const {
   setBusOperationalStatus,
   updateBusDetails,
   renewBusCompliance,
+  getBusDocumentForAdmin,
 } = require(
   '../services/bus.service',
 )
@@ -1717,6 +1721,81 @@ const getBus =
     }
   }
 
+const previewBusDocument = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const document =
+      await getBusDocumentForAdmin({
+        busId: req.params.id,
+        documentId:
+          req.params.documentId,
+      })
+
+    const uploadRoot =
+      path.resolve(
+        process.cwd(),
+        'uploads',
+        'buses',
+      )
+
+    const candidate =
+      path.resolve(
+        String(
+          document.file_path || '',
+        ),
+      )
+
+    const insideUploadRoot =
+      candidate === uploadRoot ||
+      candidate.startsWith(
+        `${uploadRoot}${path.sep}`,
+      )
+
+    if (!insideUploadRoot) {
+      return res.status(403).json({
+        success: false,
+        message:
+          'Document path is outside the allowed upload directory.',
+      })
+    }
+
+    if (!fs.existsSync(candidate)) {
+      return res.status(404).json({
+        success: false,
+        message:
+          'Document file is missing from storage.',
+      })
+    }
+
+    res.setHeader(
+      'Content-Type',
+      document.mime_type ||
+        'application/octet-stream',
+    )
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${String(
+        document.original_file_name ||
+          'document',
+      ).replace(/["\r\n]/g, '')}"`,
+    )
+    res.setHeader(
+      'Cache-Control',
+      'private, no-store',
+    )
+    res.setHeader(
+      'X-Content-Type-Options',
+      'nosniff',
+    )
+
+    return res.sendFile(candidate)
+  } catch (error) {
+    next(error)
+  }
+}
 const renewCompliance = async (
   req,
   res,
@@ -1980,6 +2059,7 @@ const changeOperationalStatus = async (
  */
 
 module.exports = {
+  previewBusDocument,
   renewCompliance,
   editBusDetails,
   changeOperationalStatus,

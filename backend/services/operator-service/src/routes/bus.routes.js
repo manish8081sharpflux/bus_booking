@@ -10,6 +10,7 @@ const {
   resubmit,
   changeOperationalStatus,
   editBusDetails,
+  previewBusDocument,
   renewCompliance,
 } = require(
   '../controllers/bus.controller',
@@ -78,6 +79,12 @@ router.get(
  * =====================================================
  */
 
+router.get(
+  '/:id/documents/:documentId/file',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  previewBusDocument,
+)
 router.patch(
   '/:id/compliance-renewal',
   requireAuth,
