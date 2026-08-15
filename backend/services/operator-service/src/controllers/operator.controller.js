@@ -124,6 +124,38 @@ const checkMobile = async (
  * =====================================================
  */
 
+const OPERATOR_BUSINESS_BACKGROUNDS =
+  new Set([
+    'Existing Bus Operator',
+    'Travel Agency',
+    'Tour Operator',
+    'New Bus Business',
+    'Corporate Transport',
+    'School / College Transport',
+    'Other',
+  ])
+
+const parseGstRegistered = (
+  value,
+) => {
+  if (
+    value === true ||
+    value === 'true' ||
+    value === 'yes'
+  ) {
+    return true
+  }
+
+  if (
+    value === false ||
+    value === 'false' ||
+    value === 'no'
+  ) {
+    return false
+  }
+
+  return null
+}
 const registerOperator =
   async (
     req,
@@ -247,6 +279,31 @@ const registerOperator =
           })
       }
 
+      if (
+        finalTravelsName.length > 100
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Travels Name cannot exceed 100 characters.',
+          })
+      }
+
+      if (
+        !/^[a-zA-Z0-9&.\-\s]+$/.test(
+          finalTravelsName,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Travels Name contains invalid characters.',
+          })
+      }
       const normalizedOwnerName =
         String(
           ownerName || '',
@@ -266,6 +323,31 @@ const registerOperator =
           })
       }
 
+      if (
+        normalizedOwnerName.length > 80
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Owner Name cannot exceed 80 characters.',
+          })
+      }
+
+      if (
+        !/^[a-zA-Z.'\-\s]+$/.test(
+          normalizedOwnerName,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Owner Name contains invalid characters.',
+          })
+      }
       if (!businessBackground) {
         return res
           .status(400)
@@ -277,6 +359,21 @@ const registerOperator =
           })
       }
 
+      if (
+        !OPERATOR_BUSINESS_BACKGROUNDS.has(
+          String(
+            businessBackground,
+          ).trim(),
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Invalid Business Background.',
+          })
+      }
       if (
         !/^[1-9][0-9]{5}$/.test(
           String(
@@ -311,6 +408,59 @@ const registerOperator =
           })
       }
 
+      const normalizedDistrict =
+        String(
+          district || '',
+        ).trim()
+
+      const normalizedCity =
+        String(
+          city || '',
+        ).trim()
+
+      const normalizedAddress =
+        String(
+          address || '',
+        ).trim()
+
+      if (
+        normalizedDistrict.length < 2 ||
+        normalizedDistrict.length > 100
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'District must be between 2 and 100 characters.',
+          })
+      }
+
+      if (
+        normalizedCity.length < 2 ||
+        normalizedCity.length > 80
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'City must be between 2 and 80 characters.',
+          })
+      }
+
+      if (
+        normalizedAddress.length < 10 ||
+        normalizedAddress.length > 300
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Business Address must be between 10 and 300 characters.',
+          })
+      }
       /*
        * =============================
        * BANK DETAILS
@@ -408,10 +558,19 @@ const registerOperator =
        */
 
       const hasGst =
-        gstRegistered === 'yes' ||
-        gstRegistered === 'true' ||
-        gstRegistered === true
+        parseGstRegistered(
+          gstRegistered,
+        )
 
+      if (hasGst === null) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'GST registration selection is invalid.',
+          })
+      }
       let normalizedGstin = null
 
       if (hasGst) {
@@ -438,6 +597,21 @@ const registerOperator =
         }
       }
 
+      if (
+        hasGst &&
+        normalizedGstin.slice(
+          2,
+          12,
+        ) !== normalizedPan
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'GSTIN does not match the submitted PAN Number.',
+          })
+      }
       const normalizedLegalName =
         String(
           legalBusinessName || '',
