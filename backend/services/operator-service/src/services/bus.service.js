@@ -1667,10 +1667,99 @@ module.exports = {
       if (!approved && !String(reason || '').trim()) {
         throw Object.assign(new Error('A rejection reason is required.'), { status: 422 })
       }
-      const status = approved ? 'ACTIVE' : 'REJECTED'
+      if (approved) {
+        const compliance = (
+          await client.query(
+            `SELECT
+               insurance_expiry,
+               permit_expiry,
+               fitness_expiry,
+               puc_expiry
+             FROM bus_compliance
+             WHERE bus_id = $1::uuid
+             LIMIT 1`,
+            [busId],
+          )
+        ).rows[0]
+
+        if (!compliance) {
+          throw Object.assign(
+            new Error(
+              'Bus compliance information is required before approval.',
+            ),
+            {
+              status: 409,
+              code: 'BUS_COMPLIANCE_MISSING',
+            },
+          )
+        }
+
+        const today = new Date(
+          new Date().toISOString().slice(0, 10),
+        ).getTime()
+
+        const expired = [
+          ['insurance', compliance.insurance_expiry],
+          ['permit', compliance.permit_expiry],
+          ['fitness', compliance.fitness_expiry],
+          ['PUC', compliance.puc_expiry],
+        ].filter(
+          ([, value]) =>
+            value &&
+            new Date(value).getTime() < today,
+        )
+
+        if (expired.length > 0) {
+          throw Object.assign(
+            new Error(
+              `Cannot approve this bus because ${expired
+                .map(([name]) => name)
+                .join(', ')} compliance has expired.`,
+            ),
+            {
+              status: 409,
+              code: 'BUS_COMPLIANCE_EXPIRED',
+            },
+          )
+        }
+
+        const documentCheck = (
+          await client.query(
+            `SELECT
+               COUNT(*)::int AS total,
+               COUNT(*) FILTER (
+                 WHERE document_type IN (
+                   'RC',
+                   'INSURANCE',
+                   'PERMIT',
+                   'FITNESS'
+                 )
+               )::int AS required_count
+             FROM bus_documents
+             WHERE bus_id = $1::uuid`,
+            [busId],
+          )
+        ).rows[0]
+
+        if (
+          Number(documentCheck.total) === 0 ||
+          Number(documentCheck.required_count) < 4
+        ) {
+          throw Object.assign(
+            new Error(
+              'RC, insurance, permit and fitness documents are required before approval.',
+            ),
+            {
+              status: 409,
+              code: 'BUS_REQUIRED_DOCUMENTS_MISSING',
+            },
+          )
+        }
+      }
+      const status = approved ? 'INACTIVE' : 'REJECTED'
       const { rows } = await client.query(`
         UPDATE buses SET status = $2, approval_status = $5,
-          operational_status = CASE WHEN $5 = 'APPROVED' THEN 'ACTIVE' ELSE 'INACTIVE' END,
+          operational_status = 'INACTIVE',
           rejection_reason = $3, reviewed_by = $4::uuid,
           reviewed_at = NOW(), updated_at = NOW() WHERE id = $1::uuid RETURNING *
       `, [busId, status, approved ? null : String(reason).trim(), reviewerId || null, approved ? 'APPROVED' : 'REJECTED'])

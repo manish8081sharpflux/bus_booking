@@ -127,7 +127,7 @@ export function BusVerificationPage() {
       setSelected(null);
       setReason('');
       setConfirmDecision(null);
-      setMessage(decision === 'APPROVE' ? 'Bus approved and activated successfully.' : 'Bus rejected successfully.');
+      setMessage(decision === 'APPROVE' ? 'Bus approved successfully. The operator can activate it after verification.' : 'Bus rejected successfully.');
       await load();
     } catch (error) {
       setMessage((error as Error).message);
@@ -160,9 +160,9 @@ export function BusVerificationPage() {
 
       <section className="verification-summary-grid">
         <SummaryCard icon={<ShieldCheck />} label="Pending verification" value={items.length} helper="Buses waiting for review" />
-        <SummaryCard icon={<BusFront />} label="Selected bus" value={selected ? selected.name : '—'} helper={selected?.registration_number || 'Choose a bus from the queue'} />
-        <SummaryCard icon={<Armchair />} label="Seat configuration" value={selected ? `${configuredSeats}/${selected.seat_capacity}` : '—'} helper={selected ? `${seatPercentage}% configured` : 'No bus selected'} />
-        <SummaryCard icon={<FileCheck2 />} label="Documents" value={selected ? documentCount : '—'} helper={selected ? 'Uploaded documents' : 'No bus selected'} />
+        <SummaryCard icon={<BusFront />} label="Selected bus" value={selected ? selected.name : 'â€”'} helper={selected?.registration_number || 'Choose a bus from the queue'} />
+        <SummaryCard icon={<Armchair />} label="Seat configuration" value={selected ? `${configuredSeats}/${selected.seat_capacity}` : 'â€”'} helper={selected ? `${seatPercentage}% configured` : 'No bus selected'} />
+        <SummaryCard icon={<FileCheck2 />} label="Documents" value={selected ? documentCount : 'â€”'} helper={selected ? 'Uploaded documents' : 'No bus selected'} />
       </section>
 
       <div className="verification-workspace">
@@ -174,7 +174,7 @@ export function BusVerificationPage() {
 
           <div className="verification-queue-list">
             {loading && items.length === 0 ? (
-              <div className="verification-empty">Loading pending buses…</div>
+              <div className="verification-empty">Loading pending busesâ€¦</div>
             ) : items.length === 0 ? (
               <div className="verification-empty">
                 <CheckCircle2 />
@@ -191,8 +191,8 @@ export function BusVerificationPage() {
                 <span className="verification-bus-icon"><BusFront /></span>
                 <span className="verification-bus-copy">
                   <span className="verification-bus-title-line"><strong>{bus.name}</strong><em>Pending</em></span>
-                  <span>{bus.registration_number} · {bus.operator_name}</span>
-                  <small>{bus.bus_type} · {bus.configured_seats}/{bus.seat_capacity} seats</small>
+                  <span>{bus.registration_number} Â· {bus.operator_name}</span>
+                  <small>{bus.bus_type} Â· {bus.configured_seats}/{bus.seat_capacity} seats</small>
                 </span>
                 <ChevronRight />
               </button>
@@ -212,7 +212,7 @@ export function BusVerificationPage() {
               <div className="verification-review-heading">
                 <div>
                   <div className="verification-review-title"><h2>{selected.name}</h2><span>Pending verification</span></div>
-                  <p>{selected.registration_number} · {selected.operator_name}</p>
+                  <p>{selected.registration_number} Â· {selected.operator_name}</p>
                 </div>
               </div>
 
@@ -271,14 +271,14 @@ export function BusVerificationPage() {
                   id="verification-reason"
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
-                  placeholder="Explain why the bus should be rejected…"
+                  placeholder="Explain why the bus should be rejectedâ€¦"
                   className="verification-reason"
                 />
               </ReviewSection>
 
               <div className="verification-actions">
                 <button className="verification-reject" onClick={() => setConfirmDecision('REJECT')} disabled={reviewing} type="button"><X /> Reject bus</button>
-                <button className="verification-approve" onClick={() => setConfirmDecision('APPROVE')} disabled={reviewing} type="button"><Check /> Approve & activate</button>
+                <button className="verification-approve" onClick={() => setConfirmDecision('APPROVE')} disabled={reviewing} type="button"><Check /> Approve bus</button>
               </div>
             </>
           )}
@@ -291,7 +291,7 @@ export function BusVerificationPage() {
             <AlertDialogTitle>{confirmDecision === 'APPROVE' ? 'Approve this bus?' : 'Reject this bus?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmDecision === 'APPROVE'
-                ? `${selected?.name || 'This bus'} will be activated after approval.`
+                ? `${selected?.name || 'This bus'} will be approved and kept inactive until the operator activates it.`
                 : `This will reject ${selected?.name || 'this bus'} and keep it inactive.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -305,7 +305,7 @@ export function BusVerificationPage() {
                 if (confirmDecision) void review(confirmDecision);
               }}
             >
-              {reviewing ? 'Processing…' : confirmDecision === 'APPROVE' ? 'Approve & activate' : 'Reject bus'}
+              {reviewing ? 'Processingâ€¦' : confirmDecision === 'APPROVE' ? 'Approve bus' : 'Reject bus'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -323,7 +323,7 @@ function ReviewSection({ title, trailing, children }: { title: string; trailing?
 }
 
 function Info({ label, value }: { label: string; value?: React.ReactNode }) {
-  return <div className="verification-info"><span>{label}</span><strong>{value ?? '—'}</strong></div>;
+  return <div className="verification-info"><span>{label}</span><strong>{value ?? 'â€”'}</strong></div>;
 }
 
 function humanize(value: string) {
@@ -331,7 +331,7 @@ function humanize(value: string) {
 }
 
 function formatValue(value: unknown) {
-  if (value === null || value === undefined || value === '') return '—';
+  if (value === null || value === undefined || value === '') return 'â€”';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
