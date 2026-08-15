@@ -142,6 +142,8 @@ async function processPaymentCaptured(client, webhookEventId, entity, fullEvent)
       `UPDATE payments
        SET provider_payment_id=COALESCE(provider_payment_id,$2),
            status='CAPTURED',
+           failure_code=NULL,
+           failure_message=NULL,
            method=COALESCE($3,method),
            provider_payload=provider_payload || $4::jsonb,
            updated_at=NOW()
