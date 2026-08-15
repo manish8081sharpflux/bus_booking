@@ -8,34 +8,49 @@ async function processRefunds(){
 
   try{
     const {rows}=await pool.query(
-      `SELECT
-         r.id,
-         r.payment_id,
-         r.amount,
-         r.retry_count,
+      `WITH candidates AS (
+         SELECT r.id
+         FROM refunds r
+         WHERE r.status='PENDING'
+           AND (
+             r.next_retry_at IS NULL
+             OR r.next_retry_at<=NOW()
+           )
+           AND r.retry_count<8
+         ORDER BY r.created_at
+         FOR UPDATE SKIP LOCKED
+         LIMIT 20
+       ),
+       claimed AS (
+         UPDATE refunds r
+         SET last_attempt_at=NOW(),
+             retry_count=r.retry_count+1,
+             next_retry_at=NOW()+INTERVAL '5 minutes',
+             updated_at=NOW()
+         FROM candidates c
+         WHERE r.id=c.id
+         RETURNING
+           r.id,
+           r.payment_id,
+           r.amount,
+           r.retry_count
+       )
+       SELECT
+         c.id,
+         c.payment_id,
+         c.amount,
+         c.retry_count,
          p.provider_payment_id,
          p.amount payment_amount,
          b.booking_reference
-       FROM refunds r
-       JOIN payments p ON p.id=r.payment_id
+       FROM claimed c
+       JOIN payments p ON p.id=c.payment_id
        LEFT JOIN bookings b ON b.id=p.booking_id
-       WHERE r.status='PENDING'
-         AND (r.next_retry_at IS NULL OR r.next_retry_at<=NOW())
-         AND r.retry_count<8
-       ORDER BY r.created_at
-       LIMIT 20`,
+       ORDER BY c.id`,
     )
 
     for(const item of rows){
       try{
-        await pool.query(
-          `UPDATE refunds
-           SET last_attempt_at=NOW(),
-               retry_count=retry_count+1
-           WHERE id=$1::uuid`,
-          [item.id],
-        )
-
         const result=await paymentProvider.refund({
           paymentId:item.provider_payment_id,
           amount:item.amount,
@@ -63,7 +78,8 @@ async function processRefunds(){
                  failure_message=NULL,
                  next_retry_at=NULL,
                  completed_at=CASE
-                   WHEN $3='REFUNDED' THEN COALESCE(completed_at,NOW())
+                   WHEN $3='REFUNDED'
+                     THEN COALESCE(completed_at,NOW())
                    ELSE completed_at
                  END,
                  updated_at=NOW()
