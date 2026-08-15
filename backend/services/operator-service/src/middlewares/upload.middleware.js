@@ -1,6 +1,8 @@
 const multer =
   require('multer')
 
+const crypto =
+  require('crypto')
 const path =
   require('path')
 
@@ -34,27 +36,21 @@ const createFileName = (
   file,
 ) => {
   const uniqueName =
-    `${Date.now()}-${Math.round(
-      Math.random() *
-        1e9,
-    )}`
+    crypto.randomUUID()
 
   const extension =
-    path.extname(
-      file.originalname,
-    )
+    path
+      .extname(
+        String(
+          file.originalname || '',
+        ),
+      )
+      .toLowerCase()
 
   return (
     `${file.fieldname}-${uniqueName}${extension}`
   )
 }
-
-/*
- * =====================================================
- * EXISTING OPERATOR UPLOAD
- * =====================================================
- */
-
 const operatorUploadDirectory =
   path.join(
     process.cwd(),
@@ -429,7 +425,7 @@ const busUpload =
       busFileFilter,
   })
 
-const busDocumentUpload =
+const busDocumentUploadBase =
   busUpload.fields([
     {
       name:
@@ -486,6 +482,261 @@ const busDocumentUpload =
  * =====================================================
  */
 
+const getUploadedBusFiles = (
+  req,
+) =>
+  Object
+    .values(
+      req.files || {},
+    )
+    .flat()
+    .filter(Boolean)
+
+const removeUploadedFiles = (
+  files,
+) => {
+  for (
+    const file of
+    files || []
+  ) {
+    try {
+      if (
+        file?.path &&
+        fs.existsSync(
+          file.path,
+        )
+      ) {
+        fs.unlinkSync(
+          file.path,
+        )
+      }
+    } catch {
+      // Best-effort cleanup only.
+    }
+  }
+}
+
+const hasExpectedFileSignature = (
+  file,
+) => {
+  if (
+    !file?.path ||
+    !file?.mimetype
+  ) {
+    return false
+  }
+
+  let descriptor
+
+  try {
+    descriptor =
+      fs.openSync(
+        file.path,
+        'r',
+      )
+
+    const buffer =
+      Buffer.alloc(
+        16,
+      )
+
+    const bytesRead =
+      fs.readSync(
+        descriptor,
+        buffer,
+        0,
+        buffer.length,
+        0,
+      )
+
+    if (
+      bytesRead <= 0
+    ) {
+      return false
+    }
+
+    if (
+      file.mimetype ===
+      'application/pdf'
+    ) {
+      return (
+        buffer
+          .subarray(
+            0,
+            5,
+          )
+          .toString(
+            'ascii',
+          ) ===
+        '%PDF-'
+      )
+    }
+
+    if (
+      file.mimetype ===
+      'image/jpeg'
+    ) {
+      return (
+        bytesRead >= 3 &&
+        buffer[0] === 0xff &&
+        buffer[1] === 0xd8 &&
+        buffer[2] === 0xff
+      )
+    }
+
+    if (
+      file.mimetype ===
+      'image/png'
+    ) {
+      const pngSignature =
+        Buffer.from([
+          0x89,
+          0x50,
+          0x4e,
+          0x47,
+          0x0d,
+          0x0a,
+          0x1a,
+          0x0a,
+        ])
+
+      return (
+        bytesRead >=
+          pngSignature.length &&
+        buffer
+          .subarray(
+            0,
+            pngSignature.length,
+          )
+          .equals(
+            pngSignature,
+          )
+      )
+    }
+
+    if (
+      file.mimetype ===
+      'image/webp'
+    ) {
+      return (
+        bytesRead >= 12 &&
+        buffer
+          .subarray(
+            0,
+            4,
+          )
+          .toString(
+            'ascii',
+          ) ===
+          'RIFF' &&
+        buffer
+          .subarray(
+            8,
+            12,
+          )
+          .toString(
+            'ascii',
+          ) ===
+          'WEBP'
+      )
+    }
+
+    return false
+  } catch {
+    return false
+  } finally {
+    if (
+      descriptor !==
+      undefined
+    ) {
+      try {
+        fs.closeSync(
+          descriptor,
+        )
+      } catch {
+        // no-op
+      }
+    }
+  }
+}
+
+const validateUploadedBusSignatures = (
+  req,
+  res,
+  next,
+) => {
+  const files =
+    getUploadedBusFiles(
+      req,
+    )
+
+  const invalidFile =
+    files.find(
+      (
+        file,
+      ) =>
+        !hasExpectedFileSignature(
+          file,
+        ),
+    )
+
+  if (
+    !invalidFile
+  ) {
+    next()
+    return
+  }
+
+  removeUploadedFiles(
+    files,
+  )
+
+  const error =
+    new Error(
+      `${invalidFile.fieldname}: uploaded file content does not match the declared file type.`,
+    )
+
+  error.status = 422
+
+  next(
+    error,
+  )
+}
+
+const busDocumentUpload = (
+  req,
+  res,
+  next,
+) => {
+  busDocumentUploadBase(
+    req,
+    res,
+    (
+      error,
+    ) => {
+      if (
+        error
+      ) {
+        removeUploadedFiles(
+          getUploadedBusFiles(
+            req,
+          ),
+        )
+
+        next(
+          error,
+        )
+        return
+      }
+
+      validateUploadedBusSignatures(
+        req,
+        res,
+        next,
+      )
+    },
+  )
+}
 module.exports = {
   operatorDocumentUpload,
   busDocumentUpload,
