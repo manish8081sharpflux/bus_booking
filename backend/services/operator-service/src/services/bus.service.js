@@ -634,6 +634,40 @@ const getBusDocumentForAdmin = async ({
 
   return rows[0]
 }
+const getBusDocumentForOperator = async ({
+  busId,
+  documentId,
+  operatorId,
+}) => {
+  const { rows } = await pool.query(
+    `SELECT
+       d.id,
+       d.bus_id,
+       d.document_type,
+       d.file_path,
+       d.original_file_name,
+       d.mime_type,
+       d.file_size,
+       d.verification_status,
+       d.rejection_reason
+     FROM bus_documents d
+     JOIN buses b ON b.id = d.bus_id
+     WHERE d.id = $1::uuid
+       AND d.bus_id = $2::uuid
+       AND b.operator_id = $3::uuid
+     LIMIT 1`,
+    [documentId, busId, operatorId],
+  )
+
+  if (!rows[0]) {
+    throw Object.assign(
+      new Error('Bus document not found for this operator.'),
+      { status: 404 },
+    )
+  }
+
+  return rows[0]
+}
 const getBlockingTripsForBus = async (
   busId,
   client = pool,
@@ -1674,6 +1708,7 @@ module.exports = {
 
   getCompleteBusById,
   getBusDocumentForAdmin,
+  getBusDocumentForOperator,
   getBlockingTripsForBus,
   setBusOperationalStatus,
   updateBusDetails,

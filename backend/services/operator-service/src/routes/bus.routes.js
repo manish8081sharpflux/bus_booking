@@ -11,6 +11,7 @@ const {
   changeOperationalStatus,
   editBusDetails,
   previewBusDocument,
+  previewOperatorBusDocument,
   renewCompliance,
 } = require(
   '../controllers/bus.controller',
@@ -79,6 +80,13 @@ router.get(
  * =====================================================
  */
 
+router.get(
+  '/:id/documents/:documentId/operator-file',
+  requireAuth,
+  requireRoles('OPERATOR_ADMIN','OPERATOR_STAFF','MANAGER'),
+  resolveOperator,
+  previewOperatorBusDocument,
+)
 router.get(
   '/:id/documents/:documentId/file',
   requireAuth,

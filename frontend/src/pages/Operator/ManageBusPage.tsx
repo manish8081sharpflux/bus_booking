@@ -80,6 +80,9 @@ interface BusDocument {
   original_name?: string;
   file_url?: string;
   url?: string;
+  original_file_name?: string;
+  verification_status?: string;
+  rejection_reason?: string;
 }
 
 interface BusData {
@@ -290,6 +293,35 @@ export default function ManageBusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busId]);
 
+  const previewDocument = async (documentId: string) => {
+    try {
+      setError('');
+      const response = await fetch(
+        `${API}/buses/${encodeURIComponent(busId)}/documents/${encodeURIComponent(documentId)}/operator-file`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        const body = contentType.includes('application/json')
+          ? await response.json()
+          : { message: await response.text() };
+        throw new Error(body.message || 'Unable to open document.');
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const opened = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        URL.revokeObjectURL(objectUrl);
+        throw new Error('Popup was blocked. Allow popups to preview this document.');
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Unable to open document.';
+      setError(message);
+      setToastColor('danger');
+      setToastMessage(message);
+    }
+  };
   const changeLifecycleStatus = async () => {
     if (!bus || lifecycleBusy) return;
 
@@ -787,7 +819,7 @@ export default function ManageBusPage() {
                       <p>
                         {bus.rejection_reason ||
                           bus.review_reason ||
-                          'Trips can be created after an administrator activates this bus.'}
+                          'Trips can be created after administrator approval and operator activation.'}
                       </p>
                     </div>
 
@@ -1136,123 +1168,76 @@ export default function ManageBusPage() {
                   {/* DOCUMENTS */}
 
                   <section className="manage-bus-card full">
-
                     <div className="manage-bus-card-title">
-
                       <div className="manage-bus-card-icon blue">
-                        <IonIcon
-                          icon={
-                            documentTextOutline
-                          }
-                        />
+                        <IonIcon icon={documentTextOutline} />
                       </div>
-
                       <div>
-                        <h3>
-                          Documents & photos
-                        </h3>
-
-                        <p>
-                          Files submitted for
-                          administrator
-                          verification
-                        </p>
+                        <h3>Documents & photos</h3>
+                        <p>Files submitted for administrator verification</p>
                       </div>
-
                     </div>
 
-                    {Array.isArray(
-                      bus.documents
-                    ) &&
-                    bus.documents.length >
-                      0 ? (
+                    {Array.isArray(bus.documents) && bus.documents.length > 0 ? (
                       <div className="manage-bus-documents">
+                        {bus.documents.map((document, index) => {
+                          const verificationStatus = String(
+                            document.verification_status || 'PENDING'
+                          ).toUpperCase();
 
-                        {bus.documents.map(
-                          (
-                            document,
-                            index
-                          ) => {
-                            const fileUrl =
-                              document.file_url ||
-                              document.url;
+                          return (
+                            <article key={document.id || index}>
+                              <div className="manage-bus-document-icon">
+                                <IonIcon icon={documentTextOutline} />
+                              </div>
 
-                            return (
-                              <article
-                                key={
-                                  document.id ||
-                                  index
-                                }
-                              >
-                                <div className="manage-bus-document-icon">
-                                  <IonIcon
-                                    icon={
-                                      documentTextOutline
-                                    }
-                                  />
+                              <div className="manage-bus-document-copy">
+                                <strong>
+                                  {label(
+                                    document.document_type ||
+                                      document.type ||
+                                      `Document ${index + 1}`
+                                  )}
+                                </strong>
+                                <span>
+                                  {document.original_file_name ||
+                                    document.file_name ||
+                                    document.original_name ||
+                                    'Uploaded file'}
+                                </span>
+                                <div className="manage-bus-document-meta">
+                                  <em className={`status-${verificationStatus.toLowerCase()}`}>
+                                    {label(verificationStatus)}
+                                  </em>
+                                  {document.rejection_reason && (
+                                    <small>{document.rejection_reason}</small>
+                                  )}
                                 </div>
+                              </div>
 
-                                <div className="manage-bus-document-copy">
-                                  <strong>
-                                    {label(
-                                      document.document_type ||
-                                        document.type ||
-                                        `Document ${
-                                          index +
-                                          1
-                                        }`
-                                    )}
-                                  </strong>
-
-                                  <span>
-                                    {document.file_name ||
-                                      document.original_name ||
-                                      'Uploaded file'}
-                                  </span>
-                                </div>
-
-                                {fileUrl && (
-                                  <a
-                                    href={
-                                      fileUrl
-                                    }
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    View
-                                  </a>
-                                )}
-
-                              </article>
-                            );
-                          }
-                        )}
-
+                              {document.id && (
+                                <button
+                                  type="button"
+                                  className="manage-bus-document-view"
+                                  onClick={() => void previewDocument(document.id as string)}
+                                >
+                                  View
+                                </button>
+                              )}
+                            </article>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="manage-bus-empty">
-                        <IonIcon
-                          icon={
-                            documentTextOutline
-                          }
-                        />
-
+                        <IonIcon icon={documentTextOutline} />
                         <div>
-                          <strong>
-                            No documents
-                          </strong>
-
-                          <p>
-                            No uploaded files
-                            were returned for
-                            this bus.
-                          </p>
+                          <strong>No documents</strong>
+                          <p>No uploaded files were returned for this bus.</p>
                         </div>
                       </div>
                     )}
-
                   </section>
-
                 </div>
               </>
             )}
