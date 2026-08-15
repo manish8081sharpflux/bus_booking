@@ -2266,13 +2266,118 @@ module.exports = {
   listPending: async (req, res, next) => {
     try { res.json({ success: true, buses: await listPendingBuses() }) } catch (error) { next(error) }
   },
-  review: async (req, res, next) => {
+  review: async (
+    req,
+    res,
+    next,
+  ) => {
     try {
-      const approved = req.body.decision === 'APPROVE'
-      if (!approved && req.body.decision !== 'REJECT') return res.status(422).json({ success: false, message: 'Decision must be APPROVE or REJECT.' })
-      const bus = await reviewBus({ busId: req.params.id, approved, reason: req.body.reason, reviewerId: req.auth?.platformUserId || req.auth?.userId || null })
-      res.json({ success: true, message: approved ? 'Bus approved.' : 'Bus rejected.', bus })
-    } catch (error) { next(error) }
+      const decision =
+        String(
+          req.body?.decision ||
+          '',
+        )
+          .trim()
+          .toUpperCase()
+
+      if (
+        ![
+          'APPROVE',
+          'REJECT',
+        ].includes(
+          decision,
+        )
+      ) {
+        return res.status(422).json({
+          success: false,
+          message:
+            'Decision must be APPROVE or REJECT.',
+        })
+      }
+
+      const reason =
+        String(
+          req.body?.reason ||
+          '',
+        )
+          .replace(
+            /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,
+            '',
+          )
+          .trim()
+          .replace(
+            /\s+/g,
+            ' ',
+          )
+          .slice(
+            0,
+            500,
+          )
+
+      if (
+        decision ===
+          'REJECT' &&
+        reason.length < 5
+      ) {
+        return res.status(422).json({
+          success: false,
+          message:
+            'Rejection reason must contain at least 5 meaningful characters.',
+          errors: {
+            reason:
+              'Enter at least 5 meaningful characters.',
+          },
+        })
+      }
+
+      if (
+        decision ===
+          'APPROVE' &&
+        reason
+      ) {
+        return res.status(422).json({
+          success: false,
+          message:
+            'A rejection reason cannot be supplied when approving a bus.',
+          errors: {
+            reason:
+              'Remove the rejection reason before approving.',
+          },
+        })
+      }
+
+      const approved =
+        decision ===
+        'APPROVE'
+
+      const bus =
+        await reviewBus({
+          busId:
+            req.params.id,
+          approved,
+          reason:
+            approved
+              ? null
+              : reason,
+          reviewerId:
+            req.auth
+              ?.platformUserId ||
+            req.auth
+              ?.userId ||
+            null,
+        })
+
+      return res.json({
+        success: true,
+        message:
+          approved
+            ? 'Bus approved.'
+            : 'Bus rejected.',
+        bus,
+      })
+    } catch (error) {
+      next(error)
+    }
   },
   __test: { validateBus, validateSeats, normalizeRegistrationNumber },
 
