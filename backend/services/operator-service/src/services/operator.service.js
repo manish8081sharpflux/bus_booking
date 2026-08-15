@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      Ã¢â€ â€œ
+ *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
  * operators
- *      Ã¢â€ â€œ
+ *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
  * operator_bank_details
- *      Ã¢â€ â€œ
+ *      ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Å“
  * operator_documents
  * =====================================================
  */
@@ -339,7 +339,8 @@ const createOperatorApplication = async (
           bank_name,
           account_number,
           ifsc_code,
-          branch_name
+          branch_name,
+          account_type
         )
         VALUES (
           $1,
@@ -347,7 +348,8 @@ const createOperatorApplication = async (
           $3,
           $4,
           $5,
-          $6
+          $6,
+          $7
         )
       `,
       [
@@ -362,6 +364,8 @@ const createOperatorApplication = async (
         data.ifscCode,
 
         data.branchName,
+
+        data.accountType,
       ],
     )
 
@@ -583,7 +587,8 @@ const findById = async (id) => {
           b.bank_name,
           b.account_number,
           b.ifsc_code,
-          b.branch_name
+          b.branch_name,
+          b.account_type
 
         FROM operators o
 

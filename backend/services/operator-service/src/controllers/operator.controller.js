@@ -183,6 +183,7 @@ const registerOperator =
         accountNumber,
         ifscCode,
         branchName,
+        accountType,
 
         gstRegistered,
         gstin,
@@ -523,6 +524,27 @@ const registerOperator =
           })
       }
 
+      const normalizedAccountType =
+        String(
+          accountType || '',
+        )
+          .trim()
+          .toUpperCase()
+          .replace(/\s+ACCOUNT$/, '')
+
+      if (
+        !['CURRENT', 'SAVINGS'].includes(
+          normalizedAccountType,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              'Account Type must be Current Account or Savings Account.',
+          })
+      }
       /*
        * =============================
        * PAN
@@ -812,6 +834,8 @@ const registerOperator =
                 branchName,
               ).trim(),
 
+            accountType:
+              normalizedAccountType,
             gstRegistered:
               hasGst,
 
@@ -1139,6 +1163,9 @@ const getOperator =
 
             branchName:
               operator.branch_name,
+
+            accountType:
+              operator.account_type,
           },
 
           documents: safeDocuments,
