@@ -1522,6 +1522,15 @@ const addBus =
         fileErrors.frontPhoto =
           'Front photo of the bus is required.'
       }
+      if (!sidePhoto) {
+        fileErrors.sidePhoto =
+          'Side photo of the bus is required.'
+      }
+
+      if (!interiorPhoto) {
+        fileErrors.interiorPhoto =
+          'Interior photo of the bus is required.'
+      }
 
       if (
         Object.keys(
