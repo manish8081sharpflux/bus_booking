@@ -418,8 +418,8 @@ const FileUploadCard = ({
             <span>
               {iconType ===
               'image'
-                ? 'JPG, PNG or WEBP • Max 5 MB'
-                : 'PDF, JPG or PNG • Max 5 MB'}
+                ? 'JPG, PNG or WEBP â€¢ Max 5 MB'
+                : 'PDF, JPG or PNG â€¢ Max 5 MB'}
             </span>
 
           </label>
@@ -807,6 +807,14 @@ React.FC = () => {
     }
 
     if (
+      file.size <= 0
+    ) {
+      return (
+        'Empty files are not allowed.'
+      );
+    }
+
+    if (
       file.size >
       MAX_FILE_SIZE
     ) {
@@ -832,15 +840,100 @@ React.FC = () => {
         : 'Only PDF, JPG or PNG files are allowed.';
     }
 
+    const extension =
+      file.name
+        .split('.')
+        .pop()
+        ?.toLowerCase() ||
+      '';
+
+    const allowedExtensions =
+      type ===
+      'image'
+        ? [
+            'jpg',
+            'jpeg',
+            'png',
+            'webp',
+          ]
+        : [
+            'pdf',
+            'jpg',
+            'jpeg',
+            'png',
+          ];
+
+    if (
+      !allowedExtensions.includes(
+        extension,
+      )
+    ) {
+      return type ===
+        'image'
+        ? 'Image extension must be JPG, JPEG, PNG or WEBP.'
+        : 'Document extension must be PDF, JPG, JPEG or PNG.';
+    }
+
+    const expectedExtensions:
+      Record<string, string[]> = {
+        'application/pdf': [
+          'pdf',
+        ],
+        'image/jpeg': [
+          'jpg',
+          'jpeg',
+        ],
+        'image/png': [
+          'png',
+        ],
+        'image/webp': [
+          'webp',
+        ],
+      };
+
+    const expected =
+      expectedExtensions[
+        file.type
+      ];
+
+    if (
+      expected &&
+      !expected.includes(
+        extension,
+      )
+    ) {
+      return (
+        'File extension does not match the selected file type.'
+      );
+    }
+
     return null;
   };
 
-  /*
-   * =====================================================
-   * UPDATE FILE + SAVE INDEXEDDB
-   * =====================================================
-   */
+  const isSamePhysicalFile = (
+    first:
+      File | null,
+    second:
+      File | null,
+  ) => {
+    if (
+      !first ||
+      !second
+    ) {
+      return false;
+    }
 
+    return (
+      first.name ===
+        second.name &&
+      first.size ===
+        second.size &&
+      first.type ===
+        second.type &&
+      first.lastModified ===
+        second.lastModified
+    );
+  };
   const updateFile =
     async (
       key:
@@ -876,6 +969,39 @@ React.FC = () => {
         return;
       }
 
+      if (file) {
+        const duplicateEntry =
+          Object.entries(
+            files,
+          ).find(
+            ([
+              existingKey,
+              existingFile,
+            ]) =>
+              existingKey !==
+                key &&
+              isSamePhysicalFile(
+                existingFile,
+                file,
+              ),
+          );
+
+        if (
+          duplicateEntry
+        ) {
+          setErrors(
+            (
+              previous,
+            ) => ({
+              ...previous,
+              [key]:
+                'This file is already selected for another document or photo.',
+            }),
+          );
+
+          return;
+        }
+      }
       const updatedFiles:
         BusDraftFiles = {
           ...files,
