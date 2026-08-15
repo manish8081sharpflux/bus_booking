@@ -157,6 +157,32 @@ const OperatorLoginPage: React.FC = () => {
           }
 
           /*
+           * Suspended operator
+           */
+          if (
+            status === 'SUSPENDED'
+          ) {
+            localStorage.setItem(
+              'operator_registration_status',
+              'SUSPENDED',
+            )
+
+            localStorage.removeItem(
+              'operator_access_token',
+            )
+
+            sessionStorage.setItem(
+              'operator_verified_mobile',
+              normalizedMobile,
+            )
+
+            history.replace(
+              '/operator/application-status',
+            )
+
+            return
+          }
+          /*
            * Approved operator
            */
           history.replace(
@@ -371,12 +397,21 @@ const OperatorLoginPage: React.FC = () => {
           if (
             status === 'PENDING' ||
             status === 'REJECTED'
+ ||
+            status === 'SUSPENDED'
           ) {
             localStorage.setItem(
               'operator_registration_status',
               status,
             )
 
+            if (
+              status === 'SUSPENDED'
+            ) {
+              localStorage.removeItem(
+                'operator_access_token',
+              )
+            }
             if (
               result.operator?.id
             ) {
@@ -509,17 +544,7 @@ const OperatorLoginPage: React.FC = () => {
               <div className="operator-feature-list">
 
                 <div className="operator-feature">
-                  <span>âœ“</span>
-                  Manage buses and routes
-                </div>
-
-                <div className="operator-feature">
-                  <span>âœ“</span>
-                  Track customer bookings
-                </div>
-
-                <div className="operator-feature">
-                  <span>âœ“</span>
+                  <span>OK</span>
                   View trip performance
                 </div>
 
@@ -575,7 +600,7 @@ const OperatorLoginPage: React.FC = () => {
                       <div className="operator-mobile-input-shell">
 
                         <div className="operator-mobile-prefix">
-                          ðŸ‡®ðŸ‡³ +91
+                          IN +91
                         </div>
 
                         <IonInput
@@ -654,25 +679,7 @@ const OperatorLoginPage: React.FC = () => {
                     {!OTP_ENABLED && (
                       <div className="operator-security-note">
 
-                        <span>
-                          ðŸ› ï¸
-                        </span>
-
-                        <p>
-                          Development mode:
-                          OTP verification is
-                          currently disabled.
-                        </p>
-
-                      </div>
-                    )}
-
-                    {OTP_ENABLED && (
-                      <div className="operator-security-note">
-
-                        <span>
-                          ðŸ”’
-                        </span>
+                        <span>SECURE</span>
 
                         <p>
                           Your mobile number
@@ -799,7 +806,7 @@ const OperatorLoginPage: React.FC = () => {
                       </button>
 
                       <span>
-                        â€¢
+
                       </span>
 
                       <button
@@ -819,7 +826,7 @@ const OperatorLoginPage: React.FC = () => {
               </div>
 
               <p className="operator-login-footer">
-                Â© 2026 BusGo Â·
+                 2026 BusGo
                 Operator Portal
               </p>
 

@@ -86,7 +86,8 @@ const checkMobile = async (
         operator.support_mobile,
 
       token:
-        allowDevelopmentOperatorToken()
+        allowDevelopmentOperatorToken() &&
+        operator.status !== 'SUSPENDED'
           ? generateAccessToken({
               userId:
                 operator.owner_user_id ||
