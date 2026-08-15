@@ -6,7 +6,7 @@
     "scripts":  {
                     "dev":  "nodemon src/server.js",
                     "start":  "node src/server.js",
-                    "test":  "node --test test/bus-bookability.test.js test/bus-final-bookability.test.js test/payment-bookability.test.js test/reschedule-bookability.test.js test/cancellation-departure-guard.test.js test/whatsapp-cancellation-departure.test.js test/refund-idempotency.test.js test/refund-db-idempotency.test.js test/refund-webhook-monotonic.test.js test/payment-webhook-bookability.test.js test/refund-webhook-notification-idempotency.test.js test/payment-webhook-expiry.test.js test/payment-order-idempotency.test.js test/whatsapp-payment-order-lock.test.js"
+                    "test":  "node --test test/bus-bookability.test.js test/bus-final-bookability.test.js test/payment-bookability.test.js test/reschedule-bookability.test.js test/cancellation-departure-guard.test.js test/whatsapp-cancellation-departure.test.js test/refund-idempotency.test.js test/refund-db-idempotency.test.js test/refund-webhook-monotonic.test.js test/payment-webhook-bookability.test.js test/refund-webhook-notification-idempotency.test.js test/payment-webhook-expiry.test.js test/payment-order-idempotency.test.js test/whatsapp-payment-order-lock.test.js test/booking-expiry-state-sync.test.js"
                 },
     "dependencies":  {
                          "dotenv":  "^16.4.5",
