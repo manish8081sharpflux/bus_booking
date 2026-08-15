@@ -50,6 +50,7 @@ async function assertWebhookBookingStillBookable(
        JOIN buses b
          ON b.id = t.bus_id
        WHERE bk.id = $1::uuid
+         AND bk.expires_at > NOW()
          AND t.status = 'SCHEDULED'
          AND t.departure_at > NOW()
          AND ${WEBHOOK_BUS_BOOKABILITY_SQL}
