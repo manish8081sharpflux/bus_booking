@@ -13,7 +13,7 @@ async function processRefunds(){
     for(const item of rows){
       try{
         await pool.query(`UPDATE refunds SET last_attempt_at=NOW(),retry_count=retry_count+1 WHERE id=$1::uuid`,[item.id])
-        const result=await paymentProvider.refund({paymentId:item.provider_payment_id,amount:item.amount,notes:{reason:'operator_trip_cancellation',bookingReference:item.booking_reference}})
+        const result=await paymentProvider.refund({paymentId:item.provider_payment_id,amount:item.amount,notes:{reason:'operator_trip_cancellation',bookingReference:item.booking_reference},idempotencyKey:`refund_${String(item.id).replace(/-/g,'_')}`})
         await pool.query(`UPDATE refunds SET provider_refund_id=$2,status=$3::payment_status,failure_message=NULL,next_retry_at=NULL,updated_at=NOW() WHERE id=$1::uuid`,[item.id,result.id,result.status==='processed'?'REFUNDED':'PENDING'])
       }catch(error){
         await pool.query(`UPDATE refunds SET failure_message=$2,next_retry_at=NOW()+(LEAST(3600,POWER(2,retry_count)*30)::text||' seconds')::interval,status=CASE WHEN retry_count>=8 THEN 'FAILED'::payment_status ELSE 'PENDING'::payment_status END,updated_at=NOW() WHERE id=$1::uuid`,[item.id,String(error.message||error).slice(0,1000)])

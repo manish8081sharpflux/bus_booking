@@ -35,9 +35,67 @@ function verifyWebhook(rawBody, signature) {
   return !!signature && expected.length === String(signature).length && crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(String(signature)));
 }
 
-async function refund({ paymentId, amount, notes={} }) {
-  if (provider === 'DEMO') return { id:`rfnd_demo_${crypto.randomUUID()}`, payment_id:paymentId, amount:Math.round(Number(amount)*100), status:'processed', notes };
-  return razorpay(`/payments/${paymentId}/refund`,{ method:'POST', body:JSON.stringify({ amount:Math.round(Number(amount)*100), notes }) });
-}
+async function refund({
+  paymentId,
+  amount,
+  notes = {},
+  idempotencyKey,
+}) {
+  const normalizedKey =
+    String(
+      idempotencyKey || '',
+    ).trim()
 
+  if (
+    normalizedKey &&
+    !/^[A-Za-z0-9_-]{10,200}$/.test(
+      normalizedKey,
+    )
+  ) {
+    throw new Error(
+      'Refund idempotency key must be 10-200 characters using letters, numbers, hyphens or underscores only.',
+    )
+  }
+
+  if (provider === 'DEMO') {
+    return {
+      id:
+        normalizedKey
+          ? `rfnd_demo_${normalizedKey}`
+          : `rfnd_demo_${crypto.randomUUID()}`,
+      payment_id:
+        paymentId,
+      amount:
+        Math.round(
+          Number(amount) * 100,
+        ),
+      status:
+        'processed',
+      notes,
+    }
+  }
+
+  return razorpay(
+    `/payments/${paymentId}/refund`,
+    {
+      method:
+        'POST',
+      headers:
+        normalizedKey
+          ? {
+              'X-Refund-Idempotency':
+                normalizedKey,
+            }
+          : {},
+      body:
+        JSON.stringify({
+          amount:
+            Math.round(
+              Number(amount) * 100,
+            ),
+          notes,
+        }),
+    },
+  )
+}
 module.exports = { provider, createOrder, verifyPaymentSignature, verifyWebhook, refund };

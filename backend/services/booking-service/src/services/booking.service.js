@@ -220,7 +220,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -630,7 +630,7 @@ const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/36000
       const {rows: payRows}=await client.query(`SELECT * FROM payments WHERE booking_id=$1::uuid AND status='CAPTURED' ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,[id])
       let refundRow=null
       if(payRows[0]) {
-        const providerRefund=await paymentProvider.refund({paymentId:payRows[0].provider_payment_id,amount:Math.round(Number(payRows[0].amount)*refundPercent)/100,notes:{bookingId:id,reason,refundPercent}})
+        const providerRefund=await paymentProvider.refund({paymentId:payRows[0].provider_payment_id,amount:Math.round(Number(payRows[0].amount)*refundPercent)/100,notes:{bookingId:id,reason:'Booking cancellation',refundPercent},idempotencyKey:`cancel_${id}`})
         const status=providerRefund.status==='processed'?'REFUNDED':'PENDING'
         const rr=await client.query(`INSERT INTO refunds(payment_id,provider_refund_id,amount,reason,status,provider_payload,requested_at,completed_at) VALUES($1::uuid,$2,$3,$4,$5,$6::jsonb,NOW(),CASE WHEN $5='REFUNDED' THEN NOW() END) RETURNING *`,[payRows[0].id,providerRefund.id,Math.round(Number(payRows[0].amount)*refundPercent)/100,reason,status,JSON.stringify(providerRefund)])
         refundRow=rr.rows[0]
@@ -645,7 +645,7 @@ const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/36000
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -653,7 +653,7 @@ const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/36000
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}
@@ -745,7 +745,7 @@ const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/36000
       if(passengers.length!==quote.newSeatIds.length) throw fail('Replacement seat count no longer matches this booking.',409)
       if(quote.refundDue>0){
         const pay=(await client.query(`SELECT * FROM payments WHERE booking_id=$1::uuid AND status='CAPTURED' ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,[id])).rows[0]
-        if(pay){const rr=await paymentProvider.refund({paymentId:pay.provider_payment_id,amount:quote.refundDue,notes:{bookingId:id,reason:'Reschedule fare difference'}});await client.query(`INSERT INTO refunds(payment_id,provider_refund_id,amount,reason,status,provider_payload,requested_at,completed_at) VALUES($1::uuid,$2,$3,'Reschedule fare difference',$4,$5::jsonb,NOW(),CASE WHEN $4='REFUNDED' THEN NOW() END)`,[pay.id,rr.id,quote.refundDue,rr.status==='processed'?'REFUNDED':'PENDING',JSON.stringify(rr)])}
+        if(pay){const rr=await paymentProvider.refund({paymentId:pay.provider_payment_id,amount:quote.refundDue,notes:{bookingId:id,reason:'Reschedule fare difference'},idempotencyKey:`reschedule_${id}_${String(quote.newTripId).replace(/-/g,'_')}`});await client.query(`INSERT INTO refunds(payment_id,provider_refund_id,amount,reason,status,provider_payload,requested_at,completed_at) VALUES($1::uuid,$2,$3,'Reschedule fare difference',$4,$5::jsonb,NOW(),CASE WHEN $4='REFUNDED' THEN NOW() END)`,[pay.id,rr.id,quote.refundDue,rr.status==='processed'?'REFUNDED':'PENDING',JSON.stringify(rr)])}
       }
       if(quote.paymentRequired>0){await client.query(`INSERT INTO payments(booking_id,provider,provider_payment_id,idempotency_key,amount,currency,status,method,provider_payload) VALUES($1::uuid,'DEMO',$2,$3::uuid,$4,$5,'CAPTURED','RESCHEDULE_DEMO',$6::jsonb)`,[id,`RESCHEDULE-${Date.now()}`,crypto.randomUUID(),quote.paymentRequired,booking.currency,JSON.stringify({reschedule:true})])}
       await client.query(`UPDATE trip_seat_inventory SET status='AVAILABLE',booking_id=NULL,hold_token=NULL,hold_expires_at=NULL,updated_at=NOW() WHERE booking_id=$1::uuid`,[id])
@@ -928,7 +928,7 @@ const hours=(new Date(tripInfo.rows[0].departure_at).getTime()-Date.now())/36000
       let refund=null
       if(pay){
         const amount=Math.round(Number(pay.amount)*refundPercent)/100
-        const pr=await paymentProvider.refund({paymentId:pay.provider_payment_id,amount,notes:{bookingId:id,reason,refundPercent,channel:'WHATSAPP'}})
+        const pr=await paymentProvider.refund({paymentId:pay.provider_payment_id,amount,notes:{bookingId:id,reason:'Booking cancellation',refundPercent},idempotencyKey:`cancel_${id}`})
         const status=pr.status==='processed'?'REFUNDED':'PENDING'
         refund=(await client.query(`INSERT INTO refunds(payment_id,provider_refund_id,amount,reason,status,provider_payload,requested_at,completed_at) VALUES($1::uuid,$2,$3,$4,$5,$6::jsonb,NOW(),CASE WHEN $5='REFUNDED' THEN NOW() END) RETURNING *`,[pay.id,pr.id,amount,reason,status,JSON.stringify(pr)])).rows[0]
         if(status==='REFUNDED') await client.query(`UPDATE payments SET status='REFUNDED',updated_at=NOW() WHERE id=$1::uuid`,[pay.id])
