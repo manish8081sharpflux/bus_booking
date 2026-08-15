@@ -20,6 +20,9 @@ const {
   operatorDocumentUpload,
 } = require('../middlewares/upload.middleware');
 
+const {
+  publicLookupRateLimit,
+} = require('../middlewares/public-lookup-rate-limit.middleware');
 const router = express.Router();
 const { requireAuth, requireRoles } = require('../middlewares/auth.middleware');
 const policyController = require('../controllers/operator.controller');
@@ -29,6 +32,7 @@ const policyController = require('../controllers/operator.controller');
  */
 router.get(
   '/check-mobile',
+  publicLookupRateLimit,
   checkMobile,
 );
 
@@ -46,6 +50,7 @@ router.post(
  */
 router.get(
   '/application-status/:mobile',
+  publicLookupRateLimit,
   applicationStatus,
 );
 
