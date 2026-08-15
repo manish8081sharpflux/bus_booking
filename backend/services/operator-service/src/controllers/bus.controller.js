@@ -11,6 +11,7 @@ const {
   reviewBus,
   resubmitBus,
   setBusOperationalStatus,
+  updateBusDetails,
 } = require(
   '../services/bus.service',
 )
@@ -1715,6 +1716,76 @@ const getBus =
     }
   }
 
+const editBusDetails = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const {
+      errors,
+      data,
+    } = validateBus({
+      ...req.body,
+      amenities:
+        parseJsonField(
+          req.body?.amenities,
+          req.body?.amenities || [],
+        ),
+    })
+
+    if (
+      Object.keys(errors).length > 0
+    ) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Please correct the highlighted bus details.',
+        errors,
+      })
+    }
+
+    const result =
+      await updateBusDetails({
+        busId: req.params.id,
+        operatorId:
+          req.operatorId,
+        data,
+      })
+
+    return res.json({
+      success: true,
+      message:
+        result.reviewRequired
+          ? 'Bus details updated and sent for administrator re-verification.'
+          : 'Bus details updated successfully.',
+      reviewRequired:
+        result.reviewRequired,
+      bus: result.bus,
+    })
+  } catch (error) {
+    if (
+      [
+        'BUS_MUST_BE_INACTIVE_FOR_EDIT',
+        'BUS_HAS_ACTIVE_TRIPS',
+        'DUPLICATE_REGISTRATION',
+      ].includes(error?.code)
+    ) {
+      return res.status(
+        error.status || 409,
+      ).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        blockingTrips:
+          error.blockingTrips || [],
+      })
+    }
+
+    next(error)
+  }
+}
+
 const changeOperationalStatus = async (
   req,
   res,
@@ -1783,6 +1854,7 @@ const changeOperationalStatus = async (
  */
 
 module.exports = {
+  editBusDetails,
   changeOperationalStatus,
   addBus,
   listBuses,

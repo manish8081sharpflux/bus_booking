@@ -9,6 +9,7 @@ const {
   review,
   resubmit,
   changeOperationalStatus,
+  editBusDetails,
 } = require(
   '../controllers/bus.controller',
 )
@@ -75,6 +76,17 @@ router.get(
  * GET /buses/:id
  * =====================================================
  */
+
+router.patch(
+  '/:id/details',
+  requireAuth,
+  requireRoles(
+    'OPERATOR_ADMIN',
+    'MANAGER',
+  ),
+  resolveOperator,
+  editBusDetails,
+)
 
 router.patch(
   '/:id/operational-status',

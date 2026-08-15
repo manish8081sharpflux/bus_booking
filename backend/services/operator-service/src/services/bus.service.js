@@ -27,7 +27,19 @@ const findBusByRegistrationNumber =
             seat_capacity,
             deck_type,
             amenities,
-            status,
+            fuel_type,
+            ownership_type,
+            ac_type,
+            seating_type,
+            seat_layout,
+            bus_category,
+            axle_type,
+            transmission_type,
+            suspension_type,
+            service_type,
+            approval_status,
+            operational_status,
+            rejection_reason,            status,
             created_at,
             updated_at
           FROM buses
@@ -205,7 +217,19 @@ const createBusWithSeats =
               seat_capacity,
               deck_type,
               amenities,
-              status,
+            fuel_type,
+            ownership_type,
+            ac_type,
+            seating_type,
+            seat_layout,
+            bus_category,
+            axle_type,
+            transmission_type,
+            suspension_type,
+            service_type,
+            approval_status,
+            operational_status,
+            rejection_reason,              status,
               created_at,
               updated_at
           `,
@@ -766,6 +790,225 @@ const setBusOperationalStatus = async ({
   }
 }
 
+const EDIT_REVIEW_FIELDS = [
+  ['registration_number', 'registrationNumber'],
+  ['bus_type', 'busType'],
+  ['manufacturer', 'manufacturer'],
+  ['model', 'model'],
+  ['manufacture_year', 'manufacturingYear'],
+  ['seat_capacity', 'totalSeats'],
+  ['deck_type', 'deckType'],
+  ['fuel_type', 'fuelType'],
+  ['ownership_type', 'ownershipType'],
+  ['ac_type', 'acType'],
+  ['seating_type', 'seatingType'],
+  ['seat_layout', 'seatLayout'],
+  ['bus_category', 'busCategory'],
+  ['axle_type', 'axleType'],
+  ['transmission_type', 'transmissionType'],
+  ['suspension_type', 'suspensionType'],
+  ['service_type', 'serviceType'],
+]
+
+const updateBusDetails = async ({
+  busId,
+  operatorId,
+  data,
+}) => {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const current = (
+      await client.query(
+        `SELECT *
+         FROM buses
+         WHERE id = $1::uuid
+           AND operator_id = $2::uuid
+         FOR UPDATE`,
+        [busId, operatorId],
+      )
+    ).rows[0]
+
+    if (!current) {
+      throw Object.assign(
+        new Error('Bus not found for this operator.'),
+        { status: 404 },
+      )
+    }
+
+    const reviewRequired =
+      EDIT_REVIEW_FIELDS.some(
+        ([dbField, inputField]) =>
+          String(current[dbField] ?? '') !==
+          String(data[inputField] ?? ''),
+      )
+
+    if (
+      reviewRequired &&
+      String(
+        current.operational_status ||
+          current.status ||
+          '',
+      ).toUpperCase() === 'ACTIVE'
+    ) {
+      throw Object.assign(
+        new Error(
+          'Deactivate this bus before changing registration, capacity or classification details.',
+        ),
+        {
+          status: 409,
+          code: 'BUS_MUST_BE_INACTIVE_FOR_EDIT',
+        },
+      )
+    }
+
+    if (reviewRequired) {
+      const blockingTrips =
+        await getBlockingTripsForBus(
+          busId,
+          client,
+        )
+
+      if (blockingTrips.length > 0) {
+        throw Object.assign(
+          new Error(
+            'This bus has scheduled or running trips. Reassign or cancel them before changing structural bus details.',
+          ),
+          {
+            status: 409,
+            code: 'BUS_HAS_ACTIVE_TRIPS',
+            blockingTrips,
+          },
+        )
+      }
+    }
+
+    const duplicate = (
+      await client.query(
+        `SELECT id
+         FROM buses
+         WHERE registration_number = $1
+           AND id <> $2::uuid
+         LIMIT 1`,
+        [
+          data.registrationNumber,
+          busId,
+        ],
+      )
+    ).rows[0]
+
+    if (duplicate) {
+      throw Object.assign(
+        new Error(
+          'A bus with this registration number already exists.',
+        ),
+        {
+          status: 409,
+          code: 'DUPLICATE_REGISTRATION',
+        },
+      )
+    }
+
+    const approvalStatus =
+      reviewRequired
+        ? 'PENDING_APPROVAL'
+        : current.approval_status
+
+    const operationalStatus =
+      reviewRequired
+        ? 'INACTIVE'
+        : current.operational_status
+
+    const publicStatus =
+      reviewRequired
+        ? 'PENDING_APPROVAL'
+        : current.status
+
+    const { rows } = await client.query(
+      `UPDATE buses
+       SET registration_number = $3,
+           name = $4,
+           bus_type = $5,
+           manufacturer = $6,
+           model = $7,
+           manufacture_year = $8::smallint,
+           seat_capacity = $9::smallint,
+           deck_type = $10,
+           amenities = $11::jsonb,
+           fuel_type = $12,
+           ownership_type = $13,
+           ac_type = $14,
+           seating_type = $15,
+           seat_layout = $16,
+           bus_category = $17,
+           axle_type = $18,
+           transmission_type = $19,
+           suspension_type = $20,
+           service_type = $21,
+           approval_status = $22,
+           operational_status = $23,
+           status = $24,
+           rejection_reason = CASE
+             WHEN $25::boolean THEN NULL
+             ELSE rejection_reason
+           END,
+           reviewed_by = CASE
+             WHEN $25::boolean THEN NULL
+             ELSE reviewed_by
+           END,
+           reviewed_at = CASE
+             WHEN $25::boolean THEN NULL
+             ELSE reviewed_at
+           END,
+           updated_at = NOW()
+       WHERE id = $1::uuid
+         AND operator_id = $2::uuid
+       RETURNING *`,
+      [
+        busId,
+        operatorId,
+        data.registrationNumber,
+        data.busName,
+        data.busType,
+        data.manufacturer || null,
+        data.model || null,
+        data.manufacturingYear || null,
+        data.totalSeats,
+        data.deckType,
+        JSON.stringify(data.amenities || []),
+        data.fuelType,
+        data.ownershipType,
+        data.acType,
+        data.seatingType,
+        data.seatLayout,
+        data.busCategory,
+        data.axleType,
+        data.transmissionType,
+        data.suspensionType,
+        data.serviceType,
+        approvalStatus,
+        operationalStatus,
+        publicStatus,
+        reviewRequired,
+      ],
+    )
+
+    await client.query('COMMIT')
+
+    return {
+      bus: rows[0],
+      reviewRequired,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 /*
  * =====================================================
  * GET ALL BUSES FOR OPERATOR
@@ -791,7 +1034,19 @@ const getBusesByOperator =
             seat_capacity,
             deck_type,
             amenities,
-            status,
+            fuel_type,
+            ownership_type,
+            ac_type,
+            seating_type,
+            seat_layout,
+            bus_category,
+            axle_type,
+            transmission_type,
+            suspension_type,
+            service_type,
+            approval_status,
+            operational_status,
+            rejection_reason,            status,
             created_at,
             updated_at
           FROM buses
@@ -831,7 +1086,19 @@ const findBusById =
             seat_capacity,
             deck_type,
             amenities,
-            status,
+            fuel_type,
+            ownership_type,
+            ac_type,
+            seating_type,
+            seat_layout,
+            bus_category,
+            axle_type,
+            transmission_type,
+            suspension_type,
+            service_type,
+            approval_status,
+            operational_status,
+            rejection_reason,            status,
             created_at,
             updated_at
           FROM buses
@@ -1073,6 +1340,7 @@ module.exports = {
   getCompleteBusById,
   getBlockingTripsForBus,
   setBusOperationalStatus,
+  updateBusDetails,
 
   listPendingBuses: async () => {
     const { rows } = await pool.query(`
