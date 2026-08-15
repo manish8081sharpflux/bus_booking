@@ -544,15 +544,17 @@ const App: React.FC = () => {
             }
           />
 
-                              <Route
+                                        <OperatorRoute
             exact
             path="/operator/buses/:busId/compliance-renewal"
             component={BusComplianceRenewalPage}
+            roles={['MANAGER']}
           />
-<Route
+          <OperatorRoute
             exact
             path="/operator/buses/:busId/edit"
             component={EditBusPage}
+            roles={['MANAGER']}
           />
 <Route
             exact
