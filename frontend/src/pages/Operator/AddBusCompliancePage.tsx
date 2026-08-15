@@ -71,6 +71,8 @@ interface FloatingTextFieldProps {
   type?: string;
   error?: string;
   maxLength?: number;
+  min?: string;
+  max?: string;
 
   onChange: (
     value: string,
@@ -105,6 +107,8 @@ const FloatingTextField = ({
   type = 'text',
   error,
   maxLength,
+  min,
+  max,
   onChange,
 }: FloatingTextFieldProps) => {
   return (
@@ -121,6 +125,8 @@ const FloatingTextField = ({
           type={type}
           value={value}
           maxLength={maxLength}
+          min={min}
+          max={max}
           placeholder=" "
           autoComplete="off"
           onChange={(event) =>
@@ -446,12 +452,19 @@ React.FC = () => {
         /[^A-Z0-9/._-]/g,
         '',
       )
+      .replace(
+        /^[/._-]+/,
+        '',
+      )
+      .replace(
+        /([/._-])\1+/g,
+        '$1',
+      )
       .slice(
         0,
         maxLength,
       );
   };
-
   const todayString = () => {
     const now =
       new Date();
@@ -524,6 +537,53 @@ React.FC = () => {
     );
   };
 
+  const updateDateField = (
+    field:
+      | 'registrationDate'
+      | 'insuranceExpiry'
+      | 'permitExpiry'
+      | 'fitnessExpiry'
+      | 'pucExpiry',
+    value: string,
+  ) => {
+    if (!value) {
+      updateField(
+        field,
+        '',
+      );
+
+      return;
+    }
+
+    if (
+      field ===
+        'registrationDate'
+    ) {
+      if (
+        !isFutureDate(
+          value,
+        )
+      ) {
+        updateField(
+          field,
+          value,
+        );
+      }
+
+      return;
+    }
+
+    if (
+      !isPastDate(
+        value,
+      )
+    ) {
+      updateField(
+        field,
+        value,
+      );
+    }
+  };
   /*
    * =====================================================
    * VALIDATION
@@ -910,6 +970,7 @@ React.FC = () => {
                 <FloatingTextField
                   label="Registration Date"
                   type="date"
+                  max={todayString()}
                   value={
                     form.registrationDate
                   }
@@ -919,7 +980,7 @@ React.FC = () => {
                   onChange={(
                     value,
                   ) =>
-                    updateField(
+                    updateDateField(
                       'registrationDate',
                       value,
                     )
@@ -954,6 +1015,7 @@ React.FC = () => {
                   label="Insurance Expiry"
                   required
                   type="date"
+                  min={todayString()}
                   value={
                     form.insuranceExpiry
                   }
@@ -963,7 +1025,7 @@ React.FC = () => {
                   onChange={(
                     value,
                   ) =>
-                    updateField(
+                    updateDateField(
                       'insuranceExpiry',
                       value,
                     )
@@ -996,6 +1058,7 @@ React.FC = () => {
                   label="Permit Expiry"
                   required
                   type="date"
+                  min={todayString()}
                   value={
                     form.permitExpiry
                   }
@@ -1005,7 +1068,7 @@ React.FC = () => {
                   onChange={(
                     value,
                   ) =>
-                    updateField(
+                    updateDateField(
                       'permitExpiry',
                       value,
                     )
@@ -1038,6 +1101,7 @@ React.FC = () => {
                   label="Fitness Expiry"
                   required
                   type="date"
+                  min={todayString()}
                   value={
                     form.fitnessExpiry
                   }
@@ -1047,7 +1111,7 @@ React.FC = () => {
                   onChange={(
                     value,
                   ) =>
-                    updateField(
+                    updateDateField(
                       'fitnessExpiry',
                       value,
                     )
@@ -1078,6 +1142,7 @@ React.FC = () => {
                 <FloatingTextField
                   label="PUC Expiry"
                   type="date"
+                  min={todayString()}
                   value={
                     form.pucExpiry
                   }
@@ -1087,7 +1152,7 @@ React.FC = () => {
                   onChange={(
                     value,
                   ) =>
-                    updateField(
+                    updateDateField(
                       'pucExpiry',
                       value,
                     )
