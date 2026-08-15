@@ -182,7 +182,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is â‚¹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is Ã¢â€šÂ¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -302,7 +302,7 @@ class BookingService {
         JOIN buses b ON b.id=t.bus_id
         JOIN trip_stops s1 ON s1.id=$2::uuid AND s1.trip_id=t.id
         JOIN trip_stops s2 ON s2.id=$3::uuid AND s2.trip_id=t.id
-        WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND t.departure_at>NOW()
+        WHERE t.id=$1::uuid AND t.status='SCHEDULED' AND ${customerBookabilityWhere('b')} AND t.departure_at>NOW()
         FOR UPDATE OF t`,[tripId,originStopId,destinationStopId])).rows[0]
       if(!trip || trip.origin_order>=trip.destination_order) throw fail('Invalid published trip or stop selection.',422)
 
@@ -588,7 +588,7 @@ class BookingService {
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`â‚¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to â‚¹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`Ã¢â€šÂ¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to Ã¢â€šÂ¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -596,7 +596,7 @@ class BookingService {
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is â‚¹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is Ã¢â€šÂ¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}

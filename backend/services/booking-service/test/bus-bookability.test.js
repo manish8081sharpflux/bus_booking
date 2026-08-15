@@ -46,7 +46,7 @@ test('search seat map and quote all use runtime guard', () => {
 
   assert.equal(
     matches.length,
-    3,
+    4,
   )
 })
 
