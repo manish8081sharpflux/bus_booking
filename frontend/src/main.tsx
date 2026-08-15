@@ -71,6 +71,7 @@ import OperatorEarningsPage from './pages/Operator/OperatorEarningsPage';
 import OperatorManagementPage from './pages/Operator/OperatorManagementPage';
 import ManageBusPage from './pages/Operator/ManageBusPage';
 import EditBusPage from './pages/Operator/EditBusPage';
+import BusComplianceRenewalPage from './pages/Operator/BusComplianceRenewalPage';
 import OperatorStaffPage from './pages/Operator/OperatorStaffPage';
 import OperatorPoliciesPage from './pages/Operator/OperatorPoliciesPage';
 import CrewOperationsPage from './pages/Operator/CrewOperationsPage';
@@ -543,7 +544,12 @@ const App: React.FC = () => {
             }
           />
 
-                    <Route
+                              <Route
+            exact
+            path="/operator/buses/:busId/compliance-renewal"
+            component={BusComplianceRenewalPage}
+          />
+<Route
             exact
             path="/operator/buses/:busId/edit"
             component={EditBusPage}

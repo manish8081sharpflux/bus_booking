@@ -687,6 +687,17 @@ export default function ManageBusPage() {
                   <div className="manage-bus-hero-actions">
                     <button
                       type="button"
+                      className="manage-bus-renew-button"
+                      onClick={() =>
+                        history.push(
+                          `/operator/buses/${encodeURIComponent(bus.id)}/compliance-renewal`
+                        )
+                      }
+                    >
+                      Renew compliance
+                    </button>
+                    <button
+                      type="button"
                       className="manage-bus-edit-button"
                       onClick={() =>
                         history.push(
