@@ -220,7 +220,7 @@ class BookingService {
           AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalizedCoupon])).rows[0]
         if(!pr) throw fail('Coupon is invalid or expired.',422)
         const eligibility=pr.eligibility||{}
-        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${eligibility.minBookingAmount}.`,422)
+        if(eligibility.minBookingAmount && subtotalAmount<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
         if(pr.operator_id && String(pr.operator_id)!==String(trip.operator_id)) throw fail('This coupon is not valid for the selected operator.',422)
         if(pr.route_id && String(pr.route_id)!==String(trip.route_id)) throw fail('This coupon is not valid for the selected route.',422)
         if(pr.usage_limit){
@@ -636,7 +636,7 @@ class BookingService {
 
   async listOffers() {
     const {rows}=await pool.query(`SELECT code,title,description,discount_type,discount_value,max_discount_amount,eligibility,ends_at,operator_id,route_id FROM pricing_promotions WHERE status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at ORDER BY discount_value DESC`)
-    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
+    return rows.map(x=>({...x,title:x.title||(x.discount_type==='PERCENTAGE'?`${Number(x.discount_value)}% off`:`ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${Number(x.discount_value)} off`),description:x.description||`Save on eligible BusGo bookings${x.max_discount_amount?` up to ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${Number(x.max_discount_amount)}`:''}.`}))
   }
 
   async validateCoupon({ code, amount }) {
@@ -644,7 +644,7 @@ class BookingService {
     if(!normalized || !Number.isFinite(subtotal) || subtotal<=0) throw fail('Coupon code and booking amount are required.',422)
     const {rows}=await pool.query(`SELECT id,code,discount_type,discount_value,max_discount_amount,eligibility,ends_at FROM pricing_promotions WHERE UPPER(code)=UPPER($1) AND status='ACTIVE' AND NOW() BETWEEN starts_at AND ends_at`,[normalized])
     const promo=rows[0]; if(!promo) throw fail('Coupon is invalid or expired.',404)
-    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹${eligibility.minBookingAmount}.`,422)
+    const eligibility=promo.eligibility||{}; if(eligibility.minBookingAmount && subtotal<Number(eligibility.minBookingAmount)) throw fail(`Minimum booking amount is ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¹${eligibility.minBookingAmount}.`,422)
     let discount=promo.discount_type==='PERCENTAGE'?subtotal*(Number(promo.discount_value)/100):Number(promo.discount_value)
     if(promo.max_discount_amount) discount=Math.min(discount,Number(promo.max_discount_amount)); discount=Math.max(0,Math.min(subtotal,Math.round(discount*100)/100))
     return {valid:true,code:promo.code,discountAmount:discount,totalAmount:subtotal-discount,endsAt:promo.ends_at}
@@ -689,7 +689,17 @@ class BookingService {
     if(newSeatIds.length!==old.passenger_count||new Set(newSeatIds).size!==newSeatIds.length) throw fail('Choose one replacement seat for each passenger.',422)
     const policy=await this.cancellationPolicy(old.operator_id); if(!policy.reschedule_enabled) throw fail('Rescheduling is disabled by this operator.',409)
     const hours=(new Date(old.departure_at).getTime()-Date.now())/3600000; if(hours<Number(policy.reschedule_cutoff_hours)) throw fail(`Rescheduling closes ${policy.reschedule_cutoff_hours} hours before departure.`,409)
-    const target=(await pool.query(`SELECT t.*,r.source_city,r.destination_city,s1.stop_order origin_order,s2.stop_order destination_order FROM trips t JOIN routes r ON r.id=t.route_id JOIN trip_stops s1 ON s1.id=$2::uuid AND s1.trip_id=t.id JOIN trip_stops s2 ON s2.id=$3::uuid AND s2.trip_id=t.id WHERE t.id=$1::uuid AND t.operator_id=$4::uuid AND t.status='SCHEDULED' AND t.departure_at>NOW()`,[newTripId,newOriginStopId,newDestinationStopId,old.operator_id])).rows[0]
+    const target=(await pool.query(`SELECT t.*,r.source_city,r.destination_city,s1.stop_order origin_order,s2.stop_order destination_order
+      FROM trips t
+      JOIN buses b ON b.id=t.bus_id
+      JOIN routes r ON r.id=t.route_id
+      JOIN trip_stops s1 ON s1.id=$2::uuid AND s1.trip_id=t.id
+      JOIN trip_stops s2 ON s2.id=$3::uuid AND s2.trip_id=t.id
+      WHERE t.id=$1::uuid
+        AND t.operator_id=$4::uuid
+        AND t.status='SCHEDULED'
+        AND ${customerBookabilityWhere('b')}
+        AND t.departure_at>NOW()`,[newTripId,newOriginStopId,newDestinationStopId,old.operator_id])).rows[0]
     if(!target||target.origin_order>=target.destination_order||target.source_city.toLowerCase()!==old.source_city.toLowerCase()||target.destination_city.toLowerCase()!==old.destination_city.toLowerCase()) throw fail('Replacement trip or stops are not compatible.',422)
     const inv=await pool.query(`SELECT i.bus_seat_id,bs.seat_number,bs.seat_type,COALESCE((SELECT tf.fare FROM trip_fares tf WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type ORDER BY tf.fare LIMIT 1),$3::numeric) fare FROM trip_seat_inventory i JOIN bus_seats bs ON bs.id=i.bus_seat_id WHERE i.trip_id=$1::uuid AND i.bus_seat_id=ANY($2::uuid[]) AND i.status='AVAILABLE'`,[newTripId,newSeatIds,target.base_fare])
     if(inv.rowCount!==newSeatIds.length) throw fail('One or more replacement seats are no longer available.',409)
@@ -705,6 +715,21 @@ class BookingService {
       await client.query('BEGIN')
       const booking=(await client.query(`SELECT * FROM bookings WHERE id=$1::uuid AND customer_id=$2::uuid AND status='CONFIRMED' FOR UPDATE`,[id,customerId])).rows[0]
       if(!booking) throw fail('Confirmed booking not found.',404)
+      const lockedTargetTrip=(await client.query(`SELECT t.id
+        FROM trips t
+        JOIN buses b ON b.id=t.bus_id
+        WHERE t.id=$1::uuid
+          AND t.status='SCHEDULED'
+          AND ${customerBookabilityWhere('b')}
+          AND t.departure_at>NOW()
+        FOR SHARE OF t,b`,[quote.newTripId])).rows[0]
+
+      if(!lockedTargetTrip){
+        throw fail(
+          'The replacement trip or bus is no longer available.',
+          409,
+        )
+      }
       const target=await client.query(`SELECT i.bus_seat_id,bs.seat_type,COALESCE((SELECT tf.fare FROM trip_fares tf WHERE tf.trip_id=i.trip_id AND tf.seat_type=bs.seat_type ORDER BY tf.fare LIMIT 1),t.base_fare) fare FROM trip_seat_inventory i JOIN bus_seats bs ON bs.id=i.bus_seat_id JOIN trips t ON t.id=i.trip_id WHERE i.trip_id=$1::uuid AND i.bus_seat_id=ANY($2::uuid[]) AND i.status='AVAILABLE' FOR UPDATE OF i`,[quote.newTripId,quote.newSeatIds])
       if(target.rowCount!==quote.newSeatIds.length) throw fail('One or more replacement seats were just taken. Please choose again.',409)
       const passengers=(await client.query(`SELECT id FROM booking_passengers WHERE booking_id=$1::uuid ORDER BY id FOR UPDATE`,[id])).rows
