@@ -853,9 +853,7 @@ const validateCompliance =
           compliance:
             'Compliance information is required.',
         },
-
-        compliance:
-          null,
+        compliance: null,
       }
     }
 
@@ -867,8 +865,7 @@ const validateCompliance =
     const insuranceNumber =
       normalizeText(
         rawCompliance.insuranceNumber,
-      )
-        .toUpperCase()
+      ).toUpperCase()
 
     const insuranceExpiry =
       normalizeText(
@@ -878,8 +875,7 @@ const validateCompliance =
     const permitNumber =
       normalizeText(
         rawCompliance.permitNumber,
-      )
-        .toUpperCase()
+      ).toUpperCase()
 
     const permitExpiry =
       normalizeText(
@@ -889,8 +885,7 @@ const validateCompliance =
     const fitnessCertificateNumber =
       normalizeText(
         rawCompliance.fitnessCertificateNumber,
-      )
-        .toUpperCase()
+      ).toUpperCase()
 
     const fitnessExpiry =
       normalizeText(
@@ -900,23 +895,35 @@ const validateCompliance =
     const pucNumber =
       normalizeText(
         rawCompliance.pucNumber,
-      )
-        .toUpperCase() ||
-      null
+      ).toUpperCase() || null
 
     const pucExpiry =
       normalizeText(
         rawCompliance.pucExpiry,
-      ) ||
-      null
+      ) || null
 
-    /*
-     * REQUIRED VALUES
-     */
+    const documentNumberPattern =
+      /^[A-Z0-9](?:[A-Z0-9]|[/._-](?=[A-Z0-9])){0,39}$/
+
+    const isValidDocumentNumber =
+      (value) =>
+        Boolean(
+          value &&
+          documentNumberPattern.test(
+            value,
+          ),
+        )
 
     if (!insuranceNumber) {
       errors.insuranceNumber =
         'Insurance number is required.'
+    } else if (
+      !isValidDocumentNumber(
+        insuranceNumber,
+      )
+    ) {
+      errors.insuranceNumber =
+        'Insurance number contains invalid characters or separators.'
     }
 
     if (!insuranceExpiry) {
@@ -927,6 +934,13 @@ const validateCompliance =
     if (!permitNumber) {
       errors.permitNumber =
         'Permit number is required.'
+    } else if (
+      !isValidDocumentNumber(
+        permitNumber,
+      )
+    ) {
+      errors.permitNumber =
+        'Permit number contains invalid characters or separators.'
     }
 
     if (!permitExpiry) {
@@ -934,11 +948,16 @@ const validateCompliance =
         'Permit expiry date is required.'
     }
 
-    if (
-      !fitnessCertificateNumber
-    ) {
+    if (!fitnessCertificateNumber) {
       errors.fitnessCertificateNumber =
         'Fitness certificate number is required.'
+    } else if (
+      !isValidDocumentNumber(
+        fitnessCertificateNumber,
+      )
+    ) {
+      errors.fitnessCertificateNumber =
+        'Fitness certificate number contains invalid characters or separators.'
     }
 
     if (!fitnessExpiry) {
@@ -946,9 +965,15 @@ const validateCompliance =
         'Fitness expiry date is required.'
     }
 
-    /*
-     * PUC number/date must be together.
-     */
+    if (
+      pucNumber &&
+      !isValidDocumentNumber(
+        pucNumber,
+      )
+    ) {
+      errors.pucNumber =
+        'PUC number contains invalid characters or separators.'
+    }
 
     if (
       pucNumber &&
@@ -966,99 +991,148 @@ const validateCompliance =
         'PUC number is required when a PUC expiry date is provided.'
     }
 
-    /*
-     * DATE VALIDATION
-     */
-
-    const isValidDate =
-      (
-        value,
-      ) => {
-        if (!value) {
-          return false
+    const parseStrictDate =
+      (value) => {
+        if (
+          !value ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(
+            value,
+          )
+        ) {
+          return null
         }
 
-        const timestamp =
-          Date.parse(
+        const [
+          year,
+          month,
+          day,
+        ] =
+          value
+            .split('-')
+            .map(Number)
+
+        const parsed =
+          new Date(
+            Date.UTC(
+              year,
+              month - 1,
+              day,
+            ),
+          )
+
+        if (
+          parsed.getUTCFullYear() !==
+            year ||
+          parsed.getUTCMonth() !==
+            month - 1 ||
+          parsed.getUTCDate() !==
+            day
+        ) {
+          return null
+        }
+
+        return parsed
+      }
+
+    const now = new Date()
+    const todayUtc =
+      new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+        ),
+      )
+
+    const validateExpiryDate =
+      (
+        value,
+        field,
+        label,
+      ) => {
+        if (!value) {
+          return
+        }
+
+        const parsed =
+          parseStrictDate(
             value,
           )
 
-        return !Number.isNaN(
-          timestamp,
-        )
+        if (!parsed) {
+          errors[field] =
+            `${label} is invalid.`
+          return
+        }
+
+        if (
+          parsed.getTime() <
+          todayUtc.getTime()
+        ) {
+          errors[field] =
+            `${label} cannot be in the past.`
+        }
       }
 
-    if (
-      registrationDate &&
-      !isValidDate(
-        registrationDate,
-      )
-    ) {
-      errors.registrationDate =
-        'Registration date is invalid.'
+    if (registrationDate) {
+      const parsedRegistration =
+        parseStrictDate(
+          registrationDate,
+        )
+
+      if (!parsedRegistration) {
+        errors.registrationDate =
+          'Registration date is invalid.'
+      } else if (
+        parsedRegistration.getTime() >
+        todayUtc.getTime()
+      ) {
+        errors.registrationDate =
+          'Registration date cannot be in the future.'
+      }
     }
 
-    if (
-      insuranceExpiry &&
-      !isValidDate(
-        insuranceExpiry,
-      )
-    ) {
-      errors.insuranceExpiry =
-        'Insurance expiry date is invalid.'
-    }
+    validateExpiryDate(
+      insuranceExpiry,
+      'insuranceExpiry',
+      'Insurance expiry date',
+    )
 
-    if (
-      permitExpiry &&
-      !isValidDate(
-        permitExpiry,
-      )
-    ) {
-      errors.permitExpiry =
-        'Permit expiry date is invalid.'
-    }
+    validateExpiryDate(
+      permitExpiry,
+      'permitExpiry',
+      'Permit expiry date',
+    )
 
-    if (
-      fitnessExpiry &&
-      !isValidDate(
-        fitnessExpiry,
-      )
-    ) {
-      errors.fitnessExpiry =
-        'Fitness expiry date is invalid.'
-    }
+    validateExpiryDate(
+      fitnessExpiry,
+      'fitnessExpiry',
+      'Fitness expiry date',
+    )
 
-    if (
-      pucExpiry &&
-      !isValidDate(
+    if (pucExpiry) {
+      validateExpiryDate(
         pucExpiry,
+        'pucExpiry',
+        'PUC expiry date',
       )
-    ) {
-      errors.pucExpiry =
-        'PUC expiry date is invalid.'
     }
 
     return {
       errors,
-
       compliance: {
         registrationDate,
-
         insuranceNumber,
         insuranceExpiry,
-
         permitNumber,
         permitExpiry,
-
         fitnessCertificateNumber,
         fitnessExpiry,
-
         pucNumber,
         pucExpiry,
       },
     }
   }
-
 /*
  * =====================================================
  * FILE HELPER
