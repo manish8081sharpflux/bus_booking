@@ -8,6 +8,7 @@ const {
   listPending,
   review,
   resubmit,
+  changeOperationalStatus,
 } = require(
   '../controllers/bus.controller',
 )
@@ -74,6 +75,17 @@ router.get(
  * GET /buses/:id
  * =====================================================
  */
+
+router.patch(
+  '/:id/operational-status',
+  requireAuth,
+  requireRoles(
+    'OPERATOR_ADMIN',
+    'MANAGER',
+  ),
+  resolveOperator,
+  changeOperationalStatus,
+)
 
 router.get(
   '/:id',

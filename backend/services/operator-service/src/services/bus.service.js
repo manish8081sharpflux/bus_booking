@@ -576,6 +576,196 @@ const createBusWithSeats =
     }
   }
 
+const getBlockingTripsForBus = async (
+  busId,
+  client = pool,
+) => {
+  const { rows } = await client.query(
+    `SELECT
+       id,
+       service_number,
+       departure_at,
+       status
+     FROM trips
+     WHERE bus_id = $1::uuid
+       AND status IN ('SCHEDULED', 'BOARDING', 'IN_PROGRESS')
+       AND (
+         departure_at >= NOW()
+         OR status IN ('BOARDING', 'IN_PROGRESS')
+       )
+     ORDER BY departure_at ASC`,
+    [busId],
+  )
+
+  return rows
+}
+
+const setBusOperationalStatus = async ({
+  busId,
+  operatorId,
+  active,
+}) => {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const bus = (
+      await client.query(
+        `SELECT
+           id,
+           operator_id,
+           approval_status,
+           operational_status,
+           status
+         FROM buses
+         WHERE id = $1::uuid
+           AND operator_id = $2::uuid
+         FOR UPDATE`,
+        [busId, operatorId],
+      )
+    ).rows[0]
+
+    if (!bus) {
+      throw Object.assign(
+        new Error('Bus not found for this operator.'),
+        { status: 404 },
+      )
+    }
+
+    if (bus.approval_status !== 'APPROVED') {
+      throw Object.assign(
+        new Error(
+          'Only an approved bus can change operational status.',
+        ),
+        { status: 409 },
+      )
+    }
+
+    const nextActive = Boolean(active)
+
+    if (!nextActive) {
+      const blockingTrips =
+        await getBlockingTripsForBus(
+          busId,
+          client,
+        )
+
+      if (blockingTrips.length > 0) {
+        throw Object.assign(
+          new Error(
+            'This bus has scheduled or running trips. Reassign or cancel those trips before deactivating the bus.',
+          ),
+          {
+            status: 409,
+            code: 'BUS_HAS_ACTIVE_TRIPS',
+            blockingTrips,
+          },
+        )
+      }
+    } else {
+      const compliance = (
+        await client.query(
+          `SELECT
+             verification_status,
+             insurance_expiry,
+             permit_expiry,
+             fitness_expiry,
+             puc_expiry
+           FROM bus_compliance
+           WHERE bus_id = $1::uuid
+           LIMIT 1`,
+          [busId],
+        )
+      ).rows[0]
+
+      if (!compliance || compliance.verification_status !== 'VERIFIED') {
+        throw Object.assign(
+          new Error(
+            'Verified compliance is required before activating this bus.',
+          ),
+          { status: 409 },
+        )
+      }
+
+      const expired = [
+        ['insurance', compliance.insurance_expiry],
+        ['permit', compliance.permit_expiry],
+        ['fitness', compliance.fitness_expiry],
+        ['PUC', compliance.puc_expiry],
+      ].filter(
+        ([, value]) =>
+          value &&
+          new Date(value).getTime() <
+            new Date(
+              new Date().toISOString().slice(0, 10),
+            ).getTime(),
+      )
+
+      if (expired.length > 0) {
+        throw Object.assign(
+          new Error(
+            `Cannot activate bus because ${expired
+              .map(([name]) => name)
+              .join(', ')} compliance has expired.`,
+          ),
+          { status: 409 },
+        )
+      }
+
+      const documentCheck = (
+        await client.query(
+          `SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (
+               WHERE verification_status = 'VERIFIED'
+             )::int AS verified
+           FROM bus_documents
+           WHERE bus_id = $1::uuid`,
+          [busId],
+        )
+      ).rows[0]
+
+      if (
+        Number(documentCheck.total) === 0 ||
+        Number(documentCheck.total) !==
+          Number(documentCheck.verified)
+      ) {
+        throw Object.assign(
+          new Error(
+            'All uploaded bus documents must be verified before activation.',
+          ),
+          { status: 409 },
+        )
+      }
+    }
+
+    const { rows } = await client.query(
+      `UPDATE buses
+       SET operational_status = $3,
+           status = $4,
+           updated_at = NOW()
+       WHERE id = $1::uuid
+         AND operator_id = $2::uuid
+       RETURNING *`,
+      [
+        busId,
+        operatorId,
+        nextActive ? 'ACTIVE' : 'INACTIVE',
+        nextActive ? 'ACTIVE' : 'INACTIVE',
+      ],
+    )
+
+    await client.query('COMMIT')
+    return rows[0]
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
 /*
  * =====================================================
  * GET ALL BUSES FOR OPERATOR
@@ -881,6 +1071,8 @@ module.exports = {
   getBusDocuments,
 
   getCompleteBusById,
+  getBlockingTripsForBus,
+  setBusOperationalStatus,
 
   listPendingBuses: async () => {
     const { rows } = await pool.query(`

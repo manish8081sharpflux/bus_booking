@@ -31,7 +31,7 @@ class BookingService {
       JOIN trip_stops destination ON destination.trip_id=t.id AND destination.is_dropping_allowed AND destination.stop_order>origin.stop_order
         AND (LOWER(destination.city)=LOWER($2) OR LOWER(destination.location_name)=LOWER($2))
       LEFT JOIN trip_seat_inventory i ON i.trip_id=t.id
-      WHERE t.status='SCHEDULED' AND COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at)::date=$3::date
+      WHERE t.status='SCHEDULED' AND b.status='ACTIVE' AND COALESCE(origin.scheduled_departure_at,origin.departure_at,origin.scheduled_at,t.departure_at)::date=$3::date
       GROUP BY t.id,o.display_name,b.name,b.bus_type,b.amenities,origin.id,destination.id
       HAVING COUNT(i.bus_seat_id) FILTER(WHERE NOT EXISTS(SELECT 1 FROM trip_seat_segment_allocations a WHERE a.trip_id=t.id AND a.bus_seat_id=i.bus_seat_id AND a.segment_range && int4range(origin.stop_order,destination.stop_order,'[)')))>0
       ORDER BY departure_at`, [from.trim(),to.trim(),date])

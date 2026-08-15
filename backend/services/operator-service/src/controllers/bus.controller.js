@@ -10,6 +10,7 @@ const {
   listPendingBuses,
   reviewBus,
   resubmitBus,
+  setBusOperationalStatus,
 } = require(
   '../services/bus.service',
 )
@@ -1714,6 +1715,67 @@ const getBus =
     }
   }
 
+const changeOperationalStatus = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const requestedStatus =
+      String(
+        req.body?.status || '',
+      )
+        .trim()
+        .toUpperCase()
+
+    if (
+      !['ACTIVE', 'INACTIVE'].includes(
+        requestedStatus,
+      )
+    ) {
+      return res.status(422).json({
+        success: false,
+        message:
+          'Status must be ACTIVE or INACTIVE.',
+      })
+    }
+
+    const bus =
+      await setBusOperationalStatus({
+        busId: req.params.id,
+        operatorId: req.operatorId,
+        active:
+          requestedStatus === 'ACTIVE',
+      })
+
+    return res.json({
+      success: true,
+      message:
+        requestedStatus === 'ACTIVE'
+          ? 'Bus activated successfully.'
+          : 'Bus deactivated successfully.',
+      bus,
+    })
+  } catch (error) {
+    if (
+      error?.code ===
+      'BUS_HAS_ACTIVE_TRIPS'
+    ) {
+      return res.status(
+        error.status || 409,
+      ).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+        blockingTrips:
+          error.blockingTrips || [],
+      })
+    }
+
+    next(error)
+  }
+}
+
 /*
  * =====================================================
  * EXPORTS
@@ -1721,6 +1783,7 @@ const getBus =
  */
 
 module.exports = {
+  changeOperationalStatus,
   addBus,
   listBuses,
   getBus,
