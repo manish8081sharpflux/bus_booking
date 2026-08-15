@@ -91,6 +91,61 @@ async function enqueueBookingConfirmed(client, booking) {
   );
 }
 
+async function upsertPaymentReconciliationCase(
+  client,
+  {
+    paymentId,
+    bookingId,
+    webhookEventId,
+    issueType,
+    reason,
+  },
+) {
+  await client.query(
+    `INSERT INTO payment_reconciliation_cases(
+       payment_id,
+       booking_id,
+       webhook_event_id,
+       issue_type,
+       reason,
+       status,
+       occurrence_count,
+       first_seen_at,
+       last_seen_at,
+       created_at,
+       updated_at
+     )
+     VALUES(
+       $1::uuid,
+       $2::uuid,
+       $3::uuid,
+       $4,
+       $5,
+       'OPEN',
+       1,
+       NOW(),
+       NOW(),
+       NOW(),
+       NOW()
+     )
+     ON CONFLICT(payment_id)
+       WHERE status='OPEN'
+     DO UPDATE SET
+       webhook_event_id=EXCLUDED.webhook_event_id,
+       issue_type=EXCLUDED.issue_type,
+       reason=EXCLUDED.reason,
+       occurrence_count=payment_reconciliation_cases.occurrence_count+1,
+       last_seen_at=NOW(),
+       updated_at=NOW()`,
+    [
+      paymentId,
+      bookingId,
+      webhookEventId,
+      issueType,
+      reason,
+    ],
+  );
+}
 async function processPaymentCaptured(client, webhookEventId, entity, fullEvent) {
   const providerPaymentId = entity?.id || null;
   const providerOrderId = entity?.order_id || null;
@@ -164,7 +219,17 @@ async function processPaymentCaptured(client, webhookEventId, entity, fullEvent)
 
   if (row.booking_status !== 'PENDING_PAYMENT') {
     const message = `Payment captured for booking in ${row.booking_status} state. Automatic confirmation was not performed.`;
-    await markEvent(client, webhookEventId, { error: message });
+        await upsertPaymentReconciliationCase(
+      client,
+      {
+        paymentId: row.id,
+        bookingId: row.booking_id,
+        webhookEventId,
+        issueType: 'BOOKING_STATE_INVALID',
+        reason: message,
+      },
+    );
+await markEvent(client, webhookEventId, { error: message });
     return { status: 'RECONCILIATION_REQUIRED', bookingId: row.booking_id, paymentId: row.id, reason: message };
   }
 
@@ -178,7 +243,17 @@ async function processPaymentCaptured(client, webhookEventId, entity, fullEvent)
     const message =
       'Payment was captured after the trip or bus became ineligible. Automatic confirmation was not performed; manual reconciliation/refund is required.';
 
-    await markEvent(
+        await upsertPaymentReconciliationCase(
+      client,
+      {
+        paymentId: row.id,
+        bookingId: row.booking_id,
+        webhookEventId,
+        issueType: 'BOOKABILITY_INVALID',
+        reason: message,
+      },
+    );
+await markEvent(
       client,
       webhookEventId,
       {
@@ -210,7 +285,17 @@ async function processPaymentCaptured(client, webhookEventId, entity, fullEvent)
 
   if (!passengerCount || Number(allocationCount) !== Number(passengerCount)) {
     const message = 'Payment was captured after one or more seat holds were released. Manual reconciliation/refund is required.';
-    await markEvent(client, webhookEventId, { error: message });
+        await upsertPaymentReconciliationCase(
+      client,
+      {
+        paymentId: row.id,
+        bookingId: row.booking_id,
+        webhookEventId,
+        issueType: 'SEAT_HOLD_RELEASED',
+        reason: message,
+      },
+    );
+await markEvent(client, webhookEventId, { error: message });
     return { status: 'RECONCILIATION_REQUIRED', bookingId: row.booking_id, paymentId: row.id, reason: message };
   }
 
