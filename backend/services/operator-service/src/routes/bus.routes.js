@@ -5,6 +5,7 @@ const {
   addBus,
   listBuses,
   getBus,
+  getVerificationBus,
   listPending,
   review,
   resubmit,
@@ -29,10 +30,28 @@ const router =
 const { requireAuth, requireRoles } = require('../middlewares/auth.middleware')
 const { resolveOperator } = require('../middlewares/operator-context.middleware')
 
-router.get('/verification/pending', requireAuth, requireRoles('SUPER_ADMIN'), listPending)
-router.patch('/:id/review', requireAuth, requireRoles('SUPER_ADMIN'), review)
-router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN','MANAGER'), resolveOperator, resubmit)
+router.get(
+  '/verification/pending',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  listPending,
+)
 
+router.get(
+  '/verification/:id',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  getVerificationBus,
+)
+
+router.patch(
+  '/:id/review',
+  requireAuth,
+  requireRoles('SUPER_ADMIN'),
+  review,
+)
+
+router.patch('/:id/resubmit', requireAuth, requireRoles('OPERATOR_ADMIN','MANAGER'), resolveOperator, resubmit)
 /*
  * =====================================================
  * CREATE BUS

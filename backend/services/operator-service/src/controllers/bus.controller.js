@@ -1776,6 +1776,63 @@ const previewOperatorBusDocument = async (
     next(error)
   }
 }
+const getVerificationBus = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const bus = await findBusById(req.params.id)
+
+    if (!bus) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bus not found.',
+      })
+    }
+
+    const [
+      seats,
+      compliance,
+      documents,
+      operator,
+    ] = await Promise.all([
+      getBusSeats(bus.id),
+      getBusCompliance(bus.id),
+      getBusDocuments(bus.id),
+      bus.operator_id
+        ? findOperatorById(bus.operator_id)
+        : Promise.resolve(null),
+    ])
+
+    return res.json({
+      success: true,
+      bus: {
+        ...bus,
+        operator_name:
+          operator?.display_name ||
+          operator?.legal_name ||
+          'Unknown operator',
+        configured_seats:
+          Array.isArray(seats)
+            ? seats.length
+            : 0,
+        seats:
+          Array.isArray(seats)
+            ? seats
+            : [],
+        compliance:
+          compliance || null,
+        documents:
+          Array.isArray(documents)
+            ? documents
+            : [],
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
 const previewBusDocument = async (
   req,
   res,
@@ -2122,6 +2179,7 @@ module.exports = {
   addBus,
   listBuses,
   getBus,
+  getVerificationBus,
   listPending: async (req, res, next) => {
     try { res.json({ success: true, buses: await listPendingBuses() }) } catch (error) { next(error) }
   },
