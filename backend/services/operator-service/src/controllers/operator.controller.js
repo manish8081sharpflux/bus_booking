@@ -1367,6 +1367,28 @@ const resubmitOperator = async (
           req.body?.correctionNote,
         files:
           req.files || {},
+        corrections: {
+          travelsName:
+            req.body?.travelsName,
+          legalBusinessName:
+            req.body?.legalBusinessName,
+          panNumber:
+            req.body?.panNumber,
+          gstin:
+            req.body?.gstin,
+          accountHolderName:
+            req.body?.accountHolderName,
+          bankName:
+            req.body?.bankName,
+          accountNumber:
+            req.body?.accountNumber,
+          ifscCode:
+            req.body?.ifscCode,
+          branchName:
+            req.body?.branchName,
+          accountType:
+            req.body?.accountType,
+        },
       })
 
     return res.json({
@@ -1377,6 +1399,9 @@ const resubmitOperator = async (
         result.operator.status,
       replacedDocumentTypes:
         result.replacedDocumentTypes,
+
+      changedFields:
+        result.changedFields,
     })
   } catch (error) {
     next(error)

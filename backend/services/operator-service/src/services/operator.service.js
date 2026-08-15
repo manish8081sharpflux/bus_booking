@@ -135,11 +135,11 @@ const createPlatformUser = async (
  * Everything is done inside one transaction.
  *
  * platform_users
- *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operators
- *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operator_bank_details
- *      ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“
+ *      ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ
  * operator_documents
  * =====================================================
  */
@@ -1049,6 +1049,7 @@ const resubmitRejectedOperator = async ({
   operatorId,
   correctionNote,
   files = {},
+  corrections = {},
 }) => {
   const note =
     String(
@@ -1080,15 +1081,230 @@ const resubmitRejectedOperator = async ({
           Boolean(item.file),
       )
 
-  if (!replacements.length) {
+  const normalizedCorrections = {
+    travelsName:
+      String(
+        corrections.travelsName || '',
+      ).trim(),
+
+    legalBusinessName:
+      String(
+        corrections.legalBusinessName || '',
+      ).trim(),
+
+    panNumber:
+      String(
+        corrections.panNumber || '',
+      )
+        .trim()
+        .toUpperCase(),
+
+    gstin:
+      String(
+        corrections.gstin || '',
+      )
+        .trim()
+        .toUpperCase(),
+
+    accountHolderName:
+      String(
+        corrections.accountHolderName || '',
+      ).trim(),
+
+    bankName:
+      String(
+        corrections.bankName || '',
+      ).trim(),
+
+    accountNumber:
+      String(
+        corrections.accountNumber || '',
+      ).trim(),
+
+    ifscCode:
+      String(
+        corrections.ifscCode || '',
+      )
+        .trim()
+        .toUpperCase(),
+
+    branchName:
+      String(
+        corrections.branchName || '',
+      ).trim(),
+
+    accountType:
+      String(
+        corrections.accountType || '',
+      )
+        .trim()
+        .toUpperCase()
+        .replace(/\s+ACCOUNT$/, ''),
+  }
+
+  if (
+    normalizedCorrections.travelsName &&
+    (
+      normalizedCorrections.travelsName.length < 2 ||
+      normalizedCorrections.travelsName.length > 100 ||
+      !/^[a-zA-Z0-9&.\-\s]+$/.test(
+        normalizedCorrections.travelsName,
+      )
+    )
+  ) {
     throw Object.assign(
       new Error(
-        'Replace at least one rejected KYC document before resubmitting.',
+        'Invalid Travels Name.',
       ),
       { status: 422 },
     )
   }
 
+  if (
+    normalizedCorrections.legalBusinessName &&
+    (
+      normalizedCorrections.legalBusinessName.length < 2 ||
+      normalizedCorrections.legalBusinessName.length > 150
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid Legal Business Name.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.panNumber &&
+    !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(
+      normalizedCorrections.panNumber,
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid PAN Number.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.gstin &&
+    !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(
+      normalizedCorrections.gstin,
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid GSTIN.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.panNumber &&
+    normalizedCorrections.gstin &&
+    normalizedCorrections.gstin.slice(
+      2,
+      12,
+    ) !== normalizedCorrections.panNumber
+  ) {
+    throw Object.assign(
+      new Error(
+        'GSTIN does not match the submitted PAN Number.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.accountHolderName &&
+    (
+      normalizedCorrections.accountHolderName.length < 2 ||
+      normalizedCorrections.accountHolderName.length > 100
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid Account Holder Name.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.bankName &&
+    (
+      normalizedCorrections.bankName.length < 2 ||
+      normalizedCorrections.bankName.length > 120
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid Bank Name.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.accountNumber &&
+    !/^[0-9]{9,18}$/.test(
+      normalizedCorrections.accountNumber,
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid Bank Account Number.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.ifscCode &&
+    !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
+      normalizedCorrections.ifscCode,
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid IFSC Code.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.branchName &&
+    (
+      normalizedCorrections.branchName.length < 2 ||
+      normalizedCorrections.branchName.length > 120
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Invalid Branch Name.',
+      ),
+      { status: 422 },
+    )
+  }
+
+  if (
+    normalizedCorrections.accountType &&
+    !['CURRENT', 'SAVINGS'].includes(
+      normalizedCorrections.accountType,
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        'Account Type must be Current Account or Savings Account.',
+      ),
+      { status: 422 },
+    )
+  }
   const client =
     await pool.connect()
 
@@ -1100,7 +1316,11 @@ const resubmitRejectedOperator = async ({
         `SELECT
            id,
            status,
-           rejection_reason
+           rejection_reason,
+           display_name,
+           legal_name,
+           tax_identifier,
+           registration_number
          FROM operators
          WHERE id = $1::uuid
          FOR UPDATE`,
@@ -1126,6 +1346,302 @@ const resubmitRejectedOperator = async ({
       )
     }
 
+    const changedFields = []
+
+    const nextDisplayName =
+      normalizedCorrections.travelsName ||
+      current.display_name
+
+    const nextLegalName =
+      normalizedCorrections.legalBusinessName ||
+      current.legal_name
+
+    const nextPan =
+      normalizedCorrections.panNumber ||
+      current.tax_identifier
+
+    const nextGstin =
+      normalizedCorrections.gstin ||
+      current.registration_number
+
+    if (
+      normalizedCorrections.gstin &&
+      !normalizedCorrections.panNumber &&
+      current.tax_identifier &&
+      normalizedCorrections.gstin.slice(
+        2,
+        12,
+      ) !==
+        String(
+          current.tax_identifier,
+        )
+          .trim()
+          .toUpperCase()
+    ) {
+      throw Object.assign(
+        new Error(
+          'GSTIN does not match the operator PAN Number.',
+        ),
+        { status: 422 },
+      )
+    }
+
+    if (
+      normalizedCorrections.panNumber &&
+      current.registration_number &&
+      !normalizedCorrections.gstin &&
+      String(
+        current.registration_number,
+      )
+        .trim()
+        .toUpperCase()
+        .slice(
+          2,
+          12,
+        ) !==
+        normalizedCorrections.panNumber
+    ) {
+      throw Object.assign(
+        new Error(
+          'PAN Number does not match the operator GSTIN.',
+        ),
+        { status: 422 },
+      )
+    }
+
+    const duplicateIdentity = (
+      await client.query(
+        `SELECT
+           id,
+           tax_identifier,
+           registration_number
+         FROM operators
+         WHERE id <> $1::uuid
+           AND (
+             UPPER(BTRIM(tax_identifier)) =
+               UPPER(BTRIM($2))
+             OR (
+               $3::text IS NOT NULL
+               AND UPPER(BTRIM(registration_number)) =
+                 UPPER(BTRIM($3))
+             )
+           )
+         LIMIT 1
+         FOR UPDATE`,
+        [
+          operatorId,
+          nextPan,
+          nextGstin || null,
+        ],
+      )
+    ).rows[0]
+
+    if (duplicateIdentity) {
+      throw Object.assign(
+        new Error(
+          'Another operator already uses this PAN or GSTIN.',
+        ),
+        { status: 409 },
+      )
+    }
+
+    if (
+      nextDisplayName !==
+      current.display_name
+    ) {
+      changedFields.push(
+        'travelsName',
+      )
+    }
+
+    if (
+      nextLegalName !==
+      current.legal_name
+    ) {
+      changedFields.push(
+        'legalBusinessName',
+      )
+    }
+
+    if (
+      nextPan !==
+      current.tax_identifier
+    ) {
+      changedFields.push(
+        'panNumber',
+      )
+    }
+
+    if (
+      nextGstin !==
+      current.registration_number
+    ) {
+      changedFields.push(
+        'gstin',
+      )
+    }
+
+    const bank = (
+      await client.query(
+        `SELECT
+           account_holder_name,
+           bank_name,
+           account_number,
+           ifsc_code,
+           branch_name,
+           account_type
+         FROM operator_bank_details
+         WHERE operator_id = $1::uuid
+         LIMIT 1
+         FOR UPDATE`,
+        [operatorId],
+      )
+    ).rows[0]
+
+    if (!bank) {
+      throw Object.assign(
+        new Error(
+          'Operator bank details not found.',
+        ),
+        { status: 404 },
+      )
+    }
+
+    const nextBank = {
+      accountHolderName:
+        normalizedCorrections.accountHolderName ||
+        bank.account_holder_name,
+
+      bankName:
+        normalizedCorrections.bankName ||
+        bank.bank_name,
+
+      accountNumber:
+        normalizedCorrections.accountNumber ||
+        bank.account_number,
+
+      ifscCode:
+        normalizedCorrections.ifscCode ||
+        bank.ifsc_code,
+
+      branchName:
+        normalizedCorrections.branchName ||
+        bank.branch_name,
+
+      accountType:
+        normalizedCorrections.accountType ||
+        bank.account_type,
+    }
+
+    const bankComparisons = [
+      [
+        'accountHolderName',
+        bank.account_holder_name,
+      ],
+      [
+        'bankName',
+        bank.bank_name,
+      ],
+      [
+        'accountNumber',
+        bank.account_number,
+      ],
+      [
+        'ifscCode',
+        bank.ifsc_code,
+      ],
+      [
+        'branchName',
+        bank.branch_name,
+      ],
+      [
+        'accountType',
+        bank.account_type,
+      ],
+    ]
+
+    for (
+      const [
+        field,
+        oldValue,
+      ] of bankComparisons
+    ) {
+      if (
+        nextBank[field] !==
+        oldValue
+      ) {
+        changedFields.push(
+          field,
+        )
+      }
+    }
+
+    if (
+      changedFields.length === 0 &&
+      replacements.length === 0
+    ) {
+      throw Object.assign(
+        new Error(
+          'At least one profile field or rejected KYC document must be corrected.',
+        ),
+        { status: 422 },
+      )
+    }
+
+    if (changedFields.length > 0) {
+      try {
+        await client.query(
+          `UPDATE operators
+           SET display_name = $2,
+               legal_name = $3,
+               tax_identifier = $4,
+               registration_number = $5,
+               updated_at = NOW()
+           WHERE id = $1::uuid`,
+          [
+            operatorId,
+            nextDisplayName,
+            nextLegalName,
+            nextPan,
+            nextGstin || null,
+          ],
+        )
+      } catch (error) {
+        if (
+          error?.code === '23505'
+        ) {
+          throw Object.assign(
+            new Error(
+              'Another operator already uses this PAN or GSTIN.',
+            ),
+            { status: 409 },
+          )
+        }
+
+        throw error
+      }
+
+      await client.query(
+        `UPDATE operator_bank_details
+         SET account_holder_name = $2,
+             bank_name = $3,
+             account_number = $4,
+             ifsc_code = $5,
+             branch_name = $6,
+             account_type = $7,
+             updated_at = NOW()
+         WHERE operator_id = $1::uuid`,
+        [
+          operatorId,
+          nextBank.accountHolderName,
+          nextBank.bankName,
+          nextBank.accountNumber,
+          nextBank.ifscCode,
+          nextBank.branchName,
+          nextBank.accountType,
+        ],
+      )
+    }
     for (const replacement of replacements) {
       const latest = (
         await client.query(
@@ -1243,6 +1759,7 @@ const resubmitRejectedOperator = async ({
         replacements.map(
           (item) => item.documentType,
         ),
+      changedFields,
     }
   } catch (error) {
     await client.query('ROLLBACK')

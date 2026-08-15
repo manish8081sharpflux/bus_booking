@@ -32,8 +32,8 @@ test('resubmission requires meaningful correction note',()=>{
   assert.match(service,/Correction note must be at least 5 characters\./)
 })
 
-test('resubmission requires at least one replacement document',()=>{
-  assert.match(service,/Replace at least one rejected KYC document before resubmitting\./)
+test('resubmission requires at least one real correction',()=>{
+  assert.match(service,/At least one profile field or rejected KYC document must be corrected\./)
 })
 
 test('only rejected document types can be replaced',()=>{
